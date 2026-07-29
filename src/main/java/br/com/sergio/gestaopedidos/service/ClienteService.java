@@ -1,8 +1,11 @@
 package br.com.sergio.gestaopedidos.service;
 
+import br.com.sergio.gestaopedidos.dto.cliente.ClienteRequest;
+import br.com.sergio.gestaopedidos.dto.cliente.ClienteResponse;
 import br.com.sergio.gestaopedidos.entity.Cliente;
+import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
+import br.com.sergio.gestaopedidos.mapper.ClienteMapper;
 import br.com.sergio.gestaopedidos.repository.ClienteRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,28 +18,54 @@ import java.util.List;
 public class ClienteService {
 
     private final ClienteRepository clienteRepository;
+    private final ClienteMapper clienteMapper;
 
     @Transactional(readOnly = true)
-    public List<Cliente> listarTodos() {
-        return clienteRepository.findAll();
+    public List<ClienteResponse> listarTodos() {
+        return clienteRepository.findAll()
+                .stream()
+                .map(clienteMapper::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public Cliente buscarPorId(Long id) {
-        return clienteRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Cliente não encontrado."));
+    public ClienteResponse buscarPorId(Long id) {
+        Cliente cliente = buscarEntidadePorId(id);
+        return clienteMapper.toResponse(cliente);
     }
 
-    public Cliente salvar(Cliente cliente) {
-        return clienteRepository.save(cliente);
+    public ClienteResponse salvar(ClienteRequest request) {
+        Cliente cliente = clienteMapper.toEntity(request);
+        Cliente clienteSalvo = clienteRepository.save(cliente);
+
+        return clienteMapper.toResponse(clienteSalvo);
     }
 
-    public Cliente atualizar(Cliente cliente) {
-        return clienteRepository.save(cliente);
+    public ClienteResponse atualizar(Long id, ClienteRequest request) {
+        Cliente cliente = buscarEntidadePorId(id);
+
+        cliente.setNome(request.nome());
+        cliente.setTelefone(request.telefone());
+        cliente.setEndereco(request.endereco());
+        cliente.setNumero(request.numero());
+        cliente.setBairro(request.bairro());
+        cliente.setCidade(request.cidade());
+        cliente.setCep(request.cep());
+        cliente.setComplemento(request.complemento());
+
+        Cliente clienteAtualizado = clienteRepository.save(cliente);
+
+        return clienteMapper.toResponse(clienteAtualizado);
     }
 
     public void excluir(Long id) {
-        buscarPorId(id);
-        clienteRepository.deleteById(id);
+        Cliente cliente = buscarEntidadePorId(id);
+        clienteRepository.delete(cliente);
+    }
+
+    private Cliente buscarEntidadePorId(Long id) {
+        return clienteRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Cliente não encontrado."));
     }
 }
