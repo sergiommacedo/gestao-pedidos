@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 public record ProdutoRequest(
 
         @NotBlank(message = "Nome é obrigatório.")
-        @Size(max = 150, message = "Nome deve ter no máximo 150 caracteres.")
+        @Size(max = 100, message = "Nome deve ter no máximo 100 caracteres.")
         String nome,
 
         @Size(max = 255, message = "Descrição deve ter no máximo 255 caracteres.")
@@ -22,7 +22,6 @@ public record ProdutoRequest(
         @DecimalMin(value = "0.01", message = "Preço deve ser maior que zero.")
         BigDecimal preco,
 
-        @NotNull(message = "Informe se o produto está ativo.")
         Boolean ativo
 
 ) {
