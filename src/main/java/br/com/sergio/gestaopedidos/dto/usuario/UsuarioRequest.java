@@ -11,11 +11,12 @@ import lombok.Builder;
 public record UsuarioRequest(
 
         @NotBlank(message = "Nome é obrigatório.")
-        @Size(max = 150, message = "Nome deve ter no máximo 150 caracteres.")
+        @Size(max = 100, message = "Nome deve ter no máximo 100 caracteres.")
         String nome,
 
         @NotBlank(message = "E-mail é obrigatório.")
         @Email(message = "E-mail inválido.")
+        @Size(max = 100, message = "E-mail deve ter no máximo 100 caracteres.")
         String email,
 
         @NotBlank(message = "Senha é obrigatória.")
@@ -25,7 +26,6 @@ public record UsuarioRequest(
         @NotNull(message = "Perfil é obrigatório.")
         PerfilUsuario perfil,
 
-        @NotNull(message = "Informe se o usuário está ativo.")
         Boolean ativo
 
 ) {
