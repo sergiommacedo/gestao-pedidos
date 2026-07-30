@@ -6,31 +6,39 @@
 <body>
 
 <nav th:fragment="navbar"
-     class="navbar navbar-expand-lg bg-white border-bottom fixed-top">
+     class="navbar navbar-expand-lg app-navbar fixed-top shadow-sm">
 
     <div class="container-fluid px-3">
 
+        <!-- Botão do menu em telas pequenas -->
         <button class="btn btn-outline-secondary d-lg-none me-2"
                 type="button"
-                id="sidebarToggle"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#sidebar"
+                aria-controls="sidebar"
                 aria-label="Abrir menu lateral">
 
-            <i class="bi bi-list"></i>
+            <i class="bi bi-list fs-5"></i>
 
         </button>
 
-        <a class="navbar-brand fw-semibold d-flex align-items-center gap-2"
-           th:href="@{/dashboard}">
+        <!-- Marca do sistema -->
+        <a class="navbar-brand fw-semibold d-flex align-items-center gap-2 mb-0"
+           th:href="@{/}">
 
-            <i class="bi bi-box-seam"></i>
+            <img th:src="@{/img/logo-feijoada-vovo-dan.png}"
+                 class="app-logo"
+                 alt="Logo Feijoada da Vovó Dan">
 
-            <span>Gestão de Pedidos</span>
-
+            <span class="d-none d-sm-inline">
+                Feijoada da Vovó Dan
+            </span>
         </a>
 
+        <!-- Usuário autenticado -->
         <div class="dropdown ms-auto">
 
-            <button class="btn btn-light dropdown-toggle d-flex align-items-center gap-2"
+            <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center gap-2"
                     type="button"
                     data-bs-toggle="dropdown"
                     aria-expanded="false">
@@ -48,7 +56,15 @@
 
                 <li>
 
-                    <span class="dropdown-item-text text-muted small"
+                    <h6 class="dropdown-header">
+                        Usuário conectado
+                    </h6>
+
+                </li>
+
+                <li>
+
+                    <span class="dropdown-item-text text-body-secondary small"
                           sec:authentication="authorities">
                         Perfil
                     </span>
@@ -61,10 +77,11 @@
 
                 <li>
 
-                    <form th:action="@{/logout}" method="post">
+                    <form th:action="@{/logout}"
+                          method="post">
 
                         <button type="submit"
-                                class="dropdown-item">
+                                class="dropdown-item text-danger">
 
                             <i class="bi bi-box-arrow-right me-2"></i>
                             Sair
