@@ -10,6 +10,7 @@ import br.com.sergio.gestaopedidos.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final UsuarioMapper usuarioMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public List<UsuarioResponse> listarTodos() {
@@ -40,6 +42,8 @@ public class UsuarioService {
 
         Usuario usuario = usuarioMapper.toEntity(request);
 
+        usuario.setSenha(passwordEncoder.encode(request.senha()));
+
         if (usuario.getAtivo() == null) {
             usuario.setAtivo(true);
         }
@@ -56,7 +60,7 @@ public class UsuarioService {
 
         usuario.setNome(request.nome());
         usuario.setEmail(request.email());
-        usuario.setSenha(request.senha());
+        usuario.setSenha(passwordEncoder.encode(request.senha()));
         usuario.setPerfil(request.perfil());
 
         if (request.ativo() != null) {
