@@ -1,5 +1,6 @@
 package br.com.sergio.gestaopedidos.dto.produto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -9,19 +10,38 @@ import lombok.Builder;
 import java.math.BigDecimal;
 
 @Builder
+@Schema(description = "Dados necessários para cadastro ou atualização de um produto")
 public record ProdutoRequest(
 
+        @Schema(
+                description = "Nome do produto",
+                example = "Feijoada Grande",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotBlank(message = "Nome é obrigatório.")
         @Size(max = 100, message = "Nome deve ter no máximo 100 caracteres.")
         String nome,
 
+        @Schema(
+                description = "Descrição do produto",
+                example = "Feijoada completa para duas pessoas."
+        )
         @Size(max = 255, message = "Descrição deve ter no máximo 255 caracteres.")
         String descricao,
 
+        @Schema(
+                description = "Preço do produto",
+                example = "59.90",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @NotNull(message = "Preço é obrigatório.")
         @DecimalMin(value = "0.01", message = "Preço deve ser maior que zero.")
         BigDecimal preco,
 
+        @Schema(
+                description = "Indica se o produto está ativo",
+                example = "true"
+        )
         Boolean ativo
 
 ) {
