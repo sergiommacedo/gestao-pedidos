@@ -6,43 +6,227 @@
 
 <section layout:fragment="content">
 
+    <!-- Cabeçalho -->
     <div class="d-flex justify-content-between align-items-center mb-4">
 
         <div>
+
             <h2 class="mb-0">
+
                 <i class="bi bi-people-fill"></i>
+
                 Clientes
+
             </h2>
 
             <small class="text-muted">
                 Lista de clientes cadastrados
             </small>
+
         </div>
 
-        <a th:href="@{/clientes/novo}" class="btn btn-primary">
+        <a th:href="@{/clientes/novo}"
+           class="btn btn-primary">
+
             <i class="bi bi-plus-circle"></i>
+
             Novo Cliente
+
         </a>
 
     </div>
 
     <div class="card shadow-sm">
 
-        <div class="card-body">
+        <!-- Pesquisa -->
+        <div class="card-header bg-white py-3">
+
+            <form th:action="@{/clientes}"
+                  method="get"
+                  class="row g-2 align-items-center">
+
+                <div class="col-md-7">
+
+                    <div class="input-group">
+
+                        <span class="input-group-text bg-white">
+
+                            <i class="bi bi-search"></i>
+
+                        </span>
+
+                        <input type="search"
+                               name="filtro"
+                               class="form-control"
+                               placeholder="Pesquisar por nome ou telefone"
+                               th:value="${filtro}">
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-auto">
+
+                    <button type="submit"
+                            class="btn btn-primary">
+
+                        <i class="bi bi-search"></i>
+
+                        Pesquisar
+
+                    </button>
+
+                </div>
+
+                <div class="col-md-auto"
+                     th:if="${filtro != null and !filtro.isBlank()}">
+
+                    <a th:href="@{/clientes}"
+                       class="btn btn-outline-secondary">
+
+                        <i class="bi bi-x-circle"></i>
+
+                        Limpar
+
+                    </a>
+
+                </div>
+
+                <!-- Mantém as configurações atuais -->
+                <input type="hidden"
+                       name="pagina"
+                       value="0">
+
+                <input type="hidden"
+                       name="tamanho"
+                       th:value="${tamanho}">
+
+                <input type="hidden"
+                       name="ordenarPor"
+                       th:value="${ordenarPor}">
+
+                <input type="hidden"
+                       name="direcao"
+                       th:value="${direcao}">
+
+            </form>
+
+        </div>
+
+        <div class="card-body p-0">
 
             <div class="table-responsive">
 
                 <table class="table table-hover align-middle mb-0">
 
                     <thead class="table-light">
+
                     <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
-                        <th>Telefone</th>
+
+                        <!-- Ordenação por ID -->
+                        <th>
+
+                            <a class="text-decoration-none text-dark"
+                               th:href="@{/clientes(
+                                    filtro=${filtro},
+                                    pagina=0,
+                                    tamanho=${tamanho},
+                                    ordenarPor='id',
+                                    direcao=${ordenarPor == 'id' and direcao == 'asc' ? 'desc' : 'asc'}
+                               )}">
+
+                                ID
+
+                                <i th:if="${ordenarPor == 'id'}"
+                                   th:class="${direcao == 'asc'}
+                                        ? 'bi bi-arrow-up'
+                                        : 'bi bi-arrow-down'">
+                                </i>
+
+                            </a>
+
+                        </th>
+
+                        <!-- Ordenação por nome -->
+                        <th>
+
+                            <a class="text-decoration-none text-dark"
+                               th:href="@{/clientes(
+                                    filtro=${filtro},
+                                    pagina=0,
+                                    tamanho=${tamanho},
+                                    ordenarPor='nome',
+                                    direcao=${ordenarPor == 'nome' and direcao == 'asc' ? 'desc' : 'asc'}
+                               )}">
+
+                                Nome
+
+                                <i th:if="${ordenarPor == 'nome'}"
+                                   th:class="${direcao == 'asc'}
+                                        ? 'bi bi-arrow-up'
+                                        : 'bi bi-arrow-down'">
+                                </i>
+
+                            </a>
+
+                        </th>
+
+                        <!-- Ordenação por telefone -->
+                        <th>
+
+                            <a class="text-decoration-none text-dark"
+                               th:href="@{/clientes(
+                                    filtro=${filtro},
+                                    pagina=0,
+                                    tamanho=${tamanho},
+                                    ordenarPor='telefone',
+                                    direcao=${ordenarPor == 'telefone' and direcao == 'asc' ? 'desc' : 'asc'}
+                               )}">
+
+                                Telefone
+
+                                <i th:if="${ordenarPor == 'telefone'}"
+                                   th:class="${direcao == 'asc'}
+                                        ? 'bi bi-arrow-up'
+                                        : 'bi bi-arrow-down'">
+                                </i>
+
+                            </a>
+
+                        </th>
+
                         <th>Endereço</th>
-                        <th>Cidade</th>
-                        <th class="text-center">Ações</th>
+
+                        <!-- Ordenação por cidade -->
+                        <th>
+
+                            <a class="text-decoration-none text-dark"
+                               th:href="@{/clientes(
+                                    filtro=${filtro},
+                                    pagina=0,
+                                    tamanho=${tamanho},
+                                    ordenarPor='cidade',
+                                    direcao=${ordenarPor == 'cidade' and direcao == 'asc' ? 'desc' : 'asc'}
+                               )}">
+
+                                Cidade
+
+                                <i th:if="${ordenarPor == 'cidade'}"
+                                   th:class="${direcao == 'asc'}
+                                        ? 'bi bi-arrow-up'
+                                        : 'bi bi-arrow-down'">
+                                </i>
+
+                            </a>
+
+                        </th>
+
+                        <th class="text-center">
+                            Ações
+                        </th>
+
                     </tr>
+
                     </thead>
 
                     <tbody>
@@ -56,30 +240,41 @@
                         <td th:text="${cliente.telefone}"></td>
 
                         <td>
-                            <span th:text="${cliente.endereco}"></span>
 
-                            <span th:if="${cliente.numero != null and !cliente.numero.isBlank()}"
+                            <span th:text="${cliente.endereco}">
+                            </span>
+
+                            <span th:if="${cliente.numero != null
+                                            and !cliente.numero.isBlank()}"
                                   th:text="'nº ' + ${cliente.numero}">
                             </span>
 
                             <small class="d-block text-muted"
-                                   th:if="${cliente.bairro != null and !cliente.bairro.isBlank()}"
+                                   th:if="${cliente.bairro != null
+                                           and !cliente.bairro.isBlank()}"
                                    th:text="${cliente.bairro}">
                             </small>
+
                         </td>
 
                         <td>
-                            <span th:text="${cliente.cidade}"></span>
+
+                            <span th:text="${cliente.cidade}">
+                            </span>
 
                             <small class="d-block text-muted"
-                                   th:if="${cliente.cep != null and !cliente.cep.isBlank()}"
+                                   th:if="${cliente.cep != null
+                                           and !cliente.cep.isBlank()}"
                                    th:text="${cliente.cep}">
                             </small>
+
                         </td>
 
                         <td class="text-center">
 
-                            <a th:href="@{/clientes/{id}/editar(id=${cliente.id})}"
+                            <a th:href="@{/clientes/{id}/editar(
+                                    id=${cliente.id}
+                               )}"
                                class="btn btn-sm btn-outline-primary"
                                title="Editar cliente">
 
@@ -94,7 +289,9 @@
                                     data-bs-target="#modalExclusao"
                                     th:data-exclusao-id="${cliente.id}"
                                     th:data-exclusao-descricao="${cliente.nome}"
-                                    th:data-exclusao-url="@{/clientes/{id}/excluir(id=${cliente.id})}">
+                                    th:data-exclusao-url="@{/clientes/{id}/excluir(
+                                        id=${cliente.id}
+                                    )}">
 
                                 <i class="bi bi-trash"></i>
 
@@ -104,6 +301,7 @@
 
                     </tr>
 
+                    <!-- Resultado vazio -->
                     <tr th:if="${paginaClientes.empty}">
 
                         <td colspan="6"
@@ -111,7 +309,18 @@
 
                             <i class="bi bi-inbox fs-1 d-block mb-3"></i>
 
-                            Nenhum cliente cadastrado.
+                            <span th:if="${filtro == null or filtro.isBlank()}">
+                                Nenhum cliente cadastrado.
+                            </span>
+
+                            <span th:unless="${filtro == null or filtro.isBlank()}">
+
+                                Nenhum cliente encontrado para
+
+                                <strong th:text="'“' + ${filtro} + '”'">
+                                </strong>
+
+                            </span>
 
                         </td>
 
@@ -125,66 +334,165 @@
 
         </div>
 
+        <!-- Rodapé e paginação -->
         <div class="card-footer bg-white"
              th:if="${paginaClientes.totalPages > 0}">
 
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="row align-items-center g-3">
 
-                <small class="text-muted">
-                    Exibindo
-                    <span th:text="${paginaClientes.numberOfElements}"></span>
-                    de
-                    <span th:text="${paginaClientes.totalElements}"></span>
-                    clientes
-                </small>
+                <!-- Total de resultados -->
+                <div class="col-md">
 
-                <nav aria-label="Paginação de clientes">
+                    <small class="text-muted">
 
-                    <ul class="pagination pagination-sm mb-0">
+                        Exibindo
 
-                        <li class="page-item"
-                            th:classappend="${paginaClientes.first} ? 'disabled'">
+                        <span th:text="${paginaClientes.numberOfElements}">
+                        </span>
 
-                            <a class="page-link"
-                               th:href="@{/clientes(
-                                    pagina=${paginaClientes.number - 1},
-                                    tamanho=${paginaClientes.size}
-                               )}">
-                                Anterior
-                            </a>
+                        de
 
-                        </li>
+                        <span th:text="${paginaClientes.totalElements}">
+                        </span>
 
-                        <li class="page-item"
-                            th:each="numeroPagina : ${#numbers.sequence(0, paginaClientes.totalPages - 1)}"
-                            th:classappend="${numeroPagina == paginaClientes.number} ? 'active'">
+                        clientes
 
-                            <a class="page-link"
-                               th:href="@{/clientes(
-                                    pagina=${numeroPagina},
-                                    tamanho=${paginaClientes.size}
-                               )}"
-                               th:text="${numeroPagina + 1}">
-                            </a>
+                    </small>
 
-                        </li>
+                </div>
 
-                        <li class="page-item"
-                            th:classappend="${paginaClientes.last} ? 'disabled'">
+                <!-- Tamanho da página -->
+                <div class="col-md-auto">
 
-                            <a class="page-link"
-                               th:href="@{/clientes(
-                                    pagina=${paginaClientes.number + 1},
-                                    tamanho=${paginaClientes.size}
-                               )}">
-                                Próxima
-                            </a>
+                    <form th:action="@{/clientes}"
+                          method="get"
+                          class="d-flex align-items-center gap-2">
 
-                        </li>
+                        <label for="tamanhoPagina"
+                               class="small text-muted text-nowrap">
 
-                    </ul>
+                            Itens por página:
 
-                </nav>
+                        </label>
+
+                        <select id="tamanhoPagina"
+                                name="tamanho"
+                                class="form-select form-select-sm"
+                                onchange="this.form.submit()">
+
+                            <option value="10"
+                                    th:selected="${tamanho == 10}">
+                                10
+                            </option>
+
+                            <option value="20"
+                                    th:selected="${tamanho == 20}">
+                                20
+                            </option>
+
+                            <option value="50"
+                                    th:selected="${tamanho == 50}">
+                                50
+                            </option>
+
+                        </select>
+
+                        <input type="hidden"
+                               name="filtro"
+                               th:value="${filtro}">
+
+                        <input type="hidden"
+                               name="pagina"
+                               value="0">
+
+                        <input type="hidden"
+                               name="ordenarPor"
+                               th:value="${ordenarPor}">
+
+                        <input type="hidden"
+                               name="direcao"
+                               th:value="${direcao}">
+
+                    </form>
+
+                </div>
+
+                <!-- Paginação -->
+                <div class="col-md-auto">
+
+                    <nav aria-label="Paginação de clientes">
+
+                        <ul class="pagination pagination-sm mb-0">
+
+                            <!-- Página anterior -->
+                            <li class="page-item"
+                                th:classappend="${paginaClientes.first}
+                                    ? 'disabled'">
+
+                                <a class="page-link"
+                                   th:href="@{/clientes(
+                                        filtro=${filtro},
+                                        pagina=${paginaClientes.number - 1},
+                                        tamanho=${tamanho},
+                                        ordenarPor=${ordenarPor},
+                                        direcao=${direcao}
+                                   )}">
+
+                                    Anterior
+
+                                </a>
+
+                            </li>
+
+                            <!-- Números das páginas -->
+                            <li class="page-item"
+                                th:each="numeroPagina :
+                                    ${#numbers.sequence(
+                                        0,
+                                        paginaClientes.totalPages - 1
+                                    )}"
+                                th:classappend="${numeroPagina
+                                    == paginaClientes.number}
+                                    ? 'active'">
+
+                                <a class="page-link"
+                                   th:href="@{/clientes(
+                                        filtro=${filtro},
+                                        pagina=${numeroPagina},
+                                        tamanho=${tamanho},
+                                        ordenarPor=${ordenarPor},
+                                        direcao=${direcao}
+                                   )}"
+                                   th:text="${numeroPagina + 1}">
+                                </a>
+
+                            </li>
+
+                            <!-- Próxima página -->
+                            <li class="page-item"
+                                th:classappend="${paginaClientes.last}
+                                    ? 'disabled'">
+
+                                <a class="page-link"
+                                   th:href="@{/clientes(
+                                        filtro=${filtro},
+                                        pagina=${paginaClientes.number + 1},
+                                        tamanho=${tamanho},
+                                        ordenarPor=${ordenarPor},
+                                        direcao=${direcao}
+                                   )}">
+
+                                    Próxima
+
+                                </a>
+
+                            </li>
+
+                        </ul>
+
+                    </nav>
+
+                </div>
 
             </div>
 

@@ -31,25 +31,48 @@ public class ClienteService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ClienteResponse> listarPaginado(Pageable pageable) {
-        return clienteRepository.findAll(pageable)
-                .map(clienteMapper::toResponse);
+    public Page<ClienteResponse> listarPaginado(
+            String filtro,
+            Pageable pageable
+    ) {
+        Page<Cliente> paginaClientes;
+
+        if (filtro == null || filtro.isBlank()) {
+            paginaClientes = clienteRepository.findAll(pageable);
+        } else {
+            String filtroTratado = filtro.trim();
+
+            paginaClientes =
+                    clienteRepository
+                            .findByNomeContainingIgnoreCaseOrTelefoneContainingIgnoreCase(
+                                    filtroTratado,
+                                    filtroTratado,
+                                    pageable
+                            );
+        }
+
+        return paginaClientes.map(clienteMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
     public ClienteResponse buscarPorId(Long id) {
         Cliente cliente = buscarEntidadePorId(id);
+
         return clienteMapper.toResponse(cliente);
     }
 
     public ClienteResponse salvar(ClienteRequest request) {
         Cliente cliente = clienteMapper.toEntity(request);
+
         Cliente clienteSalvo = clienteRepository.save(cliente);
 
         return clienteMapper.toResponse(clienteSalvo);
     }
 
-    public ClienteResponse atualizar(Long id, ClienteRequest request) {
+    public ClienteResponse atualizar(
+            Long id,
+            ClienteRequest request
+    ) {
         Cliente cliente = buscarEntidadePorId(id);
 
         cliente.setNome(request.nome());
@@ -61,19 +84,24 @@ public class ClienteService {
         cliente.setCep(request.cep());
         cliente.setComplemento(request.complemento());
 
-        Cliente clienteAtualizado = clienteRepository.save(cliente);
+        Cliente clienteAtualizado =
+                clienteRepository.save(cliente);
 
         return clienteMapper.toResponse(clienteAtualizado);
     }
 
     public void excluir(Long id) {
         Cliente cliente = buscarEntidadePorId(id);
+
         clienteRepository.delete(cliente);
     }
 
     private Cliente buscarEntidadePorId(Long id) {
         return clienteRepository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("Cliente não encontrado."));
+                        new ResourceNotFoundException(
+                                "Cliente não encontrado."
+                        )
+                );
     }
 }
