@@ -7,6 +7,8 @@ import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
 import br.com.sergio.gestaopedidos.mapper.ClienteMapper;
 import br.com.sergio.gestaopedidos.repository.ClienteRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,12 @@ public class ClienteService {
                 .stream()
                 .map(clienteMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ClienteResponse> listarPaginado(Pageable pageable) {
+        return clienteRepository.findAll(pageable)
+                .map(clienteMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
