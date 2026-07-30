@@ -6,17 +6,17 @@ import br.com.sergio.gestaopedidos.security.handler.CustomAuthenticationEntryPoi
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -27,12 +27,26 @@ public class SecurityConfig {
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
+    /*
+     * Segurança da API REST:
+     * - utiliza JWT;
+     * - não utiliza sessão;
+     * - retorna erros em formato JSON.
+     */
     @Bean
-    public SecurityFilterChain securityFilterChain(
+    @Order(1)
+    public SecurityFilterChain apiSecurityFilterChain(
             HttpSecurity http
     ) throws Exception {
 
         return http
+
+                .securityMatcher(
+                        "/api/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**"
+                )
 
                 .csrf(AbstractHttpConfigurer::disable)
 
@@ -66,12 +80,56 @@ public class SecurityConfig {
                         )
                         .hasAnyRole("ADMIN", "ATENDENTE")
 
-                        .anyRequest().authenticated()
+                        .anyRequest()
+                        .authenticated()
                 )
 
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
+                )
+
+                .build();
+    }
+
+    /*
+     * Segurança da interface web:
+     * - utiliza formulário de login;
+     * - utiliza sessão;
+     * - protege as páginas Thymeleaf.
+     */
+    @Bean
+    @Order(2)
+    public SecurityFilterChain webSecurityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
+
+        return http
+
+                .authorizeHttpRequests(auth -> auth
+
+                        .requestMatchers(
+                                "/login",
+                                "/css/**",
+                                "/js/**",
+                                "/img/**"
+                        ).permitAll()
+
+                        .requestMatchers("/usuarios/**")
+                        .hasRole("ADMIN")
+
+                        .anyRequest()
+                        .authenticated()
+                )
+
+                .formLogin(form -> form
+                        .defaultSuccessUrl("/", true)
+                        .permitAll()
+                )
+
+                .logout(logout -> logout
+                        .logoutSuccessUrl("/login?logout")
+                        .permitAll()
                 )
 
                 .build();
@@ -86,6 +144,7 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration authenticationConfiguration
     ) throws Exception {
+
         return authenticationConfiguration.getAuthenticationManager();
     }
 }
