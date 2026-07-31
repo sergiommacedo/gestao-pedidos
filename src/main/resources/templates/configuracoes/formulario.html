@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout}">
+
+<section layout:fragment="content">
+    <div class="mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-gear-fill"></i>
+            Configurações da empresa
+        </h2>
+        <small class="text-muted">Personalize os dados e a identidade visual da instalação</small>
+    </div>
+
+    <form th:action="@{/configuracoes}" th:object="${configuracao}"
+          method="post" enctype="multipart/form-data" data-configuracao-empresa-form>
+        <div class="alert alert-danger" role="alert" th:if="${#fields.hasGlobalErrors()}">
+            <p class="mb-0" th:each="erro : ${#fields.globalErrors()}" th:text="${erro}"></p>
+        </div>
+
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-7">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h3 class="h5 mb-0"><i class="bi bi-building me-2"></i>Geral</h3>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <label for="nomeEmpresa" class="form-label">Nome da empresa *</label>
+                                <input type="text" id="nomeEmpresa" class="form-control"
+                                       th:field="*{nomeEmpresa}" maxlength="150" required
+                                       data-preview-nome-empresa
+                                       th:classappend="${#fields.hasErrors('nomeEmpresa')} ? 'is-invalid'">
+                                <div class="invalid-feedback" th:errors="*{nomeEmpresa}"></div>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label for="nomeCurto" class="form-label">Nome curto *</label>
+                                <input type="text" id="nomeCurto" class="form-control"
+                                       th:field="*{nomeCurto}" maxlength="60" required
+                                       th:classappend="${#fields.hasErrors('nomeCurto')} ? 'is-invalid'">
+                                <div class="invalid-feedback" th:errors="*{nomeCurto}"></div>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="textoBoasVindas" class="form-label">Texto de boas-vindas</label>
+                                <textarea id="textoBoasVindas" class="form-control" rows="3"
+                                          th:field="*{textoBoasVindas}" maxlength="255"
+                                          th:classappend="${#fields.hasErrors('textoBoasVindas')} ? 'is-invalid'"></textarea>
+                                <div class="invalid-feedback" th:errors="*{textoBoasVindas}"></div>
+                                <div class="form-text">Até 255 caracteres.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h3 class="h5 mb-0"><i class="bi bi-palette me-2"></i>Identidade visual</h3>
+                    </div>
+                    <div class="card-body p-4">
+                        <fieldset class="mb-4">
+                            <legend class="form-label fs-6">Tema *</legend>
+                            <div class="row g-2">
+                                <div class="col-sm-6 col-xl" th:each="tema : ${temas}">
+                                    <label class="config-theme-option w-100"
+                                           th:classappend="${tema.identificadorCss}">
+                                        <input type="radio" class="form-check-input"
+                                               th:field="*{tema}" th:value="${tema}"
+                                               th:data-theme-css="${tema.identificadorCss}" required>
+                                        <span class="config-theme-swatch" aria-hidden="true"></span>
+                                        <span th:text="${tema.descricao}">Tema</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="text-danger small mt-2" th:errors="*{tema}"></div>
+                        </fieldset>
+
+                        <div>
+                            <label for="logo" class="form-label">Logo</label>
+                            <input type="file" id="logo" name="logo" class="form-control"
+                                   accept="image/png,image/jpeg,image/webp" data-logo-empresa-input>
+                            <div class="form-text">PNG, JPG, JPEG ou WEBP, com no máximo 2 MB.</div>
+
+                            <div class="form-check mt-3" th:if="${logoPersonalizada}">
+                                <input type="checkbox" class="form-check-input" id="removerLogo"
+                                       name="removerLogo" value="true" data-remover-logo
+                                       th:checked="${removerLogoSelecionada}">
+                                <label for="removerLogo" class="form-check-label">
+                                    Remover logo personalizada e usar a padrão
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card shadow-sm config-preview-card sticky-lg-top"
+                     th:classappend="${configuracao.tema != null ? configuracao.tema.identificadorCss : temaAtualCss}"
+                     data-config-preview
+                     th:data-logo-padrao="${logoPadraoUrl}">
+                    <div class="card-header bg-white py-3">
+                        <h3 class="h5 mb-0"><i class="bi bi-eye me-2"></i>Pré-visualização</h3>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="config-navbar-preview rounded-3 p-3 d-flex align-items-center gap-3">
+                            <img th:src="${logoAtualUrl}" alt="Pré-visualização da logo"
+                                 class="config-logo-preview" data-logo-empresa-preview>
+                            <strong data-preview-nome th:text="*{nomeEmpresa}">Empresa</strong>
+                        </div>
+
+                        <div class="config-color-preview mt-4 rounded-3 p-4 text-center">
+                            <p class="mb-3">A cor principal será aplicada à navegação e aos destaques.</p>
+                            <button type="button" class="btn btn-primary">Botão principal</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
+            <a th:href="@{/}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i>
+                Salvar alterações
+            </button>
+        </div>
+    </form>
+</section>
+
+</html>

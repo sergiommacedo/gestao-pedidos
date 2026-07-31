@@ -153,6 +153,58 @@ body {
     border: 2px solid rgba(255, 255, 255, 0.8);
 }
 
+.config-theme-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.config-theme-option:has(input:checked) {
+    border-color: var(--app-primary);
+    background-color: var(--app-primary-soft);
+}
+
+.config-theme-option:focus-within {
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--app-primary) 18%, transparent);
+}
+
+.config-theme-swatch {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background-color: var(--app-primary);
+}
+
+.config-preview-card.sticky-lg-top {
+    top: calc(var(--navbar-height) + 1rem);
+}
+
+.config-navbar-preview {
+    color: var(--app-primary-text);
+    background-color: var(--app-primary);
+}
+
+.config-logo-preview {
+    width: 64px;
+    height: 64px;
+    border: 2px solid var(--app-border-accent);
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #ffffff;
+}
+
+.config-color-preview {
+    border: 1px solid var(--app-border-accent);
+    background-color: var(--app-primary-soft);
+}
+
 .app-sidebar {
     width: var(--sidebar-width);
     background-color: var(--color-sidebar);

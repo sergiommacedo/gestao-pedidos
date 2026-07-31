@@ -36,26 +36,50 @@
 
                 <div class="mb-3">
                     <label for="senhaAtual" class="form-label">Senha atual</label>
-                    <input type="password" id="senhaAtual" class="form-control"
-                           th:field="*{senhaAtual}" autocomplete="current-password" required autofocus
-                           th:classappend="${#fields.hasErrors('senhaAtual')} ? 'is-invalid'">
-                    <div class="invalid-feedback" th:errors="*{senhaAtual}"></div>
+                    <div class="input-group">
+                        <input type="password" id="senhaAtual" name="senhaAtual" class="form-control"
+                               th:value="${alteracaoSenha.senhaAtual}"
+                               autocomplete="current-password" required autofocus
+                               th:classappend="${#fields.hasErrors('senhaAtual')} ? 'is-invalid'">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-password-toggle data-password-target="#senhaAtual"
+                                aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                        <div class="invalid-feedback" th:errors="*{senhaAtual}"></div>
+                    </div>
                 </div>
 
                 <div class="mb-3">
                     <label for="novaSenha" class="form-label">Nova senha</label>
-                    <input type="password" id="novaSenha" class="form-control"
-                           th:field="*{novaSenha}" autocomplete="new-password" minlength="6" required
-                           th:classappend="${#fields.hasErrors('novaSenha')} ? 'is-invalid'">
-                    <div class="invalid-feedback" th:errors="*{novaSenha}"></div>
+                    <div class="input-group">
+                        <input type="password" id="novaSenha" name="novaSenha" class="form-control"
+                               th:value="${alteracaoSenha.novaSenha}"
+                               autocomplete="new-password" minlength="6" required
+                               th:classappend="${#fields.hasErrors('novaSenha')} ? 'is-invalid'">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-password-toggle data-password-target="#novaSenha"
+                                aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                        <div class="invalid-feedback" th:errors="*{novaSenha}"></div>
+                    </div>
                 </div>
 
                 <div class="mb-4">
                     <label for="confirmarNovaSenha" class="form-label">Confirmar nova senha</label>
-                    <input type="password" id="confirmarNovaSenha" class="form-control"
-                           th:field="*{confirmarNovaSenha}" autocomplete="new-password" minlength="6" required
-                           th:classappend="${#fields.hasErrors('confirmarNovaSenha')} ? 'is-invalid'">
-                    <div class="invalid-feedback" th:errors="*{confirmarNovaSenha}"></div>
+                    <div class="input-group">
+                        <input type="password" id="confirmarNovaSenha" name="confirmarNovaSenha"
+                               class="form-control" th:value="${alteracaoSenha.confirmarNovaSenha}"
+                               autocomplete="new-password" minlength="6" required
+                               th:classappend="${#fields.hasErrors('confirmarNovaSenha')} ? 'is-invalid'">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-password-toggle data-password-target="#confirmarNovaSenha"
+                                aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                        <div class="invalid-feedback" th:errors="*{confirmarNovaSenha}"></div>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-lg w-100">

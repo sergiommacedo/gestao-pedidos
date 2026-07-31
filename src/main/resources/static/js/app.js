@@ -13,14 +13,83 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarFormularioPedido();
     inicializarAlternanciaSenha();
     inicializarModalRedefinirSenhaUsuario();
+    inicializarPreviewConfiguracaoEmpresa();
 
 });
 
 
+function inicializarPreviewConfiguracaoEmpresa() {
+    const formulario = document.querySelector("[data-configuracao-empresa-form]");
+
+    if (!formulario) {
+        return;
+    }
+
+    const preview = formulario.querySelector("[data-config-preview]");
+    const logoInput = formulario.querySelector("[data-logo-empresa-input]");
+    const logoPreview = formulario.querySelector("[data-logo-empresa-preview]");
+    const removerLogo = formulario.querySelector("[data-remover-logo]");
+    const nomeInput = formulario.querySelector("[data-preview-nome-empresa]");
+    const nomePreview = formulario.querySelector("[data-preview-nome]");
+    const classesTema = ["tema-marrom", "tema-azul", "tema-verde", "tema-vinho", "tema-roxo"];
+    const logoInicial = logoPreview.src;
+    let urlTemporaria;
+
+    formulario.querySelectorAll("[data-theme-css]").forEach(opcao => {
+        opcao.addEventListener("change", () => {
+            preview.classList.remove(...classesTema);
+            preview.classList.add(opcao.dataset.themeCss);
+        });
+    });
+
+    nomeInput.addEventListener("input", () => {
+        nomePreview.textContent = nomeInput.value.trim() || "Empresa";
+    });
+
+    logoInput.addEventListener("change", () => {
+        if (urlTemporaria) {
+            URL.revokeObjectURL(urlTemporaria);
+        }
+
+        const arquivo = logoInput.files?.[0];
+        if (!arquivo) {
+            logoPreview.src = removerLogo?.checked ? preview.dataset.logoPadrao : logoInicial;
+            return;
+        }
+
+        urlTemporaria = URL.createObjectURL(arquivo);
+        logoPreview.src = urlTemporaria;
+        if (removerLogo) {
+            removerLogo.checked = false;
+        }
+    });
+
+    removerLogo?.addEventListener("change", () => {
+        if (removerLogo.checked) {
+            logoInput.value = "";
+            if (urlTemporaria) {
+                URL.revokeObjectURL(urlTemporaria);
+                urlTemporaria = undefined;
+            }
+            logoPreview.src = preview.dataset.logoPadrao;
+        } else {
+            logoPreview.src = logoInicial;
+        }
+    });
+
+    window.addEventListener("beforeunload", () => {
+        if (urlTemporaria) {
+            URL.revokeObjectURL(urlTemporaria);
+        }
+    }, {once: true});
+}
+
+
 function inicializarAlternanciaSenha() {
 
-    document.querySelectorAll("[data-alternar-senha]").forEach(botao => {
-        const campo = document.querySelector(botao.dataset.campoSenha);
+    document.querySelectorAll("[data-password-toggle], [data-alternar-senha]").forEach(botao => {
+        const seletorCampo = botao.dataset.passwordTarget || botao.dataset.campoSenha;
+        const campo = seletorCampo ? document.querySelector(seletorCampo) : null;
 
         if (!campo) {
             return;

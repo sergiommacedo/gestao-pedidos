@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @Validated
@@ -24,6 +25,7 @@ public class ConfiguracaoEmpresaService {
     private static final String LOGO_PADRAO = "/img/logo-feijoada-vovo-dan.png";
 
     private final ConfiguracaoEmpresaRepository configuracaoEmpresaRepository;
+    private final LogoEmpresaStorageService logoEmpresaStorageService;
     private final Object bloqueioCache = new Object();
 
     private volatile ConfiguracaoEmpresaResponse configuracaoEmCache;
@@ -52,6 +54,15 @@ public class ConfiguracaoEmpresaService {
     public ConfiguracaoEmpresaResponse salvarOuAtualizar(
             @Valid ConfiguracaoEmpresaRequest request
     ) {
+        return salvarOuAtualizar(request, null, false);
+    }
+
+    @Transactional
+    public ConfiguracaoEmpresaResponse salvarOuAtualizar(
+            @Valid ConfiguracaoEmpresaRequest request,
+            MultipartFile novaLogo,
+            boolean removerLogo
+    ) {
         ConfiguracaoEmpresa configuracao = configuracaoEmpresaRepository
                 .findById(CONFIGURACAO_ID)
                 .orElseGet(this::novaConfiguracaoPadrao);
@@ -61,11 +72,33 @@ public class ConfiguracaoEmpresaService {
         configuracao.setTema(request.tema());
         configuracao.setTextoBoasVindas(normalizarTextoOpcional(request.textoBoasVindas()));
 
-        ConfiguracaoEmpresa configuracaoSalva =
-                configuracaoEmpresaRepository.saveAndFlush(configuracao);
-        ConfiguracaoEmpresaResponse response = converterParaResponse(configuracaoSalva);
-        configuracaoEmCache = response;
-        return response;
+        String logoAnterior = configuracao.getLogoArquivo();
+        String logoNova = null;
+
+        try {
+            if (novaLogo != null && !novaLogo.isEmpty()) {
+                logoNova = logoEmpresaStorageService.armazenar(novaLogo);
+                configuracao.setLogoArquivo(logoNova);
+            } else if (removerLogo) {
+                configuracao.setLogoArquivo(null);
+            }
+
+            ConfiguracaoEmpresa configuracaoSalva =
+                    configuracaoEmpresaRepository.saveAndFlush(configuracao);
+            ConfiguracaoEmpresaResponse response = converterParaResponse(configuracaoSalva);
+            configuracaoEmCache = response;
+
+            if (logoAnterior != null && !logoAnterior.equals(configuracao.getLogoArquivo())) {
+                logoEmpresaStorageService.remover(logoAnterior);
+            }
+
+            return response;
+        } catch (RuntimeException exception) {
+            if (logoNova != null) {
+                logoEmpresaStorageService.remover(logoNova);
+            }
+            throw exception;
+        }
     }
 
     private ConfiguracaoEmpresa criarConfiguracaoPadrao() {
@@ -96,7 +129,7 @@ public class ConfiguracaoEmpresaService {
                         .getIdentificadorCss(),
                 valorOuPadrao(configuracao.getTextoBoasVindas(), TEXTO_BOAS_VINDAS_PADRAO),
                 logoArquivo,
-                logoArquivo == null ? LOGO_PADRAO : logoArquivo
+                logoEmpresaStorageService.obterUrlOuPadrao(logoArquivo, LOGO_PADRAO)
         );
     }
 

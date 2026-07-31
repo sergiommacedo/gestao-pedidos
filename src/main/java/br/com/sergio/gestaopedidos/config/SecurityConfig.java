@@ -113,10 +113,14 @@ public class SecurityConfig {
                                 "/css/**",
                                 "/js/**",
                                 "/img/**",
+                                "/uploads/logos/**",
                                 "/webjars/**"
                         ).permitAll()
 
                         .requestMatchers("/usuarios/**")
+                        .hasRole("ADMIN")
+
+                        .requestMatchers("/configuracoes/**")
                         .hasRole("ADMIN")
 
                         .anyRequest()
