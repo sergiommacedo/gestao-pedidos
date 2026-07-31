@@ -3,6 +3,8 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarMascaras();
     inicializarBuscaCep();
     inicializarModalExclusao();
+    inicializarSelecaoPedidos();
+    inicializarImpressaoComandas();
 
 });
 
@@ -30,6 +32,89 @@ function inicializarMascaras() {
 
     }
 
+}
+
+
+function inicializarSelecaoPedidos() {
+
+    const lista = document.querySelector("[data-lista-selecionavel]");
+    const selecionarTodos = document.querySelector("[data-selecionar-todos]");
+    const botaoImprimir = document.querySelector("[data-imprimir-selecionados]");
+
+    if (!lista || !selecionarTodos || !botaoImprimir) {
+        return;
+    }
+
+    const checkboxes = Array.from(
+        lista.querySelectorAll("[data-pedido-checkbox]")
+    );
+
+    function atualizarEstado() {
+        const selecionados = checkboxes.filter(checkbox => checkbox.checked);
+
+        botaoImprimir.disabled = selecionados.length === 0;
+        selecionarTodos.checked = checkboxes.length > 0
+            && selecionados.length === checkboxes.length;
+        selecionarTodos.indeterminate = selecionados.length > 0
+            && selecionados.length < checkboxes.length;
+    }
+
+    selecionarTodos.addEventListener("change", () => {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selecionarTodos.checked;
+        });
+        atualizarEstado();
+    });
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener("change", atualizarEstado);
+    });
+
+    botaoImprimir.addEventListener("click", () => {
+        const url = botaoImprimir.dataset.url;
+        const parametros = new URLSearchParams();
+
+        checkboxes
+            .filter(checkbox => checkbox.checked)
+            .forEach(checkbox => parametros.append("ids", checkbox.value));
+
+        if (!url || !parametros.has("ids")) {
+            return;
+        }
+
+        window.open(`${url}?${parametros.toString()}`, "_blank", "noopener");
+    });
+
+    atualizarEstado();
+}
+
+
+function inicializarImpressaoComandas() {
+
+    const paginaComandas = document.querySelector("[data-pagina-comandas]");
+
+    if (!paginaComandas) {
+        return;
+    }
+
+    document.querySelectorAll("[data-formato-impressao]").forEach(botao => {
+        botao.addEventListener("click", () => {
+            const formato = botao.dataset.formatoImpressao;
+
+            document.body.classList.toggle("formato-a4", formato === "a4");
+            document.body.classList.toggle("formato-termica", formato !== "a4");
+
+            document.querySelectorAll("[data-formato-impressao]").forEach(item => {
+                item.classList.toggle("active", item === botao);
+            });
+        });
+    });
+
+    const botaoImprimir = document.querySelector("[data-imprimir-pagina]");
+
+    if (botaoImprimir) {
+        botaoImprimir.addEventListener("click", () => window.print());
+    }
 }
 
 

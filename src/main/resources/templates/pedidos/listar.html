@@ -87,11 +87,29 @@
             </form>
         </div>
 
-        <div class="card-body p-0">
+        <div class="card-header bg-white border-top py-3">
+            <button type="button" title="Imprimir comandas selecionadas"
+                    class="btn btn-outline-primary"
+                    data-imprimir-selecionados
+                    th:data-url="@{/pedidos/comandas}"
+                    disabled>
+                <i class="bi bi-printer"></i>
+                Imprimir selecionados
+            </button>
+        </div>
+
+        <div class="card-body p-0" data-lista-selecionavel>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                     <tr>
+                        <th class="text-center">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   data-selecionar-todos
+                                   aria-label="Selecionar todos os pedidos desta página">
+                        </th>
+
                         <th>
                             <a class="text-decoration-none text-dark"
                                th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
@@ -151,11 +169,21 @@
                                    th:class="${direcao == 'asc'} ? 'bi bi-arrow-up' : 'bi bi-arrow-down'"></i>
                             </a>
                         </th>
+
+                        <th class="text-center">Imprimir</th>
                     </tr>
                     </thead>
 
                     <tbody>
                     <tr th:each="pedido : ${pedidos}">
+                        <td class="text-center">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   name="pedidoSelecionado"
+                                   th:value="${pedido.id}"
+                                   data-pedido-checkbox
+                                   th:aria-label="'Selecionar pedido ' + ${pedido.id}">
+                        </td>
                         <td class="fw-semibold" th:text="${pedido.id}"></td>
                         <td class="text-nowrap" th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></td>
                         <td th:text="${pedido.clienteNome}"></td>
@@ -175,10 +203,20 @@
                         <td th:text="${pedido.formaPagamento.descricao}"></td>
                         <td class="text-end fw-semibold text-nowrap"
                             th:text="${#numbers.formatCurrency(pedido.valorTotal)}"></td>
+                        <td class="text-center">
+                            <a th:href="@{/pedidos/{id}/comanda(id=${pedido.id})}"
+                               class="btn btn-sm btn-outline-primary"
+                               target="_blank"
+                               rel="noopener"
+                               title="Imprimir comanda"
+                               th:aria-label="'Imprimir comanda do pedido ' + ${pedido.id}">
+                                <i class="bi bi-printer"></i>
+                            </a>
+                        </td>
                     </tr>
 
                     <tr th:if="${paginaPedidos.empty}">
-                        <td colspan="8" class="text-center text-muted py-5">
+                        <td colspan="10" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-1 d-block mb-3"></i>
                             <span th:if="${(filtro == null or filtro.isBlank())
                                           and statusSelecionado == null and dataAgendada == null}">

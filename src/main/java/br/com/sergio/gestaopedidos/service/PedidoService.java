@@ -75,6 +75,14 @@ public class PedidoService {
         return pedidoMapper.toResponse(pedido);
     }
 
+    @Transactional(readOnly = true)
+    public List<PedidoResponse> buscarPorIds(List<Long> ids) {
+        return pedidoRepository.findAllById(ids)
+                .stream()
+                .map(pedidoMapper::toResponse)
+                .toList();
+    }
+
     public PedidoResponse salvar(PedidoRequest request) {
         Cliente cliente = buscarClientePorId(request.clienteId());
 

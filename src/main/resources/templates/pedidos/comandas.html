@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impressão de comandas</title>
+
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
+
+    <style>
+        :root {
+            color-scheme: light;
+        }
+
+        body {
+            background: #eeeeee;
+            color: #000000;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+        }
+
+        .barra-impressao {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #ffffff;
+            border-bottom: 1px solid #cccccc;
+            padding: 0.75rem;
+        }
+
+        .folha-comandas {
+            margin: 1.5rem auto;
+        }
+
+        .comanda {
+            background: #ffffff;
+            border: 1px solid #000000;
+            margin: 0 auto 1.5rem;
+            padding: 5mm;
+        }
+
+        .formato-termica .folha-comandas,
+        .formato-termica .comanda {
+            width: 80mm;
+            max-width: 100%;
+        }
+
+        .formato-a4 .folha-comandas {
+            width: 210mm;
+            max-width: calc(100% - 2rem);
+        }
+
+        .formato-a4 .comanda {
+            width: 100%;
+            max-width: 180mm;
+            padding: 12mm;
+        }
+
+        .comanda-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            object-fit: cover;
+            filter: grayscale(1) contrast(1.15);
+        }
+
+        .comanda-cabecalho,
+        .comanda-total {
+            border-bottom: 1px dashed #000000;
+        }
+
+        .comanda-total {
+            border-top: 1px dashed #000000;
+            border-bottom: 0;
+        }
+
+        .comanda table {
+            font-size: inherit;
+        }
+
+        .comanda th,
+        .comanda td {
+            border-color: #000000;
+            padding: 0.3rem 0.2rem;
+        }
+
+        .quebra-linha {
+            overflow-wrap: anywhere;
+        }
+
+        @page termica {
+            size: 80mm 200mm;
+            margin: 3mm;
+        }
+
+        @page normal {
+            size: A4 portrait;
+            margin: 12mm;
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+                font-size: 11pt;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .folha-comandas {
+                margin: 0;
+            }
+
+            .comanda {
+                border: 0;
+                box-shadow: none;
+                margin: 0;
+            }
+
+            .formato-termica .comanda {
+                page: termica;
+                width: 72mm;
+                padding: 1mm;
+                font-size: 10pt;
+            }
+
+            .formato-a4 .comanda {
+                page: normal;
+                width: 100%;
+                max-width: none;
+                padding: 0;
+            }
+
+            .comanda + .comanda {
+                break-before: page;
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body class="formato-termica" data-pagina-comandas>
+
+<div class="barra-impressao no-print">
+    <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="btn-group" role="group" aria-label="Formato de impressão">
+            <button type="button" class="btn btn-outline-secondary active"
+                    data-formato-impressao="termica">
+                <i class="bi bi-receipt"></i>
+                Comanda 80 mm
+            </button>
+            <button type="button" class="btn btn-outline-secondary"
+                    data-formato-impressao="a4">
+                <i class="bi bi-file-earmark"></i>
+                Impressão normal
+            </button>
+        </div>
+
+        <button type="button" class="btn btn-dark" data-imprimir-pagina>
+            <i class="bi bi-printer"></i>
+            Imprimir
+        </button>
+    </div>
+</div>
+
+<main class="folha-comandas" aria-label="Comandas para impressão">
+    <article class="comanda" th:each="pedido : ${pedidos}">
+        <header class="comanda-cabecalho text-center pb-3 mb-3">
+            <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
+                <img class="comanda-logo"
+                     th:src="@{/img/logo-feijoada-vovo-dan.png}"
+                     alt="Logo Feijoada da Vovó Dan">
+                <div class="text-start">
+                    <div class="fw-bold fs-5">Feijoada da Vovó Dan</div>
+                    <div>Comanda de pedido</div>
+                </div>
+            </div>
+            <div class="fw-bold fs-4" th:text="'PEDIDO Nº ' + ${pedido.id}">PEDIDO Nº 0</div>
+        </header>
+
+        <section class="mb-3">
+            <div>
+                <strong>Data agendada:</strong>
+                <span th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></span>
+            </div>
+            <div class="quebra-linha">
+                <strong>Cliente:</strong>
+                <span th:text="${pedido.clienteNome}"></span>
+            </div>
+            <div>
+                <strong>Telefone:</strong>
+                <span th:text="${pedido.clienteTelefone}"></span>
+            </div>
+            <div>
+                <strong>Entrega:</strong>
+                <span th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></span>
+            </div>
+            <div>
+                <strong>Pagamento:</strong>
+                <span th:text="${pedido.formaPagamento.descricao}"></span>
+            </div>
+        </section>
+
+        <section class="mb-3">
+            <table class="table table-sm table-bordered mb-0">
+                <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th class="text-center">Qtd.</th>
+                    <th class="text-end">Preço</th>
+                    <th class="text-end">Subtotal</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="item : ${pedido.itens}">
+                    <td class="quebra-linha" th:text="${item.produtoNome}"></td>
+                    <td class="text-center" th:text="${item.quantidade}"></td>
+                    <td class="text-end text-nowrap"
+                        th:text="${#numbers.formatCurrency(item.valorUnitario)}"></td>
+                    <td class="text-end text-nowrap"
+                        th:text="${#numbers.formatCurrency(item.subtotal)}"></td>
+                </tr>
+                <tr th:if="${pedido.itens == null or pedido.itens.isEmpty()}">
+                    <td colspan="4" class="text-center">Pedido sem itens.</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="mb-3 quebra-linha"
+                 th:if="${pedido.observacao != null and !pedido.observacao.isBlank()}">
+            <strong>Observação geral:</strong>
+            <div th:text="${pedido.observacao}"></div>
+        </section>
+
+        <footer class="comanda-total pt-3">
+            <div class="d-flex justify-content-between">
+                <span>Taxa de entrega:</span>
+                <strong th:text="${#numbers.formatCurrency(pedido.taxaEntrega)}"></strong>
+            </div>
+            <div class="d-flex justify-content-between fs-5 mt-2">
+                <span class="fw-bold">VALOR TOTAL:</span>
+                <strong th:text="${#numbers.formatCurrency(pedido.valorTotal)}"></strong>
+            </div>
+        </footer>
+    </article>
+
+    <div class="alert alert-warning no-print" th:if="${pedidos == null or pedidos.isEmpty()}">
+        Nenhum pedido foi selecionado para impressão.
+    </div>
+</main>
+
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

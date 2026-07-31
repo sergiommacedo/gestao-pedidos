@@ -12,10 +12,12 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 @Controller
@@ -81,6 +83,32 @@ public class PedidoWebController {
         model.addAttribute("tamanho", tamanhoValido);
 
         return "pedidos/listar";
+    }
+
+    @GetMapping("/{id}/comanda")
+    public String imprimirComanda(
+            @PathVariable Long id,
+            Model model
+    ) {
+        model.addAttribute(
+                "pedidos",
+                List.of(pedidoService.buscarPorId(id))
+        );
+
+        return "pedidos/comandas";
+    }
+
+    @GetMapping("/comandas")
+    public String imprimirComandas(
+            @RequestParam List<Long> ids,
+            Model model
+    ) {
+        model.addAttribute(
+                "pedidos",
+                pedidoService.buscarPorIds(ids)
+        );
+
+        return "pedidos/comandas";
     }
 
     private String validarCampoOrdenacao(String ordenarPor) {
