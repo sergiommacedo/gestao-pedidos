@@ -134,6 +134,19 @@ body {
     }
 }
 
+@media (min-width: 1200px) {
+    .pedido-resumo-card {
+        position: sticky;
+        top: calc(var(--navbar-height) + 1.5rem);
+    }
+}
+
+@media (max-width: 1199.98px) {
+    .pedido-resumo-card {
+        position: static;
+    }
+}
+
 @media (max-width: 991.98px) {
     #sidebar {
         top: 0;

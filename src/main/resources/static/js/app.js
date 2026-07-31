@@ -149,6 +149,8 @@ function inicializarFormularioPedido() {
         return;
     }
 
+    const acaoPedido = formulario.querySelector("[data-acao-pedido]");
+
     const buscaCliente = formulario.querySelector("[data-busca-cliente]");
     const resultadosClientes = formulario.querySelector("[data-resultados-clientes]");
     const clienteId = formulario.querySelector("[data-cliente-id]");
@@ -162,11 +164,35 @@ function inicializarFormularioPedido() {
     const itensVazio = formulario.querySelector("[data-itens-vazio]");
     const totalItens = formulario.querySelector("[data-total-itens]");
     const taxaEntrega = formulario.querySelector("[data-taxa-entrega]");
+    const taxaEntregaVisual = formulario.querySelector("[data-moeda-visual]");
+    const taxaEntregaContainer = formulario.querySelector("[data-taxa-entrega-container]");
+    const tipoEntrega = formulario.querySelector("#tipoEntrega");
     const subtotalPedido = formulario.querySelector("[data-pedido-subtotal]");
     const resumoTaxa = formulario.querySelector("[data-resumo-taxa]");
     const totalPedido = formulario.querySelector("[data-pedido-total]");
+    const resumoItens = formulario.querySelector("[data-resumo-itens]");
+    const resumoQuantidadeContainer = formulario.querySelector(
+        "[data-resumo-quantidade-container]"
+    );
+    const resumoQuantidade = formulario.querySelector("[data-resumo-quantidade]");
     let temporizadorCliente;
     let temporizadorProduto;
+    let requisicaoCliente = 0;
+    let requisicaoProduto = 0;
+
+    function fecharResultadosClientes() {
+        clearTimeout(temporizadorCliente);
+        requisicaoCliente++;
+        resultadosClientes.replaceChildren();
+        resultadosClientes.classList.add("d-none");
+    }
+
+    function fecharResultadosProdutos() {
+        clearTimeout(temporizadorProduto);
+        requisicaoProduto++;
+        resultadosProdutos.replaceChildren();
+        resultadosProdutos.classList.add("d-none");
+    }
 
     function formatarMoeda(valor) {
         return new Intl.NumberFormat("pt-BR", {
@@ -180,8 +206,8 @@ function inicializarFormularioPedido() {
         clienteNome.textContent = cliente.nome;
         clienteTelefone.textContent = formatarTelefone(cliente.telefone);
         clienteSelecionado.classList.remove("d-none");
-        resultadosClientes.classList.add("d-none");
         buscaCliente.value = "";
+        fecharResultadosClientes();
     }
 
     function criarBotaoResultado(conteudo, aoClicar) {
@@ -195,9 +221,10 @@ function inicializarFormularioPedido() {
 
     async function pesquisarClientes() {
         const termo = buscaCliente.value.trim();
+        const numeroRequisicao = ++requisicaoCliente;
 
         if (termo.length < 2) {
-            resultadosClientes.classList.add("d-none");
+            fecharResultadosClientes();
             return;
         }
 
@@ -205,6 +232,10 @@ function inicializarFormularioPedido() {
             `/pedidos/clientes/buscar?termo=${encodeURIComponent(termo)}`
         );
         const clientes = resposta.ok ? await resposta.json() : [];
+
+        if (numeroRequisicao !== requisicaoCliente || buscaCliente.value.trim() !== termo) {
+            return;
+        }
 
         resultadosClientes.replaceChildren();
 
@@ -226,10 +257,16 @@ function inicializarFormularioPedido() {
             const conteudo = document.createElement("span");
             conteudo.innerHTML = '<i class="bi bi-person-plus me-1"></i>Cadastrar novo cliente';
             const botao = criarBotaoResultado(conteudo, () => {
+                fecharResultadosClientes();
                 const modalElemento = document.querySelector("#modalNovoCliente");
                 const modal = bootstrap.Modal.getOrCreateInstance(modalElemento);
+                const formNovoCliente = document.querySelector("[data-form-novo-cliente]");
+                formNovoCliente.reset();
+
+                const somenteNumeros = /^\d+$/.test(termo.replace(/\s/g, ""));
+                document.querySelector("#novoClienteNome").value = somenteNumeros ? "" : termo;
+                document.querySelector("#novoClienteTelefone").value = somenteNumeros ? termo : "";
                 modal.show();
-                document.querySelector("#novoClienteNome").value = termo;
             });
             botao.classList.add("text-primary");
             resultadosClientes.appendChild(botao);
@@ -240,7 +277,14 @@ function inicializarFormularioPedido() {
 
     buscaCliente.addEventListener("input", () => {
         clearTimeout(temporizadorCliente);
+        requisicaoCliente++;
         temporizadorCliente = setTimeout(pesquisarClientes, 250);
+    });
+
+    buscaCliente.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            fecharResultadosClientes();
+        }
     });
 
     trocarCliente.addEventListener("click", () => {
@@ -299,18 +343,47 @@ function inicializarFormularioPedido() {
 
     function recalcularPedido() {
         let subtotal = 0;
+        let quantidadeTotal = 0;
+        let unidadeComum = null;
+        let unidadesMisturadas = false;
+        const itens = Array.from(itensContainer.querySelectorAll(".item-pedido"));
 
-        itensContainer.querySelectorAll(".item-pedido").forEach(item => {
+        itens.forEach(item => {
             const preco = Number.parseFloat(item.dataset.produtoPreco) || 0;
             const quantidade = Number.parseFloat(
                 item.querySelector("[data-item-quantidade]").value
             ) || 0;
+            const unidade = item.dataset.produtoUnidade;
             const subtotalItem = preco * quantidade;
             item.querySelector("[data-item-subtotal]").textContent = formatarMoeda(subtotalItem);
             subtotal += subtotalItem;
+            quantidadeTotal += quantidade;
+
+            if (unidadeComum === null) {
+                unidadeComum = unidade;
+            } else if (unidadeComum !== unidade) {
+                unidadesMisturadas = true;
+            }
         });
 
         const taxa = Number.parseFloat(taxaEntrega.value) || 0;
+        resumoItens.textContent = String(itens.length);
+
+        if (itens.length > 0 && !unidadesMisturadas) {
+            resumoQuantidadeContainer.classList.remove("d-none");
+            resumoQuantidade.textContent = unidadeComum === "QUILOGRAMA"
+                ? `${new Intl.NumberFormat("pt-BR", {
+                    minimumFractionDigits: 3,
+                    maximumFractionDigits: 3
+                }).format(quantidadeTotal)} kg`
+                : `${new Intl.NumberFormat("pt-BR", {
+                    maximumFractionDigits: 0
+                }).format(quantidadeTotal)} un.`;
+        } else {
+            resumoQuantidadeContainer.classList.add("d-none");
+            resumoQuantidade.textContent = "";
+        }
+
         subtotalPedido.textContent = formatarMoeda(subtotal);
         resumoTaxa.textContent = formatarMoeda(taxa);
         totalPedido.textContent = formatarMoeda(subtotal + taxa);
@@ -331,7 +404,14 @@ function inicializarFormularioPedido() {
         quantidadeVisual.addEventListener("input", sincronizarQuantidade);
         quantidadeVisual.addEventListener("blur", () => {
             sincronizarQuantidade();
-            const numero = Number.parseFloat(quantidadeDecimal.value) || 0;
+            let numero = Number.parseFloat(quantidadeDecimal.value) || 0;
+
+            if (!quilograma && numero < 1) {
+                numero = 1;
+                quantidadeDecimal.value = "1";
+                recalcularPedido();
+            }
+
             quantidadeVisual.value = quilograma
                 ? new Intl.NumberFormat("pt-BR", {
                     minimumFractionDigits: 3,
@@ -341,6 +421,25 @@ function inicializarFormularioPedido() {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 3
                 }).format(numero);
+        });
+
+        const diminuir = item.querySelector("[data-diminuir-quantidade]");
+        const aumentar = item.querySelector("[data-aumentar-quantidade]");
+
+        diminuir?.addEventListener("click", () => {
+            const quantidadeAtual = Number.parseInt(quantidadeDecimal.value, 10) || 1;
+            const novaQuantidade = Math.max(1, quantidadeAtual - 1);
+            quantidadeVisual.value = String(novaQuantidade);
+            quantidadeDecimal.value = String(novaQuantidade);
+            recalcularPedido();
+        });
+
+        aumentar?.addEventListener("click", () => {
+            const quantidadeAtual = Number.parseInt(quantidadeDecimal.value, 10) || 0;
+            const novaQuantidade = Math.max(1, quantidadeAtual + 1);
+            quantidadeVisual.value = String(novaQuantidade);
+            quantidadeDecimal.value = String(novaQuantidade);
+            recalcularPedido();
         });
         item.querySelector("[data-remover-item]").addEventListener("click", () => {
             item.remove();
@@ -355,7 +454,14 @@ function inicializarFormularioPedido() {
         );
 
         if (existente) {
-            existente.querySelector("[data-item-quantidade-visual]").focus();
+            buscaProduto.value = "";
+
+            if (produto.unidadeVenda === "UNIDADE") {
+                existente.querySelector("[data-aumentar-quantidade]").click();
+            }
+
+            fecharResultadosProdutos();
+            buscaProduto.focus();
             return;
         }
 
@@ -378,8 +484,16 @@ function inicializarFormularioPedido() {
                     </div>
                     <div class="col-sm-4 col-md-3">
                         <label class="form-label small">Quantidade *</label>
-                        <input type="text" class="form-control" value="${produto.unidadeVenda === "UNIDADE" ? "1" : "1,000"}"
-                               inputmode="decimal" data-item-quantidade-visual required>
+                        <div class="input-group">
+                            ${produto.unidadeVenda === "UNIDADE" ? `
+                            <button type="button" class="btn btn-outline-secondary" data-diminuir-quantidade
+                                    aria-label="Diminuir quantidade"><i class="bi bi-dash"></i></button>` : ""}
+                            <input type="text" class="form-control text-center" value="${produto.unidadeVenda === "UNIDADE" ? "1" : "1,000"}"
+                                   inputmode="decimal" data-item-quantidade-visual required>
+                            ${produto.unidadeVenda === "UNIDADE" ? `
+                            <button type="button" class="btn btn-outline-secondary" data-aumentar-quantidade
+                                    aria-label="Aumentar quantidade"><i class="bi bi-plus"></i></button>` : ""}
+                        </div>
                         <input type="hidden" value="1" data-item-quantidade>
                     </div>
                     <div class="col-sm-5 col-md-3 text-md-end">
@@ -392,7 +506,7 @@ function inicializarFormularioPedido() {
                     </div>
                     <div class="col-12${esconderObservacao}" data-item-observacao-container>
                         <label class="form-label small">Observação do item</label>
-                        <input type="text" class="form-control" maxlength="255"
+                        <input type="text" class="form-control form-control-sm" maxlength="255"
                                placeholder="Ex.: sem farofa" data-item-observacao>
                     </div>
                 </div>
@@ -402,16 +516,23 @@ function inicializarFormularioPedido() {
         ativarItem(item);
         reindexarItens();
         recalcularPedido();
-        resultadosProdutos.classList.add("d-none");
         buscaProduto.value = "";
+        fecharResultadosProdutos();
+        buscaProduto.focus();
     }
 
     async function pesquisarProdutos() {
         const termo = buscaProduto.value.trim();
+        const numeroRequisicao = ++requisicaoProduto;
         const resposta = await fetch(
             `/pedidos/produtos/buscar?termo=${encodeURIComponent(termo)}`
         );
         const produtos = resposta.ok ? await resposta.json() : [];
+
+        if (numeroRequisicao !== requisicaoProduto || buscaProduto.value.trim() !== termo) {
+            return;
+        }
+
         resultadosProdutos.replaceChildren();
 
         produtos.forEach(produto => {
@@ -438,15 +559,61 @@ function inicializarFormularioPedido() {
         resultadosProdutos.classList.remove("d-none");
     }
 
-    buscaProduto.addEventListener("focus", pesquisarProdutos);
     buscaProduto.addEventListener("input", () => {
         clearTimeout(temporizadorProduto);
+        requisicaoProduto++;
         temporizadorProduto = setTimeout(pesquisarProdutos, 250);
     });
+    buscaProduto.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            fecharResultadosProdutos();
+        }
+    });
+    document.addEventListener("click", event => {
+        if (!buscaCliente.contains(event.target) && !resultadosClientes.contains(event.target)) {
+            fecharResultadosClientes();
+        }
+
+        if (!buscaProduto.contains(event.target) && !resultadosProdutos.contains(event.target)) {
+            fecharResultadosProdutos();
+        }
+    });
     taxaEntrega.addEventListener("input", recalcularPedido);
+    tipoEntrega.addEventListener("change", atualizarTipoEntrega);
     itensContainer.querySelectorAll(".item-pedido").forEach(ativarItem);
     reindexarItens();
+    atualizarTipoEntrega();
     recalcularPedido();
+
+    formulario.addEventListener("submit", event => {
+        if (acaoPedido) {
+            acaoPedido.value = event.submitter?.value || "salvar";
+        }
+
+        formulario.querySelectorAll("[data-botao-salvar]").forEach(botao => {
+            botao.disabled = true;
+            botao.setAttribute("aria-busy", "true");
+
+            if (!botao.querySelector(".spinner-border")) {
+                const spinner = document.createElement("span");
+                spinner.className = "spinner-border spinner-border-sm me-1";
+                spinner.setAttribute("aria-hidden", "true");
+                botao.prepend(spinner);
+            }
+        });
+    });
+
+    function atualizarTipoEntrega() {
+        const retirada = tipoEntrega.value === "RETIRADA";
+        taxaEntregaContainer.classList.toggle("d-none", retirada);
+
+        if (retirada) {
+            taxaEntregaVisual.value = "0,00";
+            taxaEntrega.value = "0.00";
+        }
+
+        recalcularPedido();
+    }
 }
 
 
