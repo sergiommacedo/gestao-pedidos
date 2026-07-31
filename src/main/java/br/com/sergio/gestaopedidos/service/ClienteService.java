@@ -3,9 +3,11 @@ package br.com.sergio.gestaopedidos.service;
 import br.com.sergio.gestaopedidos.dto.cliente.ClienteRequest;
 import br.com.sergio.gestaopedidos.dto.cliente.ClienteResponse;
 import br.com.sergio.gestaopedidos.entity.Cliente;
+import br.com.sergio.gestaopedidos.exception.BusinessException;
 import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
 import br.com.sergio.gestaopedidos.mapper.ClienteMapper;
 import br.com.sergio.gestaopedidos.repository.ClienteRepository;
+import br.com.sergio.gestaopedidos.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +23,7 @@ import java.util.List;
 public class ClienteService {
 
     private final ClienteRepository clienteRepository;
+    private final PedidoRepository pedidoRepository;
     private final ClienteMapper clienteMapper;
 
     @Transactional(readOnly = true)
@@ -113,6 +116,12 @@ public class ClienteService {
 
     public void excluir(Long id) {
         Cliente cliente = buscarEntidadePorId(id);
+
+        if (pedidoRepository.existsByClienteId(id)) {
+            throw new BusinessException(
+                    "Não é possível excluir este cliente porque ele possui pedidos cadastrados."
+            );
+        }
 
         clienteRepository.delete(cliente);
     }

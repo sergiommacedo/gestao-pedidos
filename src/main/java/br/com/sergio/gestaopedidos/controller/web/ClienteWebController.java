@@ -2,6 +2,7 @@ package br.com.sergio.gestaopedidos.controller.web;
 
 import br.com.sergio.gestaopedidos.dto.cliente.ClienteRequest;
 import br.com.sergio.gestaopedidos.dto.cliente.ClienteResponse;
+import br.com.sergio.gestaopedidos.exception.BusinessException;
 import br.com.sergio.gestaopedidos.service.ClienteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -244,12 +245,19 @@ public class ClienteWebController {
             @PathVariable Long id,
             RedirectAttributes redirectAttributes
     ) {
-        clienteService.excluir(id);
+        try {
+            clienteService.excluir(id);
 
-        redirectAttributes.addFlashAttribute(
-                "mensagemSucesso",
-                "Cliente excluído com sucesso."
-        );
+            redirectAttributes.addFlashAttribute(
+                    "mensagemSucesso",
+                    "Cliente excluído com sucesso."
+            );
+        } catch (BusinessException exception) {
+            redirectAttributes.addFlashAttribute(
+                    "mensagemErro",
+                    exception.getMessage()
+            );
+        }
 
         return "redirect:/clientes";
     }

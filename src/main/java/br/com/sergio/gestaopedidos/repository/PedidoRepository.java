@@ -12,6 +12,8 @@ import java.time.LocalDate;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
+    boolean existsByClienteId(Long clienteId);
+
     @Query("""
             SELECT p
             FROM Pedido p
