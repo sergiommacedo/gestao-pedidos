@@ -109,8 +109,12 @@ public class PedidoWebController {
 
         model.addAttribute("paginaPedidos", paginaPedidos);
         model.addAttribute("pedidos", paginaPedidos.getContent());
-        model.addAttribute("pedidosHoje", pedidoService.contarPedidosDeHoje());
-        model.addAttribute("dataHoje", LocalDate.now());
+        LocalDate dataDashboard = dataAgendada == null ? LocalDate.now() : dataAgendada;
+        model.addAttribute(
+                "dashboardOperacional",
+                pedidoService.buscarDashboardOperacional(dataDashboard)
+        );
+        model.addAttribute("dataDashboardIso", dataDashboard.toString());
         model.addAttribute("filtro", filtroTratado);
         model.addAttribute("statusSelecionado", status);
         model.addAttribute("dataAgendada", dataAgendada);

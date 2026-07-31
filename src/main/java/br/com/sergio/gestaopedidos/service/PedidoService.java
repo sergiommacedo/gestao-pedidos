@@ -1,6 +1,7 @@
 package br.com.sergio.gestaopedidos.service;
 
 import br.com.sergio.gestaopedidos.dto.pedido.ItemPedidoRequest;
+import br.com.sergio.gestaopedidos.dto.pedido.DashboardOperacionalResponse;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoRequest;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoResponse;
 import br.com.sergio.gestaopedidos.entity.Cliente;
@@ -76,10 +77,24 @@ public class PedidoService {
     }
 
     @Transactional(readOnly = true)
-    public long contarPedidosDeHoje() {
-        return pedidoRepository.countByDataAgendadaAndStatusNot(
-                LocalDate.now(),
-                StatusPedido.CANCELADO
+    public DashboardOperacionalResponse buscarDashboardOperacional(LocalDate data) {
+        LocalDate dataReferencia = data == null ? LocalDate.now() : data;
+
+        return new DashboardOperacionalResponse(
+                dataReferencia,
+                pedidoRepository.countByDataAgendada(dataReferencia),
+                pedidoRepository.countByDataAgendadaAndStatus(
+                        dataReferencia,
+                        StatusPedido.ENTREGUE
+                ),
+                pedidoRepository.countByDataAgendadaAndStatus(
+                        dataReferencia,
+                        StatusPedido.CANCELADO
+                ),
+                pedidoRepository.somarValorTotalPorDataExcetoStatus(
+                        dataReferencia,
+                        StatusPedido.CANCELADO
+                )
         );
     }
 

@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
@@ -38,8 +39,21 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             Pageable pageable
     );
 
-    long countByDataAgendadaAndStatusNot(
+    long countByDataAgendada(LocalDate dataAgendada);
+
+    long countByDataAgendadaAndStatus(
             LocalDate dataAgendada,
             StatusPedido status
+    );
+
+    @Query("""
+            SELECT COALESCE(SUM(p.valorTotal), 0)
+            FROM Pedido p
+            WHERE p.dataAgendada = :dataAgendada
+            AND p.status <> :statusExcluido
+            """)
+    BigDecimal somarValorTotalPorDataExcetoStatus(
+            @Param("dataAgendada") LocalDate dataAgendada,
+            @Param("statusExcluido") StatusPedido statusExcluido
     );
 }
