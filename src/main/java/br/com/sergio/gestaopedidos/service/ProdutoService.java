@@ -62,6 +62,9 @@ public class ProdutoService {
             produto.setAtivo(request.ativo());
         }
 
+        produto.setUnidadeVenda(request.unidadeVenda());
+        produto.setPermiteAcompanhamento(request.permiteAcompanhamento());
+
         Produto produtoAtualizado = produtoRepository.save(produto);
 
         return produtoMapper.toResponse(produtoAtualizado);

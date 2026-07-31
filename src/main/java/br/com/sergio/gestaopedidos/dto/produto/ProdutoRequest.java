@@ -1,5 +1,6 @@
 package br.com.sergio.gestaopedidos.dto.produto;
 
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -42,7 +43,21 @@ public record ProdutoRequest(
                 description = "Indica se o produto está ativo",
                 example = "true"
         )
-        Boolean ativo
+        Boolean ativo,
+
+        @Schema(
+                description = "Indica unidade de venda",
+                example = "true"
+        )
+        @NotNull(message = "Unidade de venda é obrigatória.")
+        UnidadeVenda unidadeVenda,
+
+        @Schema(
+                description = "Informa se permite acompanhamento",
+                example = "true"
+        )
+        @NotNull(message = "Informe se o produto permite acompanhamento.")
+        Boolean permiteAcompanhamento
 
 ) {
 }

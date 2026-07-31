@@ -1,5 +1,6 @@
 package br.com.sergio.gestaopedidos.entity;
 
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,4 +33,12 @@ public class Produto {
     @Column(nullable = false)
     @Builder.Default
     private Boolean ativo = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "unidade_venda", nullable = false, length = 20)
+    private UnidadeVenda unidadeVenda;
+
+    @Column(name = "permite_acompanhamento", nullable = false)
+    @Builder.Default
+    private Boolean permiteAcompanhamento = false;
 }

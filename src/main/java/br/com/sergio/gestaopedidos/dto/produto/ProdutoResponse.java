@@ -1,5 +1,6 @@
 package br.com.sergio.gestaopedidos.dto.produto;
 
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -22,7 +23,13 @@ public record ProdutoResponse(
         BigDecimal preco,
 
         @Schema(description = "Indica se o produto está ativo", example = "true")
-        Boolean ativo
+        Boolean ativo,
+
+        @Schema(description = "Indica unidade de venda", example = "true")
+        UnidadeVenda unidadeVenda,
+
+        @Schema(description = "Informa se permite acompanhamento", example = "true")
+        Boolean permiteAcompanhamento
 
 ) {
 }
