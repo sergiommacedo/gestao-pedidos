@@ -113,6 +113,10 @@ body {
     box-shadow: 0 0.125rem 0.75rem rgba(87, 53, 34, 0.08);
 }
 
+.dropdown-menu-status {
+    z-index: 1080;
+}
+
 @media (min-width: 992px) {
     #sidebar {
         position: fixed;

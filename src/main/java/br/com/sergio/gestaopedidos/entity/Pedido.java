@@ -57,6 +57,9 @@ public class Pedido {
     @Column(length = 500)
     private String observacao;
 
+    @Column(name = "motivo_cancelamento", length = 500)
+    private String motivoCancelamento;
+
     @ManyToOne
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;

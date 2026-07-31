@@ -5,11 +5,102 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarMascaraMonetaria();
     inicializarDatasBrasileiras();
     inicializarModalExclusao();
+    inicializarModalCancelamentoPedido();
     inicializarSelecaoPedidos();
+    inicializarDropdownsStatus();
     inicializarImpressaoComandas();
     inicializarFormularioPedido();
 
 });
+
+
+function inicializarModalCancelamentoPedido() {
+
+    const modalElemento = document.querySelector("#modalCancelamentoPedido");
+
+    if (!modalElemento || typeof bootstrap === "undefined") {
+        return;
+    }
+
+    const formulario = modalElemento.querySelector("[data-form-cancelamento-pedido]");
+    const mensagem = modalElemento.querySelector("[data-mensagem-cancelamento]");
+    const motivo = modalElemento.querySelector("[data-motivo-cancelamento]");
+    const camposRetorno = [
+        "filtro",
+        "statusFiltro",
+        "dataAgendada",
+        "pagina",
+        "tamanho",
+        "ordenarPor",
+        "direcao"
+    ];
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElemento);
+
+    document.querySelectorAll("[data-cancelar-pedido]").forEach(botao => {
+        botao.addEventListener("click", () => {
+            const formularioOrigem = botao.closest("form");
+            const pedidoId = botao.dataset.pedidoId || "";
+            const cliente = botao.dataset.cliente || "";
+
+            formulario.action = formularioOrigem?.action || "";
+            mensagem.textContent = `Deseja cancelar o pedido #${pedidoId} de ${cliente}?`;
+
+            camposRetorno.forEach(nome => {
+                const origem = formularioOrigem?.querySelector(`[name="${nome}"]`);
+                formulario.querySelector(`[name="${nome}"]`).value = origem?.value || "";
+            });
+
+            motivo.value = "";
+            motivo.classList.remove("is-invalid");
+            modal.show();
+        });
+    });
+
+    formulario.addEventListener("submit", event => {
+        motivo.value = motivo.value.trim();
+
+        if (!motivo.value) {
+            event.preventDefault();
+            motivo.classList.add("is-invalid");
+            motivo.focus();
+            return;
+        }
+
+        motivo.classList.remove("is-invalid");
+    });
+
+    motivo.addEventListener("input", () => {
+        motivo.classList.toggle("is-invalid", !motivo.value.trim());
+    });
+
+    modalElemento.addEventListener("shown.bs.modal", () => motivo.focus());
+    modalElemento.addEventListener("hidden.bs.modal", () => {
+        formulario.reset();
+        formulario.removeAttribute("action");
+        mensagem.textContent = "Deseja cancelar este pedido?";
+        motivo.classList.remove("is-invalid");
+    });
+}
+
+
+function inicializarDropdownsStatus() {
+
+    if (typeof bootstrap === "undefined") {
+        return;
+    }
+
+    document.querySelectorAll("[data-status-dropdown]").forEach(botao => {
+        bootstrap.Dropdown.getOrCreateInstance(botao, {
+            boundary: "viewport",
+            popperConfig(configuracaoPadrao) {
+                return {
+                    ...configuracaoPadrao,
+                    strategy: "fixed"
+                };
+            }
+        });
+    });
+}
 
 
 function inicializarMascaras() {

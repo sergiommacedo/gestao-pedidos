@@ -123,7 +123,11 @@ public class PedidoService {
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
     }
 
-    public PedidoResponse alterarStatus(Long id, StatusPedido novoStatus) {
+    public PedidoResponse alterarStatus(
+            Long id,
+            StatusPedido novoStatus,
+            String motivoCancelamento
+    ) {
         Pedido pedido = buscarEntidadePorId(id);
         Set<StatusPedido> permitidos = transicoesPermitidas(
                 pedido.getStatus(),
@@ -139,6 +143,28 @@ public class PedidoService {
                                 ? "um status vazio"
                                 : novoStatus.getDescricao())
                             + "."
+            );
+        }
+
+        if (novoStatus == StatusPedido.CANCELADO) {
+            String motivoTratado = motivoCancelamento == null
+                    ? ""
+                    : motivoCancelamento.trim();
+
+            if (motivoTratado.isEmpty()) {
+                throw new BusinessException("Informe o motivo do cancelamento.");
+            }
+
+            if (motivoTratado.length() > 500) {
+                throw new BusinessException(
+                        "O motivo do cancelamento deve possuir no máximo 500 caracteres."
+                );
+            }
+
+            pedido.setMotivoCancelamento(motivoTratado);
+        } else if (motivoCancelamento != null && !motivoCancelamento.isBlank()) {
+            throw new BusinessException(
+                    "O motivo do cancelamento só pode ser informado ao cancelar o pedido."
             );
         }
 

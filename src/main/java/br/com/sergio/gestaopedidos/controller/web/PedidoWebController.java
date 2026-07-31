@@ -238,6 +238,7 @@ public class PedidoWebController {
     public String alterarStatus(
             @PathVariable Long id,
             @RequestParam StatusPedido novoStatus,
+            @RequestParam(required = false) String motivoCancelamento,
             @RequestParam(defaultValue = "") String filtro,
             @RequestParam(required = false) StatusPedido statusFiltro,
             @RequestParam(required = false)
@@ -250,7 +251,11 @@ public class PedidoWebController {
             RedirectAttributes redirectAttributes
     ) {
         try {
-            PedidoResponse pedido = pedidoService.alterarStatus(id, novoStatus);
+            PedidoResponse pedido = pedidoService.alterarStatus(
+                    id,
+                    novoStatus,
+                    motivoCancelamento
+            );
             redirectAttributes.addFlashAttribute(
                     "mensagemSucesso",
                     "Pedido " + pedido.id() + " alterado para "
