@@ -116,6 +116,16 @@ public class PedidoWebController {
         model.addAttribute("ordenarPor", campoOrdenacao);
         model.addAttribute("direcao", direcaoOrdenacao.name().toLowerCase());
         model.addAttribute("tamanho", tamanhoValido);
+        Map<Long, Set<StatusPedido>> transicoesStatus = paginaPedidos.getContent()
+                .stream()
+                .collect(Collectors.toMap(
+                        PedidoResponse::id,
+                        pedido -> pedidoService.transicoesPermitidas(
+                                pedido.status(),
+                                pedido.tipoEntrega()
+                        )
+                ));
+        model.addAttribute("transicoesStatus", transicoesStatus);
 
         return "pedidos/listar";
     }
@@ -222,6 +232,52 @@ public class PedidoWebController {
             prepararFormulario(model, pedido, id, itemIds);
             return "pedidos/formulario";
         }
+    }
+
+    @PostMapping("/{id}/status")
+    public String alterarStatus(
+            @PathVariable Long id,
+            @RequestParam StatusPedido novoStatus,
+            @RequestParam(defaultValue = "") String filtro,
+            @RequestParam(required = false) StatusPedido statusFiltro,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate dataAgendada,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "10") int tamanho,
+            @RequestParam(defaultValue = "dataAgendada") String ordenarPor,
+            @RequestParam(defaultValue = "asc") String direcao,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            PedidoResponse pedido = pedidoService.alterarStatus(id, novoStatus);
+            redirectAttributes.addFlashAttribute(
+                    "mensagemSucesso",
+                    "Pedido " + pedido.id() + " alterado para "
+                            + pedido.status().getDescricao() + "."
+            );
+        } catch (BusinessException | ResourceNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
+        }
+
+        redirectAttributes.addAttribute("filtro", filtro == null ? "" : filtro.trim());
+        redirectAttributes.addAttribute("pagina", Math.max(pagina, 0));
+        redirectAttributes.addAttribute("tamanho", validarTamanhoPagina(tamanho));
+        redirectAttributes.addAttribute("ordenarPor", validarCampoOrdenacao(ordenarPor));
+        redirectAttributes.addAttribute(
+                "direcao",
+                converterDirecao(direcao).name().toLowerCase()
+        );
+
+        if (statusFiltro != null) {
+            redirectAttributes.addAttribute("status", statusFiltro);
+        }
+
+        if (dataAgendada != null) {
+            redirectAttributes.addAttribute("dataAgendada", dataAgendada);
+        }
+
+        return "redirect:/pedidos";
     }
 
     @GetMapping("/clientes/buscar")

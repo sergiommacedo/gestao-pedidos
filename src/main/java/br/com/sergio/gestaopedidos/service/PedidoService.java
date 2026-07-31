@@ -8,6 +8,7 @@ import br.com.sergio.gestaopedidos.entity.ItemPedido;
 import br.com.sergio.gestaopedidos.entity.Pedido;
 import br.com.sergio.gestaopedidos.entity.Produto;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
+import br.com.sergio.gestaopedidos.enums.TipoEntrega;
 import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import br.com.sergio.gestaopedidos.exception.BusinessException;
 import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -119,6 +121,53 @@ public class PedidoService {
         atualizarItensERecalcular(pedido, request, itemIds);
 
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
+    }
+
+    public PedidoResponse alterarStatus(Long id, StatusPedido novoStatus) {
+        Pedido pedido = buscarEntidadePorId(id);
+        Set<StatusPedido> permitidos = transicoesPermitidas(
+                pedido.getStatus(),
+                pedido.getTipoEntrega()
+        );
+
+        if (novoStatus == null || !permitidos.contains(novoStatus)) {
+            throw new BusinessException(
+                    "Não é permitido alterar o pedido de "
+                            + pedido.getStatus().getDescricao()
+                            + " para "
+                            + (novoStatus == null
+                                ? "um status vazio"
+                                : novoStatus.getDescricao())
+                            + "."
+            );
+        }
+
+        pedido.setStatus(novoStatus);
+        return pedidoMapper.toResponse(pedidoRepository.save(pedido));
+    }
+
+    public Set<StatusPedido> transicoesPermitidas(
+            StatusPedido statusAtual,
+            TipoEntrega tipoEntrega
+    ) {
+        if (statusAtual == null) {
+            return Set.of();
+        }
+
+        return switch (statusAtual) {
+            case PENDENTE -> EnumSet.of(StatusPedido.CONFIRMADO, StatusPedido.CANCELADO);
+            case CONFIRMADO -> EnumSet.of(StatusPedido.EM_PREPARACAO, StatusPedido.CANCELADO);
+            case EM_PREPARACAO -> EnumSet.of(StatusPedido.PRONTO, StatusPedido.CANCELADO);
+            case PRONTO -> tipoEntrega == TipoEntrega.ENTREGA
+                    ? EnumSet.of(
+                            StatusPedido.SAIU_PARA_ENTREGA,
+                            StatusPedido.ENTREGUE,
+                            StatusPedido.CANCELADO
+                    )
+                    : EnumSet.of(StatusPedido.ENTREGUE, StatusPedido.CANCELADO);
+            case SAIU_PARA_ENTREGA -> EnumSet.of(StatusPedido.ENTREGUE, StatusPedido.CANCELADO);
+            case ENTREGUE, CANCELADO -> Set.of();
+        };
     }
 
     private void atualizarItensERecalcular(

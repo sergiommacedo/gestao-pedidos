@@ -194,12 +194,58 @@
                         <td th:text="${pedido.clienteNome}"></td>
                         <td class="text-nowrap" th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></td>
                         <td>
-                            <span class="badge rounded-pill"
-                                  th:classappend="${pedido.status.name() == 'CANCELADO'} ? ' text-bg-danger' :
-                                      (${pedido.status.name() == 'ENTREGUE'} ? ' text-bg-success' :
-                                      (${pedido.status.name() == 'PENDENTE'} ? ' text-bg-warning' :
-                                      (${pedido.status.name() == 'SAIU_PARA_ENTREGA'} ? ' text-bg-info' : ' text-bg-primary')))"
-                                  th:text="${pedido.status.descricao}"></span>
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-sm dropdown-toggle rounded-pill"
+                                        data-bs-toggle="dropdown" data-bs-boundary="viewport"
+                                        aria-expanded="false"
+                                        th:classappend="${pedido.status.name() == 'CANCELADO'} ? ' btn-danger' :
+                                            (${pedido.status.name() == 'ENTREGUE'} ? ' btn-success' :
+                                            (${pedido.status.name() == 'PENDENTE'} ? ' btn-warning' :
+                                            (${pedido.status.name() == 'SAIU_PARA_ENTREGA'} ? ' btn-info' : ' btn-primary')))"
+                                        th:text="${pedido.status.descricao}">
+                                    Status
+                                </button>
+                                <ul class="dropdown-menu shadow-sm">
+                                    <li th:each="statusOpcao : ${statusPedidos}">
+                                        <form th:if="${transicoesStatus[pedido.id].contains(statusOpcao)}"
+                                              th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
+                                              method="post"
+                                              onsubmit="return this.querySelector('[name=novoStatus]').value !== 'CANCELADO' || confirm('Deseja realmente cancelar este pedido?');">
+                                            <input type="hidden" name="filtro" th:value="${filtro}">
+                                            <input type="hidden" name="statusFiltro" th:value="${statusSelecionado}">
+                                            <input type="hidden" name="dataAgendada" th:value="${dataAgendada}">
+                                            <input type="hidden" name="pagina" th:value="${paginaPedidos.number}">
+                                            <input type="hidden" name="tamanho" th:value="${tamanho}">
+                                            <input type="hidden" name="ordenarPor" th:value="${ordenarPor}">
+                                            <input type="hidden" name="direcao" th:value="${direcao}">
+                                            <button type="submit" name="novoStatus" th:value="${statusOpcao}"
+                                                    class="dropdown-item d-flex align-items-center gap-2">
+                                                <span class="badge rounded-circle p-1"
+                                                      th:classappend="${statusOpcao.name() == 'CANCELADO'} ? ' text-bg-danger' :
+                                                          (${statusOpcao.name() == 'ENTREGUE'} ? ' text-bg-success' :
+                                                          (${statusOpcao.name() == 'PENDENTE'} ? ' text-bg-warning' :
+                                                          (${statusOpcao.name() == 'SAIU_PARA_ENTREGA'} ? ' text-bg-info' : ' text-bg-primary')))"
+                                                      aria-hidden="true">&nbsp;</span>
+                                                <span th:text="${statusOpcao.descricao}"></span>
+                                            </button>
+                                        </form>
+                                        <span th:unless="${transicoesStatus[pedido.id].contains(statusOpcao)}"
+                                              class="dropdown-item disabled d-flex align-items-center gap-2"
+                                              th:classappend="${pedido.status == statusOpcao} ? ' fw-semibold'"
+                                              aria-disabled="true">
+                                            <span class="badge rounded-circle p-1"
+                                                  th:classappend="${statusOpcao.name() == 'CANCELADO'} ? ' text-bg-danger' :
+                                                      (${statusOpcao.name() == 'ENTREGUE'} ? ' text-bg-success' :
+                                                      (${statusOpcao.name() == 'PENDENTE'} ? ' text-bg-warning' :
+                                                      (${statusOpcao.name() == 'SAIU_PARA_ENTREGA'} ? ' text-bg-info' : ' text-bg-primary')))"
+                                                  aria-hidden="true">&nbsp;</span>
+                                            <span th:text="${statusOpcao.descricao}"></span>
+                                            <i th:if="${pedido.status == statusOpcao}"
+                                               class="bi bi-check ms-auto" aria-label="Status atual"></i>
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
                         </td>
                         <td>
                             <span class="text-nowrap"
