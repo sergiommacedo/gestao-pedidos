@@ -155,7 +155,6 @@ public class PedidoWebController {
         );
         Map<StatusPedido, List<PedidoResponse>> pedidosPorStatus = new EnumMap<>(StatusPedido.class);
         pedidosPorStatus.put(StatusPedido.PENDENTE, filtrarPorStatus(pedidos, StatusPedido.PENDENTE));
-        pedidosPorStatus.put(StatusPedido.CONFIRMADO, filtrarPorStatus(pedidos, StatusPedido.CONFIRMADO));
         pedidosPorStatus.put(StatusPedido.EM_PREPARACAO, filtrarPorStatus(pedidos, StatusPedido.EM_PREPARACAO));
         pedidosPorStatus.put(StatusPedido.PRONTO, filtrarPorStatus(pedidos, StatusPedido.PRONTO));
         pedidosPorStatus.put(
@@ -168,7 +167,6 @@ public class PedidoWebController {
                 "statusKanban",
                 List.of(
                         StatusPedido.PENDENTE,
-                        StatusPedido.CONFIRMADO,
                         StatusPedido.EM_PREPARACAO,
                         StatusPedido.PRONTO,
                         StatusPedido.SAIU_PARA_ENTREGA,
@@ -417,8 +415,8 @@ public class PedidoWebController {
             @PathVariable Long id,
             Model model
     ) {
-        model.addAttribute(
-                "pedidos",
+        prepararComandas(
+                model,
                 List.of(pedidoService.buscarPorId(id))
         );
 
@@ -430,12 +428,28 @@ public class PedidoWebController {
             @RequestParam List<Long> ids,
             Model model
     ) {
-        model.addAttribute(
-                "pedidos",
-                pedidoService.buscarPorIds(ids)
-        );
+        prepararComandas(model, pedidoService.buscarPorIds(ids));
 
         return "pedidos/comandas";
+    }
+
+    private void prepararComandas(
+            Model model,
+            List<PedidoResponse> pedidos
+    ) {
+        model.addAttribute("pedidos", pedidos);
+
+        LocalDate dataRetornoKanban = pedidos.isEmpty()
+                ? null
+                : pedidos.getFirst().dataAgendada();
+        boolean mesmaData = dataRetornoKanban != null
+                && pedidos.stream()
+                    .allMatch(pedido -> dataRetornoKanban.equals(pedido.dataAgendada()));
+
+        model.addAttribute(
+                "dataRetornoKanban",
+                mesmaData ? dataRetornoKanban : null
+        );
     }
 
     private void prepararFormulario(

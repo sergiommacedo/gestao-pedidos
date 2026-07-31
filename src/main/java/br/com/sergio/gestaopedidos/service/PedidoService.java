@@ -189,13 +189,11 @@ public class PedidoService {
         }
 
         return switch (statusAtual) {
-            case PENDENTE -> EnumSet.of(StatusPedido.CONFIRMADO, StatusPedido.CANCELADO);
-            case CONFIRMADO -> EnumSet.of(StatusPedido.EM_PREPARACAO, StatusPedido.CANCELADO);
+            case PENDENTE -> EnumSet.of(StatusPedido.EM_PREPARACAO, StatusPedido.CANCELADO);
             case EM_PREPARACAO -> EnumSet.of(StatusPedido.PRONTO, StatusPedido.CANCELADO);
             case PRONTO -> tipoEntrega == TipoEntrega.ENTREGA
                     ? EnumSet.of(
                             StatusPedido.SAIU_PARA_ENTREGA,
-                            StatusPedido.ENTREGUE,
                             StatusPedido.CANCELADO
                     )
                     : EnumSet.of(StatusPedido.ENTREGUE, StatusPedido.CANCELADO);

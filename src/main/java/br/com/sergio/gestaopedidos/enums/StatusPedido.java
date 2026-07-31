@@ -3,7 +3,6 @@ package br.com.sergio.gestaopedidos.enums;
 public enum StatusPedido {
 
     PENDENTE("Pendente"),
-    CONFIRMADO("Confirmado"),
     EM_PREPARACAO("Em preparação"),
     PRONTO("Pronto"),
     SAIU_PARA_ENTREGA("Saiu para entrega"),
