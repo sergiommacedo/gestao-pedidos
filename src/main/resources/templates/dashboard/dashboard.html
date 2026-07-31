@@ -58,7 +58,8 @@
 
         <div class="col-12 col-sm-6 col-xl-3">
 
-            <div class="card h-100">
+            <a th:href="@{/pedidos(dataAgendada=${dataReferenciaIso})}"
+               class="card h-100 text-decoration-none text-body">
 
                 <div class="card-body">
 
@@ -66,11 +67,12 @@
 
                         <div>
                             <p class="text-body-secondary mb-2">
-                                Pedidos de hoje
+                                Agendados hoje
                             </p>
 
-                            <h2 class="h3 fw-bold mb-0">
-                                12
+                            <h2 class="h3 fw-bold mb-0"
+                                th:text="${indicadores.agendadosHoje}">
+                                0
                             </h2>
                         </div>
 
@@ -85,13 +87,14 @@
 
                 </div>
 
-            </div>
+            </a>
 
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
 
-            <div class="card h-100">
+            <a th:href="@{/pedidos(dataAgendada=${dataReferenciaIso}, status='EM_PREPARACAO')}"
+               class="card h-100 text-decoration-none text-body">
 
                 <div class="card-body">
 
@@ -99,11 +102,12 @@
 
                         <div>
                             <p class="text-body-secondary mb-2">
-                                Em preparo
+                                Em preparação
                             </p>
 
-                            <h2 class="h3 fw-bold mb-0">
-                                4
+                            <h2 class="h3 fw-bold mb-0"
+                                th:text="${indicadores.emPreparacao}">
+                                0
                             </h2>
                         </div>
 
@@ -117,13 +121,14 @@
 
                 </div>
 
-            </div>
+            </a>
 
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
 
-            <div class="card h-100">
+            <a th:href="@{/pedidos(dataAgendada=${dataReferenciaIso}, status='SAIU_PARA_ENTREGA')}"
+               class="card h-100 text-decoration-none text-body">
 
                 <div class="card-body">
 
@@ -131,17 +136,18 @@
 
                         <div>
                             <p class="text-body-secondary mb-2">
-                                Entregues
+                                Saiu para entrega
                             </p>
 
-                            <h2 class="h3 fw-bold mb-0">
-                                8
+                            <h2 class="h3 fw-bold mb-0"
+                                th:text="${indicadores.saiuParaEntrega}">
+                                0
                             </h2>
                         </div>
 
                         <div class="rounded-circle p-3 bg-success-subtle text-success">
 
-                            <i class="bi bi-check-circle fs-4"></i>
+                            <i class="bi bi-truck fs-4"></i>
 
                         </div>
 
@@ -149,13 +155,14 @@
 
                 </div>
 
-            </div>
+            </a>
 
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
 
-            <div class="card h-100">
+            <a th:href="@{/pedidos(dataAgendada=${dataReferenciaIso}, ordenarPor='valorTotal', direcao='desc')}"
+               class="card h-100 text-decoration-none text-body">
 
                 <div class="card-body">
 
@@ -163,11 +170,12 @@
 
                         <div>
                             <p class="text-body-secondary mb-2">
-                                Faturamento hoje
+                                Faturamento do dia
                             </p>
 
-                            <h2 class="h3 fw-bold mb-0">
-                                R$ 1.250
+                            <h2 class="h3 fw-bold mb-0 text-nowrap"
+                                th:text="${@formatacao.formatarMoeda(indicadores.faturamentoDoDia)}">
+                                R$ 0,00
                             </h2>
                         </div>
 
@@ -181,7 +189,7 @@
 
                 </div>
 
-            </div>
+            </a>
 
         </div>
 
