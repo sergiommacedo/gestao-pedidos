@@ -109,7 +109,7 @@
                     th:data-url="@{/pedidos/comandas}"
                     disabled>
                 <i class="bi bi-printer"></i>
-                Imprimir selecionados
+                <span data-texto-imprimir-selecionados>Imprimir selecionados</span>
             </button>
         </div>
 
@@ -193,11 +193,15 @@
                     <tr th:each="pedido : ${pedidos}">
                         <td class="text-center">
                             <input type="checkbox"
+                                   th:if="${statusImprimiveis.contains(pedido.status)}"
                                    class="form-check-input"
                                    name="pedidoSelecionado"
                                    th:value="${pedido.id}"
                                    data-pedido-checkbox
                                    th:aria-label="'Selecionar pedido ' + ${pedido.id}">
+                            <i th:unless="${statusImprimiveis.contains(pedido.status)}"
+                               class="bi bi-lock text-muted" title="Impressão indisponível"
+                               aria-label="Impressão indisponível"></i>
                         </td>
                         <td class="fw-semibold" th:text="${pedido.id}"></td>
                         <td class="text-nowrap" th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></td>
@@ -278,13 +282,23 @@
                         <td class="text-center">
                             <div class="btn-group btn-group-sm" role="group"
                                  th:aria-label="'Ações do pedido ' + ${pedido.id}">
-                                <a th:href="@{/pedidos/{id}/editar(id=${pedido.id})}"
+                                <button type="button" class="btn btn-outline-secondary"
+                                        title="Visualizar pedido"
+                                        th:aria-label="'Visualizar pedido ' + ${pedido.id}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalDetalhesPedido"
+                                        th:data-detalhes-url="@{/pedidos/{id}/detalhes(id=${pedido.id}, origem='lista')}">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <a th:if="${statusEditaveis.contains(pedido.status)}"
+                                   th:href="@{/pedidos/{id}/editar(id=${pedido.id}, origem='lista')}"
                                    class="btn btn-outline-secondary"
                                    title="Editar pedido"
                                    th:aria-label="'Editar pedido ' + ${pedido.id}">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <a th:href="@{/pedidos/{id}/comanda(id=${pedido.id})}"
+                                <a th:if="${statusImprimiveis.contains(pedido.status)}"
+                                   th:href="@{/pedidos/{id}/comanda(id=${pedido.id}, origem='lista')}"
                                    class="btn btn-outline-primary"
                                    target="_blank"
                                    rel="noopener"

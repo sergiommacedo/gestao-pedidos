@@ -6,12 +6,88 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarDatasBrasileiras();
     inicializarModalExclusao();
     inicializarModalCancelamentoPedido();
+    inicializarModalDetalhesPedido();
     inicializarSelecaoPedidos();
     inicializarDropdownsStatus();
     inicializarImpressaoComandas();
     inicializarFormularioPedido();
 
 });
+
+
+function inicializarModalDetalhesPedido() {
+
+    const modalElemento = document.querySelector("#modalDetalhesPedido");
+
+    if (!modalElemento) {
+        return;
+    }
+
+    const conteudo = modalElemento.querySelector("[data-conteudo-detalhes-pedido]");
+    let controladorRequisicao;
+
+    const mostrarCarregamento = () => {
+        conteudo.innerHTML = `
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="tituloModalDetalhesPedido">
+                    <i class="bi bi-receipt me-1"></i> Detalhes do pedido
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                        aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body py-5 text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="text-muted mb-0 mt-3">Carregando pedido...</p>
+            </div>`;
+    };
+
+    modalElemento.addEventListener("show.bs.modal", async event => {
+        const url = event.relatedTarget?.dataset.detalhesUrl;
+        mostrarCarregamento();
+
+        if (!url) {
+            conteudo.querySelector(".modal-body").innerHTML = `
+                <div class="alert alert-danger mb-0">
+                    Não foi possível identificar o pedido selecionado.
+                </div>`;
+            return;
+        }
+
+        controladorRequisicao?.abort();
+        controladorRequisicao = new AbortController();
+
+        try {
+            const resposta = await fetch(url, {
+                headers: {"X-Requested-With": "XMLHttpRequest"},
+                signal: controladorRequisicao.signal
+            });
+
+            if (!resposta.ok) {
+                throw new Error("Falha ao carregar os detalhes do pedido.");
+            }
+
+            conteudo.innerHTML = await resposta.text();
+        } catch (erro) {
+            if (erro.name === "AbortError") {
+                return;
+            }
+
+            conteudo.querySelector(".modal-body").innerHTML = `
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Não foi possível carregar os detalhes do pedido. Tente novamente.
+                </div>`;
+        }
+    });
+
+    modalElemento.addEventListener("hidden.bs.modal", () => {
+        controladorRequisicao?.abort();
+        controladorRequisicao = undefined;
+        mostrarCarregamento();
+    });
+}
 
 
 function inicializarModalCancelamentoPedido() {
@@ -716,6 +792,9 @@ function inicializarSelecaoPedidos() {
     const lista = document.querySelector("[data-lista-selecionavel]");
     const selecionarTodos = document.querySelector("[data-selecionar-todos]");
     const botaoImprimir = document.querySelector("[data-imprimir-selecionados]");
+    const textoBotao = botaoImprimir?.querySelector(
+        "[data-texto-imprimir-selecionados]"
+    );
 
     if (!lista || !selecionarTodos || !botaoImprimir) {
         return;
@@ -729,10 +808,16 @@ function inicializarSelecaoPedidos() {
         const selecionados = checkboxes.filter(checkbox => checkbox.checked);
 
         botaoImprimir.disabled = selecionados.length === 0;
+        if (textoBotao) {
+            textoBotao.textContent = selecionados.length > 0
+                ? `Imprimir selecionados (${selecionados.length})`
+                : "Imprimir selecionados";
+        }
         selecionarTodos.checked = checkboxes.length > 0
             && selecionados.length === checkboxes.length;
         selecionarTodos.indeterminate = selecionados.length > 0
             && selecionados.length < checkboxes.length;
+        selecionarTodos.disabled = checkboxes.length === 0;
     }
 
     selecionarTodos.addEventListener("change", () => {

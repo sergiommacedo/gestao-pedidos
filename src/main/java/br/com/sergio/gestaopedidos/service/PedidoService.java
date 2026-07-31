@@ -27,6 +27,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,6 +38,11 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Transactional
 public class PedidoService {
+
+    private static final Set<StatusPedido> STATUS_EDITAVEIS = Set.copyOf(EnumSet.of(
+            StatusPedido.PENDENTE,
+            StatusPedido.EM_PREPARACAO
+    ));
 
     private final PedidoRepository pedidoRepository;
     private final ClienteRepository clienteRepository;
@@ -99,6 +105,62 @@ public class PedidoService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public PedidoResponse buscarParaEdicao(Long id) {
+        Pedido pedido = buscarEntidadePorId(id);
+        validarEditavel(pedido);
+        return pedidoMapper.toResponse(pedido);
+    }
+
+    @Transactional(readOnly = true)
+    public PedidoResponse buscarParaImpressao(Long id) {
+        Pedido pedido = buscarEntidadePorId(id);
+        validarImprimivel(pedido);
+        return pedidoMapper.toResponse(pedido);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PedidoResponse> buscarPorIdsParaImpressao(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException("Selecione ao menos um pedido para impressão.");
+        }
+
+        List<Long> idsUnicos = ids.stream().distinct().toList();
+        Map<Long, Pedido> pedidosPorId = pedidoRepository.findAllById(idsUnicos)
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        Pedido::getId,
+                        pedido -> pedido,
+                        (primeiro, segundo) -> primeiro,
+                        LinkedHashMap::new
+                ));
+
+        if (pedidosPorId.size() != idsUnicos.size()) {
+            throw new ResourceNotFoundException("Um ou mais pedidos não foram encontrados.");
+        }
+
+        List<Pedido> pedidos = idsUnicos.stream().map(pedidosPorId::get).toList();
+        if (pedidos.stream().anyMatch(pedido -> !isImprimivel(pedido.getStatus()))) {
+            throw new BusinessException(
+                    "Um ou mais pedidos selecionados não estão disponíveis para impressão."
+            );
+        }
+
+        return pedidos.stream().map(pedidoMapper::toResponse).toList();
+    }
+
+    public boolean isEditavel(StatusPedido status) {
+        return status != null && STATUS_EDITAVEIS.contains(status);
+    }
+
+    public boolean isImprimivel(StatusPedido status) {
+        return isEditavel(status);
+    }
+
+    public Set<StatusPedido> statusEditaveis() {
+        return STATUS_EDITAVEIS;
+    }
+
     public PedidoResponse salvar(PedidoRequest request) {
         Cliente cliente = buscarClientePorId(request.clienteId());
 
@@ -117,6 +179,7 @@ public class PedidoService {
             List<Long> itemIds
     ) {
         Pedido pedido = buscarEntidadePorId(id);
+        validarEditavel(pedido);
         Cliente cliente = buscarClientePorId(request.clienteId());
 
         pedido.setCliente(cliente);
@@ -129,6 +192,20 @@ public class PedidoService {
         atualizarItensERecalcular(pedido, request, itemIds);
 
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
+    }
+
+    private void validarEditavel(Pedido pedido) {
+        if (!isEditavel(pedido.getStatus())) {
+            throw new BusinessException("Este pedido não pode mais ser editado.");
+        }
+    }
+
+    private void validarImprimivel(Pedido pedido) {
+        if (!isImprimivel(pedido.getStatus())) {
+            throw new BusinessException(
+                    "A impressão não está disponível para este pedido."
+            );
+        }
     }
 
     public PedidoResponse alterarStatus(

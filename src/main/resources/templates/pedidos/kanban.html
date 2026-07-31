@@ -134,12 +134,23 @@
                             </button>
                         </form>
 
-                        <div class="d-flex gap-2">
-                            <a th:href="@{/pedidos/{id}/editar(id=${pedido.id})}"
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-outline-secondary flex-fill"
+                                    title="Visualizar pedido"
+                                    data-bs-toggle="modal" data-bs-target="#modalDetalhesPedido"
+                                    th:data-detalhes-url="@{/pedidos/{id}/detalhes(id=${pedido.id}, origem='kanban',
+                                        dataAgendada=${dataAgendadaIso}, mostrarCancelados=${mostrarCancelados})}">
+                                <i class="bi bi-eye"></i> Visualizar
+                            </button>
+                            <a th:if="${statusEditaveis.contains(pedido.status)}"
+                               th:href="@{/pedidos/{id}/editar(id=${pedido.id}, origem='kanban',
+                                    dataAgendada=${dataAgendadaIso}, mostrarCancelados=${mostrarCancelados})}"
                                class="btn btn-outline-secondary flex-fill" title="Editar pedido">
                                 <i class="bi bi-pencil"></i> Editar
                             </a>
-                            <a th:href="@{/pedidos/{id}/comanda(id=${pedido.id})}"
+                            <a th:if="${statusImprimiveis.contains(pedido.status)}"
+                               th:href="@{/pedidos/{id}/comanda(id=${pedido.id}, origem='kanban',
+                                    dataAgendada=${dataAgendadaIso}, mostrarCancelados=${mostrarCancelados})}"
                                class="btn btn-outline-secondary flex-fill" target="_blank" rel="noopener"
                                title="Imprimir comanda">
                                 <i class="bi bi-printer"></i> Imprimir
@@ -188,16 +199,13 @@
                         <div class="fw-bold" th:text="${pedido.clienteNome}"></div>
                         <div class="text-muted mb-3"
                              th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></div>
-                        <div class="d-flex gap-2">
-                            <a th:href="@{/pedidos/{id}/editar(id=${pedido.id})}"
-                               class="btn btn-outline-secondary flex-fill">
-                                <i class="bi bi-pencil"></i> Editar
-                            </a>
-                            <a th:href="@{/pedidos/{id}/comanda(id=${pedido.id})}"
-                               class="btn btn-outline-secondary flex-fill" target="_blank" rel="noopener">
-                                <i class="bi bi-printer"></i> Imprimir
-                            </a>
-                        </div>
+                        <button type="button" class="btn btn-outline-secondary w-100"
+                                title="Visualizar pedido"
+                                data-bs-toggle="modal" data-bs-target="#modalDetalhesPedido"
+                                th:data-detalhes-url="@{/pedidos/{id}/detalhes(id=${pedido.id}, origem='kanban',
+                                    dataAgendada=${dataAgendadaIso}, mostrarCancelados=${mostrarCancelados})}">
+                            <i class="bi bi-eye"></i> Visualizar
+                        </button>
                     </div>
                 </article>
             </div>

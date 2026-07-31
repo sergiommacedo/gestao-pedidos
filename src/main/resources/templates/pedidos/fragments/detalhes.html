@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="conteudo">
+    <div class="modal-header align-items-start">
+        <div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <h2 class="modal-title fs-4 mb-0" id="tituloModalDetalhesPedido"
+                    th:text="'Pedido #' + ${pedido.id}">Pedido #0</h2>
+                <span class="badge rounded-pill"
+                      th:classappend="${pedido.status.name() == 'CANCELADO'} ? ' text-bg-danger' :
+                          (${pedido.status.name() == 'ENTREGUE'} ? ' text-bg-success' :
+                          (${pedido.status.name() == 'PENDENTE'} ? ' text-bg-warning' :
+                          (${pedido.status.name() == 'SAIU_PARA_ENTREGA'} ? ' text-bg-info' : ' text-bg-primary')))"
+                      th:text="${pedido.status.descricao}">Status</span>
+            </div>
+            <div class="text-muted mt-1">
+                <i class="bi bi-calendar-event me-1"></i>
+                Agendado para
+                <strong th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></strong>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                aria-label="Fechar"></button>
+    </div>
+
+    <div class="modal-body">
+        <section class="card border-0 bg-body-tertiary mb-3" aria-label="Cliente">
+            <div class="card-body">
+                <h3 class="h6 text-uppercase text-muted mb-3">
+                    <i class="bi bi-person me-1"></i> Cliente
+                </h3>
+                <div class="row g-3">
+                    <div class="col-sm-7">
+                        <small class="text-muted d-block">Nome</small>
+                        <strong class="text-break" th:text="${pedido.clienteNome}"></strong>
+                    </div>
+                    <div class="col-sm-5">
+                        <small class="text-muted d-block">Telefone</small>
+                        <strong th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4" aria-label="Dados do pedido">
+            <div class="row g-3">
+                <div class="col-sm-4">
+                    <small class="text-muted d-block">Tipo de entrega</small>
+                    <strong th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></strong>
+                </div>
+                <div class="col-sm-4">
+                    <small class="text-muted d-block">Forma de pagamento</small>
+                    <strong th:text="${pedido.formaPagamento.descricao}"></strong>
+                </div>
+                <div class="col-sm-4">
+                    <small class="text-muted d-block">Pedido criado em</small>
+                    <strong th:text="${pedido.criadoEm != null
+                        ? #temporals.format(pedido.criadoEm, 'dd/MM/yyyy HH:mm') : '-'}"></strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4" aria-label="Itens do pedido">
+            <h3 class="h6 text-uppercase text-muted mb-2">
+                <i class="bi bi-basket2 me-1"></i> Itens
+            </h3>
+            <div class="border rounded overflow-hidden">
+                <div class="p-3 border-bottom" th:each="item : ${pedido.itens}">
+                    <div class="row g-2 align-items-start">
+                        <div class="col-12 col-sm">
+                            <strong class="text-break" th:text="${item.produtoNome}"></strong>
+                            <div class="small text-muted text-break"
+                                 th:if="${item.observacao != null and !item.observacao.isBlank()}">
+                                <i class="bi bi-chat-left-text me-1"></i>
+                                <span th:text="${item.observacao}"></span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-sm-auto">
+                            <small class="text-muted d-block">Quantidade</small>
+                            <span th:text="${@formatacao.formatarQuantidade(item.quantidade, item.unidadeVenda)}"></span>
+                        </div>
+                        <div class="col-6 col-sm-auto text-sm-end">
+                            <small class="text-muted d-block">Preço unitário</small>
+                            <span th:text="${@formatacao.formatarMoeda(item.valorUnitario)}"></span>
+                        </div>
+                        <div class="col-12 col-sm-auto text-sm-end">
+                            <small class="text-muted d-block">Subtotal</small>
+                            <strong th:text="${@formatacao.formatarMoeda(item.subtotal)}"></strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 text-center text-muted"
+                     th:if="${pedido.itens == null or pedido.itens.isEmpty()}">
+                    Nenhum item registrado.
+                </div>
+            </div>
+        </section>
+
+        <section class="alert alert-light border mb-4 text-break"
+                 th:if="${pedido.observacao != null and !pedido.observacao.isBlank()}">
+            <strong class="d-block mb-1">Observação geral</strong>
+            <span th:text="${pedido.observacao}"></span>
+        </section>
+
+        <section class="alert alert-danger mb-4 text-break"
+                 th:if="${pedido.status.name() == 'CANCELADO'}">
+            <h3 class="h6 alert-heading mb-2">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                Motivo do cancelamento
+            </h3>
+            <span th:text="${pedido.motivoCancelamento != null and !pedido.motivoCancelamento.isBlank()
+                ? pedido.motivoCancelamento : 'Motivo não informado.'}"></span>
+        </section>
+
+        <section class="border rounded p-3 ms-auto" style="max-width: 420px;" aria-label="Totais">
+            <div class="d-flex justify-content-between gap-3 mb-2">
+                <span class="text-muted">Subtotal</span>
+                <strong th:text="${@formatacao.formatarMoeda(pedido.subtotal)}"></strong>
+            </div>
+            <div class="d-flex justify-content-between gap-3 mb-2">
+                <span class="text-muted">Taxa de entrega</span>
+                <strong th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}"></strong>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between align-items-center gap-3">
+                <span class="fs-5 fw-semibold">Valor total</span>
+                <strong class="fs-4 text-primary"
+                        th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></strong>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal-footer flex-wrap">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+        <a th:if="${pedidoEditavel}"
+           th:href="@{/pedidos/{id}/editar(id=${pedido.id}, origem=${origem},
+                dataAgendada=${dataRetornoKanbanIso}, mostrarCancelados=${mostrarCancelados})}"
+           class="btn btn-secondary">
+            <i class="bi bi-pencil me-1"></i> Editar
+        </a>
+        <a th:if="${pedidoImprimivel}"
+           th:href="@{/pedidos/{id}/comanda(id=${pedido.id}, origem=${origem},
+                dataAgendada=${dataRetornoKanbanIso}, mostrarCancelados=${mostrarCancelados})}"
+           class="btn btn-primary" target="_blank" rel="noopener">
+            <i class="bi bi-printer me-1"></i> Imprimir
+        </a>
+    </div>
+</th:block>
+</body>
+</html>

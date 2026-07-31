@@ -131,6 +131,7 @@ public class PedidoWebController {
                         )
                 ));
         model.addAttribute("transicoesStatus", transicoesStatus);
+        adicionarPermissoesAcoes(model);
 
         return "pedidos/listar";
     }
@@ -197,6 +198,7 @@ public class PedidoWebController {
                 ));
         model.addAttribute("transicoesStatus", transicoesStatus);
         model.addAttribute("proximosStatus", proximosStatus);
+        adicionarPermissoesAcoes(model);
 
         return "pedidos/kanban";
     }
@@ -251,9 +253,26 @@ public class PedidoWebController {
     @GetMapping("/{id}/editar")
     public String editar(
             @PathVariable Long id,
-            Model model
+            @RequestParam(defaultValue = "lista") String origem,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate dataAgendada,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
+            Model model,
+            RedirectAttributes redirectAttributes
     ) {
-        PedidoResponse pedidoSalvo = pedidoService.buscarPorId(id);
+        PedidoResponse pedidoSalvo;
+        try {
+            pedidoSalvo = pedidoService.buscarParaEdicao(id);
+        } catch (BusinessException | ResourceNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
+            return redirecionarParaOrigem(
+                    origem,
+                    dataAgendada,
+                    mostrarCancelados,
+                    redirectAttributes
+            );
+        }
         PedidoRequest pedido = converterParaRequest(pedidoSalvo);
 
         model.addAttribute("pedido", pedido);
@@ -263,6 +282,7 @@ public class PedidoWebController {
                     .map(item -> item.id().toString())
                     .toList();
         prepararFormulario(model, pedido, id, itemIds);
+        adicionarOrigemFormulario(model, origem, dataAgendada, mostrarCancelados);
 
         return "pedidos/formulario";
     }
@@ -274,11 +294,34 @@ public class PedidoWebController {
             BindingResult bindingResult,
             @RequestParam(defaultValue = "salvar") String acao,
             @RequestParam(name = "itemIds", required = false) List<String> itemIds,
+            @RequestParam(defaultValue = "lista") String origem,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate dataRetornoKanban,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
             Model model,
             RedirectAttributes redirectAttributes
     ) {
+        try {
+            pedidoService.buscarParaEdicao(id);
+        } catch (BusinessException | ResourceNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
+            return redirecionarParaOrigem(
+                    origem,
+                    dataRetornoKanban,
+                    mostrarCancelados,
+                    redirectAttributes
+            );
+        }
+
         if (bindingResult.hasErrors()) {
             prepararFormulario(model, pedido, id, itemIds);
+            adicionarOrigemFormulario(
+                    model,
+                    origem,
+                    dataRetornoKanban,
+                    mostrarCancelados
+            );
             return "pedidos/formulario";
         }
 
@@ -290,6 +333,16 @@ public class PedidoWebController {
             );
 
             if ("salvarImprimir".equals(acao)) {
+                redirectAttributes.addAttribute("origem", origem);
+                if (dataRetornoKanban != null) {
+                    redirectAttributes.addAttribute(
+                            "dataAgendada",
+                            dataRetornoKanban.toString()
+                    );
+                }
+                if (mostrarCancelados) {
+                    redirectAttributes.addAttribute("mostrarCancelados", true);
+                }
                 return "redirect:/pedidos/" + pedidoAtualizado.id() + "/comanda";
             }
 
@@ -297,12 +350,45 @@ public class PedidoWebController {
                     "mensagemSucesso",
                     "Pedido atualizado com sucesso."
             );
-            return "redirect:/pedidos";
+            return redirecionarParaOrigem(
+                    origem,
+                    dataRetornoKanban,
+                    mostrarCancelados,
+                    redirectAttributes
+            );
         } catch (BusinessException | ResourceNotFoundException exception) {
             bindingResult.reject("pedido.invalido", exception.getMessage());
             prepararFormulario(model, pedido, id, itemIds);
+            adicionarOrigemFormulario(
+                    model,
+                    origem,
+                    dataRetornoKanban,
+                    mostrarCancelados
+            );
             return "pedidos/formulario";
         }
+    }
+
+    @GetMapping("/{id}/detalhes")
+    public String detalhes(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "lista") String origem,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate dataAgendada,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
+            Model model
+    ) {
+        PedidoResponse pedido = pedidoService.buscarPorId(id);
+        model.addAttribute("pedido", pedido);
+        model.addAttribute("pedidoEditavel", pedidoService.isEditavel(pedido.status()));
+        model.addAttribute("pedidoImprimivel", pedidoService.isImprimivel(pedido.status()));
+        model.addAttribute("origem", normalizarOrigem(origem));
+        model.addAttribute("dataRetornoKanbanIso", dataAgendada == null
+                ? null
+                : dataAgendada.toString());
+        model.addAttribute("mostrarCancelados", mostrarCancelados);
+        return "pedidos/fragments/detalhes :: conteudo";
     }
 
     @PostMapping("/{id}/status")
@@ -418,12 +504,25 @@ public class PedidoWebController {
     @GetMapping("/{id}/comanda")
     public String imprimirComanda(
             @PathVariable Long id,
-            Model model
+            @RequestParam(defaultValue = "lista") String origem,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate dataAgendada,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
+            Model model,
+            RedirectAttributes redirectAttributes
     ) {
-        prepararComandas(
-                model,
-                List.of(pedidoService.buscarPorId(id))
-        );
+        try {
+            prepararComandas(model, List.of(pedidoService.buscarParaImpressao(id)));
+        } catch (BusinessException | ResourceNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
+            return redirecionarParaOrigem(
+                    origem,
+                    dataAgendada,
+                    mostrarCancelados,
+                    redirectAttributes
+            );
+        }
 
         return "pedidos/comandas";
     }
@@ -431,9 +530,15 @@ public class PedidoWebController {
     @GetMapping("/comandas")
     public String imprimirComandas(
             @RequestParam List<Long> ids,
-            Model model
+            Model model,
+            RedirectAttributes redirectAttributes
     ) {
-        prepararComandas(model, pedidoService.buscarPorIds(ids));
+        try {
+            prepararComandas(model, pedidoService.buscarPorIdsParaImpressao(ids));
+        } catch (BusinessException | ResourceNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
+            return "redirect:/pedidos";
+        }
 
         return "pedidos/comandas";
     }
@@ -519,6 +624,47 @@ public class PedidoWebController {
         }
 
         model.addAttribute("produtosSelecionados", produtosSelecionados);
+    }
+
+    private void adicionarPermissoesAcoes(Model model) {
+        Set<StatusPedido> permitidos = pedidoService.statusEditaveis();
+        model.addAttribute("statusEditaveis", permitidos);
+        model.addAttribute("statusImprimiveis", permitidos);
+    }
+
+    private void adicionarOrigemFormulario(
+            Model model,
+            String origem,
+            LocalDate dataAgendada,
+            boolean mostrarCancelados
+    ) {
+        model.addAttribute("origem", normalizarOrigem(origem));
+        model.addAttribute("dataRetornoKanbanIso", dataAgendada == null
+                ? ""
+                : dataAgendada.toString());
+        model.addAttribute("mostrarCancelados", mostrarCancelados);
+    }
+
+    private String redirecionarParaOrigem(
+            String origem,
+            LocalDate dataAgendada,
+            boolean mostrarCancelados,
+            RedirectAttributes redirectAttributes
+    ) {
+        if ("kanban".equals(normalizarOrigem(origem))) {
+            if (dataAgendada != null) {
+                redirectAttributes.addAttribute("dataAgendada", dataAgendada.toString());
+            }
+            if (mostrarCancelados) {
+                redirectAttributes.addAttribute("mostrarCancelados", true);
+            }
+            return "redirect:/pedidos/kanban";
+        }
+        return "redirect:/pedidos";
+    }
+
+    private String normalizarOrigem(String origem) {
+        return "kanban".equals(origem) ? "kanban" : "lista";
     }
 
     private List<Long> converterItemIds(
