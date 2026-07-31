@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${'Alterar senha - ' + configuracaoEmpresa.nomeEmpresa}">Alterar senha</title>
+
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+
+<body class="login-page" th:classappend="${configuracaoEmpresa.temaCss}">
+<main class="login-container container px-3">
+    <section class="card login-card border-0" aria-labelledby="alterarSenhaTitulo">
+        <div class="card-body p-4 p-sm-5">
+            <header class="text-center mb-4">
+                <img class="login-logo mb-3"
+                     th:src="${configuracaoEmpresa.logoUrl}"
+                     th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}">
+                <h1 class="h3 fw-bold mb-2" id="alterarSenhaTitulo">Alterar senha inicial</h1>
+                <p class="text-body-secondary mb-0">
+                    Por segurança, altere sua senha inicial para continuar.
+                </p>
+            </header>
+
+            <form th:action="@{/alterar-senha-inicial}"
+                  th:object="${alteracaoSenha}"
+                  method="post">
+                <div class="alert alert-danger py-2" role="alert"
+                     th:if="${#fields.hasGlobalErrors()}">
+                    <p class="mb-0" th:each="erro : ${#fields.globalErrors()}" th:text="${erro}">
+                        Não foi possível alterar a senha.
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <label for="senhaAtual" class="form-label">Senha atual</label>
+                    <input type="password" id="senhaAtual" class="form-control"
+                           th:field="*{senhaAtual}" autocomplete="current-password" required autofocus
+                           th:classappend="${#fields.hasErrors('senhaAtual')} ? 'is-invalid'">
+                    <div class="invalid-feedback" th:errors="*{senhaAtual}"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="novaSenha" class="form-label">Nova senha</label>
+                    <input type="password" id="novaSenha" class="form-control"
+                           th:field="*{novaSenha}" autocomplete="new-password" minlength="6" required
+                           th:classappend="${#fields.hasErrors('novaSenha')} ? 'is-invalid'">
+                    <div class="invalid-feedback" th:errors="*{novaSenha}"></div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="confirmarNovaSenha" class="form-label">Confirmar nova senha</label>
+                    <input type="password" id="confirmarNovaSenha" class="form-control"
+                           th:field="*{confirmarNovaSenha}" autocomplete="new-password" minlength="6" required
+                           th:classappend="${#fields.hasErrors('confirmarNovaSenha')} ? 'is-invalid'">
+                    <div class="invalid-feedback" th:errors="*{confirmarNovaSenha}"></div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100">
+                    <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>
+                    Alterar senha
+                </button>
+            </form>
+        </div>
+    </section>
+</main>
+</body>
+</html>

@@ -2,6 +2,7 @@ package br.com.sergio.gestaopedidos.service;
 
 import br.com.sergio.gestaopedidos.dto.usuario.UsuarioRequest;
 import br.com.sergio.gestaopedidos.dto.usuario.UsuarioResponse;
+import br.com.sergio.gestaopedidos.dto.usuario.AlterarSenhaInicialRequest;
 import br.com.sergio.gestaopedidos.entity.Usuario;
 import br.com.sergio.gestaopedidos.exception.BusinessException;
 import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
@@ -87,6 +88,48 @@ public class UsuarioService {
         usuario.setAtivo(false);
     }
 
+    @Transactional(readOnly = true)
+    public boolean deveTrocarSenhaNoPrimeiroAcesso(String email) {
+        return Boolean.TRUE.equals(
+                buscarEntidadePorEmail(email).getTrocarSenhaPrimeiroAcesso()
+        );
+    }
+
+    public void alterarSenhaInicial(
+            String email,
+            AlterarSenhaInicialRequest request
+    ) {
+        Usuario usuario = buscarEntidadePorEmail(email);
+
+        if (!Boolean.TRUE.equals(usuario.getTrocarSenhaPrimeiroAcesso())) {
+            throw new BusinessException("A troca de senha inicial não é mais necessária.");
+        }
+
+        if (!passwordEncoder.matches(request.senhaAtual(), usuario.getSenha())) {
+            throw new BusinessException("Senha atual incorreta.");
+        }
+
+        if (request.novaSenha() == null || request.novaSenha().length() < 6) {
+            throw new BusinessException("Nova senha deve ter no mínimo 6 caracteres.");
+        }
+
+        if (!request.novaSenha().equals(request.confirmarNovaSenha())) {
+            throw new BusinessException("A confirmação da nova senha não coincide.");
+        }
+
+        if ("admin".equals(request.novaSenha())) {
+            throw new BusinessException("A nova senha não pode ser igual à senha inicial.");
+        }
+
+        if (passwordEncoder.matches(request.novaSenha(), usuario.getSenha())) {
+            throw new BusinessException("A nova senha deve ser diferente da senha atual.");
+        }
+
+        usuario.setSenha(passwordEncoder.encode(request.novaSenha()));
+        usuario.setTrocarSenhaPrimeiroAcesso(false);
+        usuarioRepository.save(usuario);
+    }
+
     private Usuario buscarEntidadePorId(Long id) {
         return usuarioRepository.findById(id)
                 .orElseThrow(() ->
@@ -94,6 +137,11 @@ public class UsuarioService {
                                 "Usuário não encontrado."
                         )
                 );
+    }
+
+    private Usuario buscarEntidadePorEmail(String email) {
+        return usuarioRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
     }
 
     private void validarEmailDuplicado(String email) {
