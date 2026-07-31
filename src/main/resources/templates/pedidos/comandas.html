@@ -10,6 +10,7 @@
 
     <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
     <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
 
     <style>
         :root {
@@ -195,7 +196,7 @@
     </style>
 </head>
 
-<body class="formato-etiqueta" data-pagina-comandas>
+<body class="formato-etiqueta" th:classappend="${configuracaoEmpresa.temaCss}" data-pagina-comandas>
 
 <div class="barra-impressao no-print">
     <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center gap-2">
