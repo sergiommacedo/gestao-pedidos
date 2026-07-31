@@ -20,6 +20,7 @@ public interface PedidoMapper {
 
     @Mapping(target = "produtoId", source = "produto.id")
     @Mapping(target = "produtoNome", source = "produto.nome")
+    @Mapping(target = "unidadeVenda", source = "produto.unidadeVenda")
     @Mapping(target = "valorUnitario", source = "precoUnitario")
     ItemPedidoResponse toItemResponse(ItemPedido itemPedido);
 

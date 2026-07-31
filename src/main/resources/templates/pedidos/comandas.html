@@ -192,7 +192,7 @@
             </div>
             <div>
                 <strong>Telefone:</strong>
-                <span th:text="${pedido.clienteTelefone}"></span>
+                <span th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></span>
             </div>
             <div>
                 <strong>Entrega:</strong>
@@ -222,11 +222,12 @@
                             Obs.: <span th:text="${item.observacao}"></span>
                         </small>
                     </td>
-                    <td class="text-center" th:text="${item.quantidade}"></td>
+                    <td class="text-center"
+                        th:text="${@formatacao.formatarQuantidade(item.quantidade, item.unidadeVenda)}"></td>
                     <td class="text-end text-nowrap"
-                        th:text="${#numbers.formatCurrency(item.valorUnitario)}"></td>
+                        th:text="${@formatacao.formatarMoeda(item.valorUnitario)}"></td>
                     <td class="text-end text-nowrap"
-                        th:text="${#numbers.formatCurrency(item.subtotal)}"></td>
+                        th:text="${@formatacao.formatarMoeda(item.subtotal)}"></td>
                 </tr>
                 <tr th:if="${pedido.itens == null or pedido.itens.isEmpty()}">
                     <td colspan="4" class="text-center">Pedido sem itens.</td>
@@ -244,11 +245,11 @@
         <footer class="comanda-total pt-3">
             <div class="d-flex justify-content-between">
                 <span>Taxa de entrega:</span>
-                <strong th:text="${#numbers.formatCurrency(pedido.taxaEntrega)}"></strong>
+                <strong th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}"></strong>
             </div>
             <div class="d-flex justify-content-between fs-5 mt-2">
                 <span class="fw-bold">VALOR TOTAL:</span>
-                <strong th:text="${#numbers.formatCurrency(pedido.valorTotal)}"></strong>
+                <strong th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></strong>
             </div>
         </footer>
     </article>

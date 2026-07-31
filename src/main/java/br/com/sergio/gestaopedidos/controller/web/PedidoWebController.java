@@ -108,6 +108,7 @@ public class PedidoWebController {
         model.addAttribute("paginaPedidos", paginaPedidos);
         model.addAttribute("pedidos", paginaPedidos.getContent());
         model.addAttribute("pedidosHoje", pedidoService.contarPedidosDeHoje());
+        model.addAttribute("dataHoje", LocalDate.now());
         model.addAttribute("filtro", filtroTratado);
         model.addAttribute("statusSelecionado", status);
         model.addAttribute("dataAgendada", dataAgendada);

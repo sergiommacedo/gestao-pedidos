@@ -2,6 +2,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     inicializarMascaras();
     inicializarBuscaCep();
+    inicializarMascaraMonetaria();
+    inicializarDatasBrasileiras();
     inicializarModalExclusao();
     inicializarSelecaoPedidos();
     inicializarImpressaoComandas();
@@ -12,27 +14,130 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function inicializarMascaras() {
 
-    const telefoneInput = document.querySelector("#telefone");
-    const cepInput = document.querySelector("#cep");
-
-    if (telefoneInput && typeof Inputmask !== "undefined") {
-
-        Inputmask({
-            mask: "(99) 99999-9999",
-            clearIncomplete: true
-        }).mask(telefoneInput);
-
+    if (typeof Inputmask === "undefined") {
+        return;
     }
 
-    if (cepInput && typeof Inputmask !== "undefined") {
+    document.querySelectorAll("#telefone, [data-mascara-telefone]").forEach(campo => {
+        Inputmask({
+            mask: "(99) 9999[9]-9999",
+            clearIncomplete: true
+        }).mask(campo);
+    });
 
+    document.querySelectorAll("#cep, [data-mascara-cep]").forEach(campo => {
         Inputmask({
             mask: "99999-999",
             clearIncomplete: true
-        }).mask(cepInput);
+        }).mask(campo);
+    });
 
+}
+
+
+function formatarTelefone(valor) {
+    const digitos = String(valor ?? "").replace(/\D/g, "");
+
+    if (digitos.length === 11) {
+        return digitos.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
     }
 
+    if (digitos.length === 10) {
+        return digitos.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    }
+
+    return valor ?? "";
+}
+
+
+function formatarCep(valor) {
+    const digitos = String(valor ?? "").replace(/\D/g, "");
+    return digitos.length === 8
+        ? digitos.replace(/(\d{5})(\d{3})/, "$1-$2")
+        : valor ?? "";
+}
+
+
+function converterMoedaBrasileiraParaDecimal(valor) {
+    const decimal = converterNumeroBrasileiroParaDecimal(valor);
+    const numero = Number.parseFloat(decimal);
+    return Number.isFinite(numero) ? numero.toFixed(2) : "0.00";
+}
+
+
+function converterNumeroBrasileiroParaDecimal(valor) {
+    let texto = String(valor ?? "")
+        .replace(/R\$/g, "")
+        .replace(/\s/g, "")
+        .trim();
+
+    if (!texto) {
+        return "0";
+    }
+
+    if (texto.includes(",")) {
+        texto = texto.replace(/\./g, "").replace(",", ".");
+    } else if ((texto.match(/\./g) || []).length === 1) {
+        const casas = texto.length - texto.lastIndexOf(".") - 1;
+        texto = casas <= 2 ? texto : texto.replace(".", "");
+    } else {
+        texto = texto.replace(/\./g, "");
+    }
+
+    texto = texto.replace(/[^\d.-]/g, "");
+    const numero = Number.parseFloat(texto);
+    return Number.isFinite(numero) ? String(numero) : "0";
+}
+
+
+function inicializarMascaraMonetaria() {
+    document.querySelectorAll("[data-moeda-visual]").forEach(campoVisual => {
+        const campoDecimal = campoVisual.parentElement
+            .querySelector("[data-moeda-decimal]");
+
+        if (!campoDecimal) {
+            return;
+        }
+
+        const sincronizar = () => {
+            campoDecimal.value = converterMoedaBrasileiraParaDecimal(campoVisual.value);
+            campoDecimal.dispatchEvent(new Event("input", {bubbles: true}));
+        };
+
+        campoVisual.addEventListener("input", sincronizar);
+        campoVisual.addEventListener("blur", () => {
+            sincronizar();
+            campoVisual.value = new Intl.NumberFormat("pt-BR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(Number(campoDecimal.value));
+        });
+        sincronizar();
+    });
+}
+
+
+function inicializarDatasBrasileiras() {
+    document.querySelectorAll("[data-data-brasileira]").forEach(campoVisual => {
+        const campoIso = campoVisual.parentElement.querySelector("[data-data-iso]");
+
+        if (!campoIso) {
+            return;
+        }
+
+        campoVisual.addEventListener("input", () => {
+            const digitos = campoVisual.value.replace(/\D/g, "").slice(0, 8);
+            campoVisual.value = digitos
+                .replace(/^(\d{2})(\d)/, "$1/$2")
+                .replace(/^(\d{2}\/\d{2})(\d)/, "$1/$2");
+
+            if (digitos.length === 8) {
+                campoIso.value = `${digitos.slice(4, 8)}-${digitos.slice(2, 4)}-${digitos.slice(0, 2)}`;
+            } else {
+                campoIso.value = "";
+            }
+        });
+    });
 }
 
 
@@ -73,7 +178,7 @@ function inicializarFormularioPedido() {
     function selecionarCliente(cliente) {
         clienteId.value = cliente.id;
         clienteNome.textContent = cliente.nome;
-        clienteTelefone.textContent = cliente.telefone;
+        clienteTelefone.textContent = formatarTelefone(cliente.telefone);
         clienteSelecionado.classList.remove("d-none");
         resultadosClientes.classList.add("d-none");
         buscaCliente.value = "";
@@ -110,7 +215,7 @@ function inicializarFormularioPedido() {
             nome.className = "fw-semibold";
             nome.textContent = cliente.nome;
             telefone.className = "text-muted";
-            telefone.textContent = cliente.telefone;
+            telefone.textContent = formatarTelefone(cliente.telefone);
             conteudo.append(nome, telefone);
             resultadosClientes.appendChild(
                 criarBotaoResultado(conteudo, () => selecionarCliente(cliente))
@@ -198,21 +303,45 @@ function inicializarFormularioPedido() {
         itensContainer.querySelectorAll(".item-pedido").forEach(item => {
             const preco = Number.parseFloat(item.dataset.produtoPreco) || 0;
             const quantidade = Number.parseFloat(
-                item.querySelector("[data-item-quantidade]").value.replace(",", ".")
+                item.querySelector("[data-item-quantidade]").value
             ) || 0;
             const subtotalItem = preco * quantidade;
             item.querySelector("[data-item-subtotal]").textContent = formatarMoeda(subtotalItem);
             subtotal += subtotalItem;
         });
 
-        const taxa = Number.parseFloat(taxaEntrega.value.replace(",", ".")) || 0;
+        const taxa = Number.parseFloat(taxaEntrega.value) || 0;
         subtotalPedido.textContent = formatarMoeda(subtotal);
         resumoTaxa.textContent = formatarMoeda(taxa);
         totalPedido.textContent = formatarMoeda(subtotal + taxa);
     }
 
     function ativarItem(item) {
-        item.querySelector("[data-item-quantidade]").addEventListener("input", recalcularPedido);
+        const quantidadeVisual = item.querySelector("[data-item-quantidade-visual]");
+        const quantidadeDecimal = item.querySelector("[data-item-quantidade]");
+        const quilograma = item.dataset.produtoUnidade === "QUILOGRAMA";
+
+        const sincronizarQuantidade = () => {
+            quantidadeDecimal.value = converterNumeroBrasileiroParaDecimal(
+                quantidadeVisual.value
+            );
+            recalcularPedido();
+        };
+
+        quantidadeVisual.addEventListener("input", sincronizarQuantidade);
+        quantidadeVisual.addEventListener("blur", () => {
+            sincronizarQuantidade();
+            const numero = Number.parseFloat(quantidadeDecimal.value) || 0;
+            quantidadeVisual.value = quilograma
+                ? new Intl.NumberFormat("pt-BR", {
+                    minimumFractionDigits: 3,
+                    maximumFractionDigits: 3
+                }).format(numero)
+                : new Intl.NumberFormat("pt-BR", {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 3
+                }).format(numero);
+        });
         item.querySelector("[data-remover-item]").addEventListener("click", () => {
             item.remove();
             reindexarItens();
@@ -226,7 +355,7 @@ function inicializarFormularioPedido() {
         );
 
         if (existente) {
-            existente.querySelector("[data-item-quantidade]").focus();
+            existente.querySelector("[data-item-quantidade-visual]").focus();
             return;
         }
 
@@ -236,7 +365,6 @@ function inicializarFormularioPedido() {
         item.dataset.produtoPreco = produto.preco;
         item.dataset.produtoUnidade = produto.unidadeVenda;
         item.dataset.permiteAcompanhamento = produto.permiteAcompanhamento;
-        const passo = produto.unidadeVenda === "UNIDADE" ? "1" : "0.001";
         const unidade = produto.unidadeVenda === "UNIDADE" ? "Unidade" : "Quilograma";
         const esconderObservacao = produto.permiteAcompanhamento ? "" : " d-none";
 
@@ -250,8 +378,9 @@ function inicializarFormularioPedido() {
                     </div>
                     <div class="col-sm-4 col-md-3">
                         <label class="form-label small">Quantidade *</label>
-                        <input type="number" class="form-control" value="1" min="0.001"
-                               step="${passo}" data-item-quantidade required>
+                        <input type="text" class="form-control" value="${produto.unidadeVenda === "UNIDADE" ? "1" : "1,000"}"
+                               inputmode="decimal" data-item-quantidade-visual required>
+                        <input type="hidden" value="1" data-item-quantidade>
                     </div>
                     <div class="col-sm-5 col-md-3 text-md-end">
                         <small class="text-muted d-block">Subtotal</small>
@@ -406,135 +535,89 @@ function inicializarImpressaoComandas() {
 
 function inicializarBuscaCep() {
 
-    const cepInput = document.querySelector("#cep");
-    const enderecoInput = document.querySelector("#endereco");
-    const bairroInput = document.querySelector("#bairro");
-    const cidadeInput = document.querySelector("#cidade");
-    const numeroInput = document.querySelector("#numero");
+    document.querySelectorAll("#cep, [data-cep]").forEach(cepInput => {
+        const obterCampo = (atributo, seletorPadrao) => document.querySelector(
+            cepInput.dataset[atributo] || seletorPadrao
+        );
+        const enderecoInput = obterCampo("endereco", "#endereco");
+        const bairroInput = obterCampo("bairro", "#bairro");
+        const cidadeInput = obterCampo("cidade", "#cidade");
+        const numeroInput = obterCampo("numero", "#numero");
 
-    if (!cepInput) {
-        return;
-    }
+        cepInput.addEventListener("blur", async () => {
+            const cep = cepInput.value.replace(/\D/g, "");
+            limparErroCep();
 
-    cepInput.addEventListener("blur", buscarCep);
-
-    async function buscarCep() {
-
-        const cep = cepInput.value.replace(/\D/g, "");
-
-        limparErroCep();
-
-        if (cep.length === 0) {
-            return;
-        }
-
-        if (cep.length !== 8) {
-            mostrarErroCep("Informe um CEP válido.");
-            return;
-        }
-
-        definirCarregamento(true);
-
-        try {
-
-            const response = await fetch(
-                `https://viacep.com.br/ws/${cep}/json/`
-            );
-
-            if (!response.ok) {
-                throw new Error("Erro ao consultar o CEP.");
-            }
-
-            const dados = await response.json();
-
-            if (dados.erro) {
-                mostrarErroCep("CEP não encontrado.");
+            if (cep.length === 0) {
                 return;
             }
 
-            preencherCampo(enderecoInput, dados.logradouro);
-            preencherCampo(bairroInput, dados.bairro);
-            preencherCampo(cidadeInput, dados.localidade);
-
-            if (numeroInput) {
-                numeroInput.focus();
+            if (cep.length !== 8) {
+                mostrarErroCep("Informe um CEP válido.");
+                return;
             }
 
-        } catch (erro) {
+            definirCarregamento(true);
 
-            console.error("Erro na consulta do CEP:", erro);
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
 
-            mostrarErroCep(
-                "Não foi possível consultar o CEP. Tente novamente."
-            );
+                if (!response.ok) {
+                    throw new Error("Erro ao consultar o CEP.");
+                }
 
-        } finally {
+                const dados = await response.json();
 
-            definirCarregamento(false);
+                if (dados.erro) {
+                    mostrarErroCep("CEP não encontrado.");
+                    return;
+                }
 
+                preencherCampo(enderecoInput, dados.logradouro);
+                preencherCampo(bairroInput, dados.bairro);
+                preencherCampo(cidadeInput, dados.localidade);
+                numeroInput?.focus();
+            } catch (erro) {
+                console.error("Erro na consulta do CEP:", erro);
+                mostrarErroCep("Não foi possível consultar o CEP. Tente novamente.");
+            } finally {
+                definirCarregamento(false);
+            }
+        });
+
+        function preencherCampo(campo, valor) {
+            if (!campo) {
+                return;
+            }
+
+            campo.value = valor ?? "";
+            campo.dispatchEvent(new Event("input", {bubbles: true}));
         }
 
-    }
-
-    function preencherCampo(campo, valor) {
-
-        if (!campo) {
-            return;
+        function definirCarregamento(carregando) {
+            cepInput.readOnly = carregando;
+            cepInput.classList.toggle("bg-light", carregando);
         }
 
-        campo.value = valor ?? "";
+        function mostrarErroCep(mensagem) {
+            cepInput.classList.add("is-invalid");
+            let feedback = cepInput.parentElement.querySelector("[data-cep-feedback]");
 
-        campo.dispatchEvent(
-            new Event("input", {
-                bubbles: true
-            })
-        );
+            if (!feedback) {
+                feedback = document.createElement("div");
+                feedback.className = "invalid-feedback";
+                feedback.dataset.cepFeedback = "";
+                cepInput.parentElement.appendChild(feedback);
+            }
 
-    }
-
-    function definirCarregamento(carregando) {
-
-        cepInput.readOnly = carregando;
-
-        if (carregando) {
-            cepInput.classList.add("bg-light");
-        } else {
-            cepInput.classList.remove("bg-light");
+            feedback.textContent = mensagem;
         }
 
-    }
-
-    function mostrarErroCep(mensagem) {
-
-        cepInput.classList.add("is-invalid");
-
-        let feedback = document.querySelector("#cep-feedback");
-
-        if (!feedback) {
-
-            feedback = document.createElement("div");
-            feedback.id = "cep-feedback";
-            feedback.className = "invalid-feedback";
-
-            cepInput.parentElement.appendChild(feedback);
-
+        function limparErroCep() {
+            cepInput.classList.remove("is-invalid");
+            cepInput.parentElement.querySelector("[data-cep-feedback]")?.remove();
         }
-
-        feedback.textContent = mensagem;
-
-    }
-
-    function limparErroCep() {
-
-        cepInput.classList.remove("is-invalid");
-
-        const feedback = document.querySelector("#cep-feedback");
-
-        if (feedback) {
-            feedback.remove();
-        }
-
-    }
+    });
 
 }
 

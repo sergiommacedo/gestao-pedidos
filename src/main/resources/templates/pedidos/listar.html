@@ -30,6 +30,7 @@
             <div>
                 <div class="text-muted fs-6">Pedidos de Hoje</div>
                 <div class="display-6 fw-semibold lh-1" th:text="${pedidosHoje}">0</div>
+                <div class="fw-semibold mt-1" th:text="${#temporals.format(dataHoje, 'dd/MM/yyyy')}"></div>
                 <small class="text-muted">Agendados para hoje, sem considerar cancelados</small>
             </div>
         </div>
@@ -59,9 +60,13 @@
                 </div>
 
                 <div class="col-lg-2 col-md-6">
-                    <label for="dataAgendada" class="form-label">Data agendada</label>
-                    <input type="date" id="dataAgendada" name="dataAgendada" class="form-control"
-                           th:value="${dataAgendada}">
+                    <label for="dataAgendadaVisual" class="form-label">Data agendada</label>
+                    <input type="text" id="dataAgendadaVisual" class="form-control"
+                           inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"
+                           th:value="${dataAgendada != null
+                                ? #temporals.format(dataAgendada, 'dd/MM/yyyy') : ''}"
+                           data-data-brasileira>
+                    <input type="hidden" name="dataAgendada" th:value="${dataAgendada}" data-data-iso>
                 </div>
 
                 <div class="col-lg-2 d-grid">
@@ -187,7 +192,7 @@
                         <td class="fw-semibold" th:text="${pedido.id}"></td>
                         <td class="text-nowrap" th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></td>
                         <td th:text="${pedido.clienteNome}"></td>
-                        <td class="text-nowrap" th:text="${pedido.clienteTelefone}"></td>
+                        <td class="text-nowrap" th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></td>
                         <td>
                             <span class="badge rounded-pill"
                                   th:classappend="${pedido.status.name() == 'CANCELADO'} ? ' text-bg-danger' :
@@ -202,7 +207,7 @@
                         </td>
                         <td th:text="${pedido.formaPagamento.descricao}"></td>
                         <td class="text-end fw-semibold text-nowrap"
-                            th:text="${#numbers.formatCurrency(pedido.valorTotal)}"></td>
+                            th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></td>
                         <td class="text-center">
                             <a th:href="@{/pedidos/{id}/comanda(id=${pedido.id})}"
                                class="btn btn-sm btn-outline-primary"
