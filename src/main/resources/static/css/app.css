@@ -72,6 +72,62 @@ body {
     color: var(--color-text);
 }
 
+.login-page {
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    background-color: color-mix(in srgb, var(--app-primary-soft) 55%, #ffffff);
+}
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 430px;
+    border-top: 4px solid var(--app-primary) !important;
+    box-shadow: 0 0.75rem 2rem
+        color-mix(in srgb, var(--app-primary) 14%, transparent);
+}
+
+.login-logo {
+    width: 88px;
+    height: 88px;
+    object-fit: cover;
+    border: 3px solid var(--app-border-accent);
+    border-radius: 50%;
+    background-color: #ffffff;
+}
+
+.login-card .form-control:focus,
+.login-card .form-select:focus {
+    border-color: var(--app-border-accent);
+    box-shadow: 0 0 0 0.2rem
+        color-mix(in srgb, var(--app-primary) 18%, transparent);
+}
+
+.login-card .input-group:focus-within .input-group-text {
+    color: var(--app-primary);
+    border-color: var(--app-border-accent);
+}
+
+@media (max-width: 575.98px) {
+    .login-container {
+        align-items: stretch;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .login-logo {
+        width: 76px;
+        height: 76px;
+    }
+}
+
 .app-navbar {
     min-height: var(--navbar-height);
     background-color: var(--color-primary);

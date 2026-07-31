@@ -11,8 +11,37 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarDropdownsStatus();
     inicializarImpressaoComandas();
     inicializarFormularioPedido();
+    inicializarAlternanciaSenha();
 
 });
+
+
+function inicializarAlternanciaSenha() {
+
+    document.querySelectorAll("[data-alternar-senha]").forEach(botao => {
+        const campo = document.querySelector(botao.dataset.campoSenha);
+
+        if (!campo) {
+            return;
+        }
+
+        botao.addEventListener("click", () => {
+            const senhaVisivel = campo.type === "text";
+            campo.type = senhaVisivel ? "password" : "text";
+
+            const novoRotulo = senhaVisivel ? "Mostrar senha" : "Ocultar senha";
+            botao.setAttribute("aria-label", novoRotulo);
+            botao.setAttribute("title", novoRotulo);
+            botao.setAttribute("aria-pressed", String(!senhaVisivel));
+
+            const icone = botao.querySelector("i");
+            icone?.classList.toggle("bi-eye", senhaVisivel);
+            icone?.classList.toggle("bi-eye-slash", !senhaVisivel);
+
+            campo.focus();
+        });
+    });
+}
 
 
 function inicializarModalDetalhesPedido() {
