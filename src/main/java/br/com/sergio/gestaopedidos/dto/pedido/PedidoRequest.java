@@ -5,12 +5,14 @@ import br.com.sergio.gestaopedidos.enums.TipoEntrega;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Builder
@@ -24,6 +26,15 @@ public record PedidoRequest(
         )
         @NotNull(message = "Cliente é obrigatório.")
         Long clienteId,
+
+        @Schema(
+                description = "Data agendada para o pedido",
+                example = "2026-08-01",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @NotNull(message = "Data agendada é obrigatória.")
+        @FutureOrPresent(message = "Data agendada não pode ser anterior à data atual.")
+        LocalDate dataAgendada,
 
         @Schema(
                 description = "Forma de pagamento",

@@ -15,10 +15,13 @@ import br.com.sergio.gestaopedidos.repository.ClienteRepository;
 import br.com.sergio.gestaopedidos.repository.PedidoRepository;
 import br.com.sergio.gestaopedidos.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -38,6 +41,32 @@ public class PedidoService {
                 .stream()
                 .map(pedidoMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PedidoResponse> listarPaginado(
+            String filtro,
+            StatusPedido status,
+            LocalDate dataAgendada,
+            Pageable pageable
+    ) {
+        String filtroTratado = filtro == null ? "" : filtro.trim();
+
+        return pedidoRepository.buscarPaginado(
+                        filtroTratado,
+                        status,
+                        dataAgendada,
+                        pageable
+                )
+                .map(pedidoMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public long contarPedidosDeHoje() {
+        return pedidoRepository.countByDataAgendadaAndStatusNot(
+                LocalDate.now(),
+                StatusPedido.CANCELADO
+        );
     }
 
     @Transactional(readOnly = true)
@@ -89,6 +118,7 @@ public class PedidoService {
 
         return Pedido.builder()
                 .dataPedido(LocalDateTime.now())
+                .dataAgendada(request.dataAgendada())
                 .status(StatusPedido.PENDENTE)
                 .formaPagamento(request.formaPagamento())
                 .tipoEntrega(request.tipoEntrega())

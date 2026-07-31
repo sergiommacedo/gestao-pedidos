@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,6 +23,12 @@ public record PedidoResponse(
 
         @Schema(description = "Nome do cliente", example = "João da Silva")
         String clienteNome,
+
+        @Schema(description = "Telefone do cliente", example = "(41) 99999-9999")
+        String clienteTelefone,
+
+        @Schema(description = "Data agendada para o pedido", example = "2026-08-01")
+        LocalDate dataAgendada,
 
         @Schema(description = "Status atual do pedido", example = "ABERTO")
         StatusPedido status,
