@@ -20,7 +20,11 @@
                      th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}">
                 <h1 class="h3 fw-bold mb-2" id="loginTitulo"
                     th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</h1>
-                <p class="text-body-secondary mb-0">Acesse sua conta para continuar</p>
+                <p class="text-body-secondary mb-1"
+                   th:text="${configuracaoEmpresa.textoBoasVindas}">
+                    Bem-vindo ao sistema.
+                </p>
+                <small class="text-body-secondary">Acesse sua conta para continuar</small>
             </header>
 
             <div id="loginErro" class="alert alert-danger d-flex align-items-center gap-2 py-2"

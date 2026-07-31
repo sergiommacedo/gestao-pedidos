@@ -32,7 +32,7 @@ public class ConfiguracaoEmpresaWebController {
 
     @GetMapping
     public String formulario(Model model) {
-        ConfiguracaoEmpresaResponse atual = configuracaoEmpresaService.buscarConfiguracao();
+        ConfiguracaoEmpresaResponse atual = configuracaoEmpresaService.getConfiguracaoAtual();
         model.addAttribute("configuracao", new ConfiguracaoEmpresaRequest(
                 atual.nomeEmpresa(),
                 atual.nomeCurto(),
@@ -53,7 +53,7 @@ public class ConfiguracaoEmpresaWebController {
             Model model,
             RedirectAttributes redirectAttributes
     ) {
-        ConfiguracaoEmpresaResponse atual = configuracaoEmpresaService.buscarConfiguracao();
+        ConfiguracaoEmpresaResponse atual = configuracaoEmpresaService.getConfiguracaoAtual();
 
         if (bindingResult.hasErrors()) {
             prepararPreview(model, atual);
@@ -62,7 +62,8 @@ public class ConfiguracaoEmpresaWebController {
         }
 
         try {
-            configuracaoEmpresaService.salvarOuAtualizar(configuracao, logo, removerLogo);
+            configuracaoEmpresaService.atualizarConfiguracao(configuracao, logo, removerLogo);
+            configuracaoEmpresaService.refresh();
         } catch (BusinessException exception) {
             bindingResult.reject("configuracao.logo.invalida", exception.getMessage());
             prepararPreview(model, atual);
@@ -72,8 +73,9 @@ public class ConfiguracaoEmpresaWebController {
 
         redirectAttributes.addFlashAttribute(
                 "mensagemSucesso",
-                "Configurações atualizadas com sucesso."
+                "Configurações aplicadas com sucesso."
         );
+        redirectAttributes.addFlashAttribute("configuracoesAplicadas", true);
         return "redirect:/configuracoes";
     }
 

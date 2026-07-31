@@ -40,6 +40,7 @@
                                 <label for="nomeCurto" class="form-label">Nome curto *</label>
                                 <input type="text" id="nomeCurto" class="form-control"
                                        th:field="*{nomeCurto}" maxlength="60" required
+                                       data-preview-nome-curto
                                        th:classappend="${#fields.hasErrors('nomeCurto')} ? 'is-invalid'">
                                 <div class="invalid-feedback" th:errors="*{nomeCurto}"></div>
                             </div>
@@ -48,6 +49,7 @@
                                 <label for="textoBoasVindas" class="form-label">Texto de boas-vindas</label>
                                 <textarea id="textoBoasVindas" class="form-control" rows="3"
                                           th:field="*{textoBoasVindas}" maxlength="255"
+                                          data-preview-boas-vindas
                                           th:classappend="${#fields.hasErrors('textoBoasVindas')} ? 'is-invalid'"></textarea>
                                 <div class="invalid-feedback" th:errors="*{textoBoasVindas}"></div>
                                 <div class="form-text">Até 255 caracteres.</div>
@@ -64,14 +66,24 @@
                         <fieldset class="mb-4">
                             <legend class="form-label fs-6">Tema *</legend>
                             <div class="row g-2">
-                                <div class="col-sm-6 col-xl" th:each="tema : ${temas}">
-                                    <label class="config-theme-option w-100"
+                                <div class="col-sm-6 col-xl-4" th:each="tema : ${temas}">
+                                    <label class="config-theme-option d-block w-100 position-relative"
                                            th:classappend="${tema.identificadorCss}">
-                                        <input type="radio" class="form-check-input"
+                                        <input type="radio" class="visually-hidden"
                                                th:field="*{tema}" th:value="${tema}"
                                                th:data-theme-css="${tema.identificadorCss}" required>
-                                        <span class="config-theme-swatch" aria-hidden="true"></span>
-                                        <span th:text="${tema.descricao}">Tema</span>
+                                        <span class="config-theme-check" aria-hidden="true">
+                                            <i class="bi bi-check-lg"></i>
+                                        </span>
+                                        <span class="config-theme-mini-navbar d-block mb-2"></span>
+                                        <span class="d-flex align-items-center justify-content-between gap-2">
+                                            <strong th:text="${tema.descricao}">Tema</strong>
+                                            <span class="config-theme-swatch" aria-hidden="true"></span>
+                                        </span>
+                                        <span class="d-flex align-items-center gap-2 mt-2" aria-hidden="true">
+                                            <span class="config-theme-mini-button">Botão</span>
+                                            <span class="config-theme-mini-badge">Badge</span>
+                                        </span>
                                     </label>
                                 </div>
                             </div>
@@ -106,15 +118,44 @@
                         <h3 class="h5 mb-0"><i class="bi bi-eye me-2"></i>Pré-visualização</h3>
                     </div>
                     <div class="card-body p-4">
-                        <div class="config-navbar-preview rounded-3 p-3 d-flex align-items-center gap-3">
-                            <img th:src="${logoAtualUrl}" alt="Pré-visualização da logo"
-                                 class="config-logo-preview" data-logo-empresa-preview>
-                            <strong data-preview-nome th:text="*{nomeEmpresa}">Empresa</strong>
-                        </div>
+                        <div class="config-mini-app overflow-hidden rounded-3">
+                            <div class="config-navbar-preview p-3 d-flex align-items-center gap-3">
+                                <img th:src="${logoAtualUrl}" alt="Pré-visualização da logo"
+                                     class="config-logo-preview" data-logo-empresa-preview>
+                                <div class="min-w-0">
+                                    <strong class="d-block text-truncate" data-preview-nome-curto-output
+                                            th:text="*{nomeCurto}">Empresa</strong>
+                                    <small class="opacity-75">Painel administrativo</small>
+                                </div>
+                            </div>
 
-                        <div class="config-color-preview mt-4 rounded-3 p-4 text-center">
-                            <p class="mb-3">A cor principal será aplicada à navegação e aos destaques.</p>
-                            <button type="button" class="btn btn-primary">Botão principal</button>
+                            <div class="d-flex config-mini-workspace">
+                                <aside class="config-sidebar-preview p-3" aria-hidden="true">
+                                    <img th:src="${logoAtualUrl}" alt=""
+                                         class="config-mini-sidebar-logo mb-3" data-logo-empresa-preview>
+                                    <div class="config-mini-nav-item active"><i class="bi bi-house"></i></div>
+                                    <div class="config-mini-nav-item"><i class="bi bi-card-checklist"></i></div>
+                                    <div class="config-mini-nav-item"><i class="bi bi-people"></i></div>
+                                </aside>
+
+                                <div class="config-main-preview flex-grow-1 p-3">
+                                    <h4 class="h6 mb-1" data-preview-nome th:text="*{nomeEmpresa}">Empresa</h4>
+                                    <p class="small mb-3 text-body-secondary" data-preview-boas-vindas-output
+                                       th:text="*{textoBoasVindas}">Bem-vindo ao sistema.</p>
+
+                                    <div class="config-example-card rounded-3 p-3 mb-3">
+                                        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+                                            <span class="fw-semibold"><i class="bi bi-stars me-1"></i>Card exemplo</span>
+                                            <span class="config-preview-badge">Ativo</span>
+                                        </div>
+                                        <label class="form-label small" for="campoPreview">Campo</label>
+                                        <input id="campoPreview" class="form-control form-control-sm" value="Conteúdo" readonly>
+                                    </div>
+
+                                    <button type="button" class="btn btn-primary btn-sm">Botão principal</button>
+                                    <a href="#" class="config-preview-link small ms-2" onclick="return false;">Link</a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -127,6 +168,12 @@
                 <i class="bi bi-check-circle me-1"></i>
                 Salvar alterações
             </button>
+        </div>
+
+        <div class="alert alert-success d-flex align-items-center gap-2 mt-3 mb-0"
+             role="status" th:if="${configuracoesAplicadas}">
+            <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+            <span>As alterações já estão sendo utilizadas em todo o sistema.</span>
         </div>
     </form>
 </section>

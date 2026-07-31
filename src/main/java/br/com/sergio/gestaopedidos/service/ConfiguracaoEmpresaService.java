@@ -32,6 +32,11 @@ public class ConfiguracaoEmpresaService {
 
     @Transactional
     public ConfiguracaoEmpresaResponse buscarConfiguracao() {
+        return getConfiguracaoAtual();
+    }
+
+    @Transactional
+    public ConfiguracaoEmpresaResponse getConfiguracaoAtual() {
         ConfiguracaoEmpresaResponse configuracaoCacheada = configuracaoEmCache;
 
         if (configuracaoCacheada != null) {
@@ -40,10 +45,7 @@ public class ConfiguracaoEmpresaService {
 
         synchronized (bloqueioCache) {
             if (configuracaoEmCache == null) {
-                ConfiguracaoEmpresa configuracao = configuracaoEmpresaRepository
-                        .findById(CONFIGURACAO_ID)
-                        .orElseGet(this::criarConfiguracaoPadrao);
-                configuracaoEmCache = converterParaResponse(configuracao);
+                configuracaoEmCache = carregarConfiguracao();
             }
 
             return configuracaoEmCache;
@@ -54,11 +56,20 @@ public class ConfiguracaoEmpresaService {
     public ConfiguracaoEmpresaResponse salvarOuAtualizar(
             @Valid ConfiguracaoEmpresaRequest request
     ) {
-        return salvarOuAtualizar(request, null, false);
+        return atualizarConfiguracao(request, null, false);
     }
 
     @Transactional
     public ConfiguracaoEmpresaResponse salvarOuAtualizar(
+            @Valid ConfiguracaoEmpresaRequest request,
+            MultipartFile novaLogo,
+            boolean removerLogo
+    ) {
+        return atualizarConfiguracao(request, novaLogo, removerLogo);
+    }
+
+    @Transactional
+    public ConfiguracaoEmpresaResponse atualizarConfiguracao(
             @Valid ConfiguracaoEmpresaRequest request,
             MultipartFile novaLogo,
             boolean removerLogo
@@ -86,7 +97,7 @@ public class ConfiguracaoEmpresaService {
             ConfiguracaoEmpresa configuracaoSalva =
                     configuracaoEmpresaRepository.saveAndFlush(configuracao);
             ConfiguracaoEmpresaResponse response = converterParaResponse(configuracaoSalva);
-            configuracaoEmCache = response;
+            publicarConfiguracao(response);
 
             if (logoAnterior != null && !logoAnterior.equals(configuracao.getLogoArquivo())) {
                 logoEmpresaStorageService.remover(logoAnterior);
@@ -98,6 +109,28 @@ public class ConfiguracaoEmpresaService {
                 logoEmpresaStorageService.remover(logoNova);
             }
             throw exception;
+        }
+    }
+
+    @Transactional
+    public ConfiguracaoEmpresaResponse refresh() {
+        synchronized (bloqueioCache) {
+            configuracaoEmCache = null;
+            configuracaoEmCache = carregarConfiguracao();
+            return configuracaoEmCache;
+        }
+    }
+
+    private ConfiguracaoEmpresaResponse carregarConfiguracao() {
+        ConfiguracaoEmpresa configuracao = configuracaoEmpresaRepository
+                .findById(CONFIGURACAO_ID)
+                .orElseGet(this::criarConfiguracaoPadrao);
+        return converterParaResponse(configuracao);
+    }
+
+    private void publicarConfiguracao(ConfiguracaoEmpresaResponse configuracao) {
+        synchronized (bloqueioCache) {
+            configuracaoEmCache = configuracao;
         }
     }
 

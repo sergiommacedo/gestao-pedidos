@@ -154,20 +154,19 @@ body {
 }
 
 .config-theme-option {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 44px;
-    padding: 0.55rem 0.7rem;
+    min-height: 112px;
+    padding: 0.65rem;
     border: 1px solid var(--bs-border-color);
     border-radius: 0.5rem;
     cursor: pointer;
-    transition: border-color 0.15s ease, background-color 0.15s ease;
+    background-color: #ffffff;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .config-theme-option:has(input:checked) {
     border-color: var(--app-primary);
-    background-color: var(--app-primary-soft);
+    box-shadow: 0 0.3rem 0.8rem color-mix(in srgb, var(--app-primary) 20%, transparent);
+    transform: translateY(-1px);
 }
 
 .config-theme-option:focus-within {
@@ -180,6 +179,48 @@ body {
     flex: 0 0 auto;
     border-radius: 50%;
     background-color: var(--app-primary);
+}
+
+.config-theme-check {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.45rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    color: var(--app-primary-text);
+    border-radius: 50%;
+    background-color: var(--app-primary);
+}
+
+.config-theme-option:has(input:checked) .config-theme-check {
+    display: inline-flex;
+}
+
+.config-theme-mini-navbar {
+    height: 1rem;
+    margin-right: 1.5rem;
+    border-radius: 0.25rem;
+    background-color: var(--app-primary);
+}
+
+.config-theme-mini-button,
+.config-theme-mini-badge {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.65rem;
+    border-radius: 0.3rem;
+}
+
+.config-theme-mini-button {
+    color: var(--app-primary-text);
+    background-color: var(--app-primary);
+}
+
+.config-theme-mini-badge {
+    color: var(--app-primary);
+    background-color: var(--app-primary-soft);
 }
 
 .config-preview-card.sticky-lg-top {
@@ -205,9 +246,97 @@ body {
     background-color: var(--app-primary-soft);
 }
 
+.config-mini-app {
+    border: 1px solid var(--app-border-accent);
+    background-color: #ffffff;
+}
+
+.config-mini-workspace {
+    min-height: 250px;
+}
+
+.config-sidebar-preview {
+    width: 64px;
+    border-right: 1px solid var(--app-border-accent);
+    background-color: color-mix(in srgb, var(--app-primary-soft) 45%, #ffffff);
+}
+
+.config-mini-sidebar-logo {
+    width: 34px;
+    height: 34px;
+    object-fit: cover;
+    border: 2px solid var(--app-border-accent);
+    border-radius: 50%;
+    background-color: #ffffff;
+}
+
+.config-mini-nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 0.55rem;
+    color: var(--app-primary);
+    border-radius: 0.4rem;
+}
+
+.config-mini-nav-item.active {
+    color: var(--app-primary-text);
+    background-color: var(--app-primary);
+}
+
+.config-main-preview,
+.min-w-0 {
+    min-width: 0;
+}
+
+.config-example-card {
+    border: 1px solid var(--app-border-accent);
+    border-top: 3px solid var(--app-primary);
+    background-color: #ffffff;
+    box-shadow: 0 0.2rem 0.6rem color-mix(in srgb, var(--app-primary) 10%, transparent);
+}
+
+.config-example-card i,
+.config-preview-link {
+    color: var(--app-primary);
+}
+
+.config-preview-badge {
+    padding: 0.2rem 0.45rem;
+    color: var(--app-primary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 999px;
+    background-color: var(--app-primary-soft);
+}
+
 .app-sidebar {
     width: var(--sidebar-width);
     background-color: var(--color-sidebar);
+}
+
+.app-sidebar-brand {
+    color: var(--color-primary-dark);
+    border: 1px solid var(--app-border-accent);
+    border-radius: 0.65rem;
+    background-color: var(--app-primary-soft);
+}
+
+.app-sidebar-brand:hover,
+.app-sidebar-brand:focus-visible {
+    color: var(--color-primary);
+}
+
+.app-sidebar-logo {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    object-fit: cover;
+    border: 2px solid var(--app-border-accent);
+    border-radius: 50%;
+    background-color: #ffffff;
 }
 
 .app-sidebar .nav-link {
@@ -256,6 +385,64 @@ body {
     --bs-btn-active-color: var(--app-primary-text);
 }
 
+.btn-outline-primary {
+    --bs-btn-color: var(--app-primary);
+    --bs-btn-border-color: var(--app-primary);
+    --bs-btn-hover-color: var(--app-primary-text);
+    --bs-btn-hover-bg: var(--app-primary);
+    --bs-btn-hover-border-color: var(--app-primary);
+    --bs-btn-active-color: var(--app-primary-text);
+    --bs-btn-active-bg: var(--app-primary-hover);
+    --bs-btn-active-border-color: var(--app-primary-hover);
+}
+
+.page-link {
+    color: var(--app-primary);
+}
+
+.page-link:hover,
+.page-link:focus {
+    color: var(--app-primary-hover);
+    background-color: var(--app-primary-soft);
+}
+
+.active > .page-link,
+.page-link.active {
+    color: var(--app-primary-text);
+    border-color: var(--app-primary);
+    background-color: var(--app-primary);
+}
+
+.main-content h1,
+.main-content h2,
+.main-content h3,
+.main-content .text-primary,
+.main-content .link-primary {
+    color: var(--app-primary) !important;
+}
+
+.main-content .border-primary {
+    border-color: var(--app-primary) !important;
+}
+
+.main-content .bg-primary,
+.main-content .text-bg-primary {
+    color: var(--app-primary-text) !important;
+    background-color: var(--app-primary) !important;
+}
+
+.main-content .form-control:focus,
+.main-content .form-select:focus,
+.main-content .form-check-input:focus {
+    border-color: var(--app-border-accent);
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--app-primary) 18%, transparent);
+}
+
+.main-content .form-check-input:checked {
+    border-color: var(--app-primary);
+    background-color: var(--app-primary);
+}
+
 .btn-warning {
     --bs-btn-bg: var(--color-secondary);
     --bs-btn-border-color: var(--color-secondary);
@@ -265,7 +452,7 @@ body {
 }
 
 .card {
-    border: 0;
+    border: 1px solid color-mix(in srgb, var(--app-border-accent) 45%, transparent);
     border-radius: 0.9rem;
     box-shadow: 0 0.125rem 0.75rem
         color-mix(in srgb, var(--app-primary) 8%, transparent);
@@ -374,7 +561,7 @@ body {
 }
 
 .dashboard-atencao-table tbody tr:not(.dashboard-atencao-vazio):hover {
-    background-color: rgba(243, 227, 216, 0.35);
+    background-color: color-mix(in srgb, var(--app-primary-soft) 45%, transparent);
 }
 
 .dashboard-acoes-pedido .btn {

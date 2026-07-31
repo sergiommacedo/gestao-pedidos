@@ -14,6 +14,6 @@ public class ConfiguracaoGlobalAdvice {
 
     @ModelAttribute("configuracaoEmpresa")
     public ConfiguracaoEmpresaResponse configuracaoEmpresa() {
-        return configuracaoEmpresaService.buscarConfiguracao();
+        return configuracaoEmpresaService.getConfiguracaoAtual();
     }
 }

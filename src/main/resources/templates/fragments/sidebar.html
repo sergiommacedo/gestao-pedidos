@@ -33,6 +33,15 @@
 
     <div class="offcanvas-body d-flex flex-column p-0">
 
+        <a th:href="@{/}" class="app-sidebar-brand d-flex align-items-center gap-2 mx-3 mt-3 p-2 text-decoration-none">
+            <img th:src="${configuracaoEmpresa.logoUrl}"
+                 th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}"
+                 class="app-sidebar-logo">
+            <span class="fw-semibold text-truncate" th:text="${configuracaoEmpresa.nomeCurto}">
+                Empresa
+            </span>
+        </a>
+
         <nav class="nav nav-pills flex-column gap-1 p-3">
 
             <span class="app-section-title text-uppercase small fw-semibold px-3 mb-1">

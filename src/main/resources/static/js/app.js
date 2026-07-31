@@ -27,12 +27,16 @@ function inicializarPreviewConfiguracaoEmpresa() {
 
     const preview = formulario.querySelector("[data-config-preview]");
     const logoInput = formulario.querySelector("[data-logo-empresa-input]");
-    const logoPreview = formulario.querySelector("[data-logo-empresa-preview]");
+    const logosPreview = formulario.querySelectorAll("[data-logo-empresa-preview]");
     const removerLogo = formulario.querySelector("[data-remover-logo]");
     const nomeInput = formulario.querySelector("[data-preview-nome-empresa]");
     const nomePreview = formulario.querySelector("[data-preview-nome]");
+    const nomeCurtoInput = formulario.querySelector("[data-preview-nome-curto]");
+    const nomeCurtoPreview = formulario.querySelector("[data-preview-nome-curto-output]");
+    const boasVindasInput = formulario.querySelector("[data-preview-boas-vindas]");
+    const boasVindasPreview = formulario.querySelector("[data-preview-boas-vindas-output]");
     const classesTema = ["tema-marrom", "tema-azul", "tema-verde", "tema-vinho", "tema-roxo"];
-    const logoInicial = logoPreview.src;
+    const logoInicial = logosPreview[0]?.src || "";
     let urlTemporaria;
 
     formulario.querySelectorAll("[data-theme-css]").forEach(opcao => {
@@ -46,6 +50,18 @@ function inicializarPreviewConfiguracaoEmpresa() {
         nomePreview.textContent = nomeInput.value.trim() || "Empresa";
     });
 
+    nomeCurtoInput.addEventListener("input", () => {
+        nomeCurtoPreview.textContent = nomeCurtoInput.value.trim() || "Empresa";
+    });
+
+    boasVindasInput.addEventListener("input", () => {
+        boasVindasPreview.textContent = boasVindasInput.value.trim() || "Bem-vindo ao sistema.";
+    });
+
+    const atualizarLogos = url => logosPreview.forEach(imagem => {
+        imagem.src = url;
+    });
+
     logoInput.addEventListener("change", () => {
         if (urlTemporaria) {
             URL.revokeObjectURL(urlTemporaria);
@@ -53,12 +69,12 @@ function inicializarPreviewConfiguracaoEmpresa() {
 
         const arquivo = logoInput.files?.[0];
         if (!arquivo) {
-            logoPreview.src = removerLogo?.checked ? preview.dataset.logoPadrao : logoInicial;
+            atualizarLogos(removerLogo?.checked ? preview.dataset.logoPadrao : logoInicial);
             return;
         }
 
         urlTemporaria = URL.createObjectURL(arquivo);
-        logoPreview.src = urlTemporaria;
+        atualizarLogos(urlTemporaria);
         if (removerLogo) {
             removerLogo.checked = false;
         }
@@ -71,9 +87,9 @@ function inicializarPreviewConfiguracaoEmpresa() {
                 URL.revokeObjectURL(urlTemporaria);
                 urlTemporaria = undefined;
             }
-            logoPreview.src = preview.dataset.logoPadrao;
+            atualizarLogos(preview.dataset.logoPadrao);
         } else {
-            logoPreview.src = logoInicial;
+            atualizarLogos(logoInicial);
         }
     });
 
