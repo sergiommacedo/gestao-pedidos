@@ -32,6 +32,10 @@ public class DashboardController {
         );
         model.addAttribute("statusEditaveis", pedidoService.statusEditaveis());
         model.addAttribute("statusImprimiveis", pedidoService.statusEditaveis());
+        model.addAttribute(
+                "resumoStatus",
+                dashboardService.buscarResumoStatus(dataReferencia)
+        );
 
         return "dashboard/dashboard";
     }

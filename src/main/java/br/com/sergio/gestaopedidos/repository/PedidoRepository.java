@@ -17,6 +17,13 @@ import java.util.Set;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
+    interface ContagemPedidosPorStatus {
+
+        StatusPedido getStatus();
+
+        long getQuantidade();
+    }
+
     boolean existsByClienteId(Long clienteId);
 
     @EntityGraph(attributePaths = {"cliente", "itens", "itens.produto"})
@@ -89,5 +96,15 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             @Param("statusEmPreparacao") StatusPedido statusEmPreparacao,
             @Param("statusPendente") StatusPedido statusPendente,
             Pageable pageable
+    );
+
+    @Query("""
+            SELECT p.status AS status, COUNT(p) AS quantidade
+            FROM Pedido p
+            WHERE p.dataAgendada = :dataAgendada
+            GROUP BY p.status
+            """)
+    List<ContagemPedidosPorStatus> contarPedidosPorStatusNaData(
+            @Param("dataAgendada") LocalDate dataAgendada
     );
 }
