@@ -44,14 +44,14 @@
     <div class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-xl-3">
             <a th:href="@{/pedidos/kanban(dataAgendada=${dataDashboardIso})}"
-               class="card h-100 border-0 shadow-sm text-decoration-none text-body">
-                <div class="card-body d-flex justify-content-between align-items-start gap-3 p-4">
-                    <div>
-                        <div class="text-body-secondary text-uppercase small fw-semibold mb-2">Agendados</div>
-                        <div class="display-6 fw-bold lh-1" th:text="${dashboardOperacional.agendados}">0</div>
+               class="card dashboard-operacional-card h-100 border-0 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="dashboard-operacional-icone bg-primary-subtle text-primary">
+                        <i class="bi bi-calendar2-check" aria-hidden="true"></i>
                     </div>
-                    <div class="rounded-circle p-3 bg-primary-subtle text-primary">
-                        <i class="bi bi-calendar2-check fs-4" aria-hidden="true"></i>
+                    <div>
+                        <div class="dashboard-operacional-titulo">Agendados</div>
+                        <div class="dashboard-operacional-valor" th:text="${dashboardOperacional.agendados}">0</div>
                     </div>
                 </div>
             </a>
@@ -59,14 +59,14 @@
 
         <div class="col-12 col-sm-6 col-xl-3">
             <a th:href="@{/pedidos(dataAgendada=${dataDashboardIso}, status='ENTREGUE')}"
-               class="card h-100 border-0 shadow-sm text-decoration-none text-body">
-                <div class="card-body d-flex justify-content-between align-items-start gap-3 p-4">
-                    <div>
-                        <div class="text-body-secondary text-uppercase small fw-semibold mb-2">Entregues</div>
-                        <div class="display-6 fw-bold lh-1" th:text="${dashboardOperacional.entregues}">0</div>
+               class="card dashboard-operacional-card h-100 border-0 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="dashboard-operacional-icone bg-success-subtle text-success">
+                        <i class="bi bi-truck" aria-hidden="true"></i>
                     </div>
-                    <div class="rounded-circle p-3 bg-success-subtle text-success">
-                        <i class="bi bi-truck fs-4" aria-hidden="true"></i>
+                    <div>
+                        <div class="dashboard-operacional-titulo">Entregues</div>
+                        <div class="dashboard-operacional-valor" th:text="${dashboardOperacional.entregues}">0</div>
                     </div>
                 </div>
             </a>
@@ -74,14 +74,14 @@
 
         <div class="col-12 col-sm-6 col-xl-3">
             <a th:href="@{/pedidos(dataAgendada=${dataDashboardIso}, status='CANCELADO')}"
-               class="card h-100 border-0 shadow-sm text-decoration-none text-body">
-                <div class="card-body d-flex justify-content-between align-items-start gap-3 p-4">
-                    <div>
-                        <div class="text-body-secondary text-uppercase small fw-semibold mb-2">Cancelados</div>
-                        <div class="display-6 fw-bold lh-1" th:text="${dashboardOperacional.cancelados}">0</div>
+               class="card dashboard-operacional-card h-100 border-0 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="dashboard-operacional-icone bg-danger-subtle text-danger">
+                        <i class="bi bi-x-circle" aria-hidden="true"></i>
                     </div>
-                    <div class="rounded-circle p-3 bg-danger-subtle text-danger">
-                        <i class="bi bi-x-circle fs-4" aria-hidden="true"></i>
+                    <div>
+                        <div class="dashboard-operacional-titulo">Cancelados</div>
+                        <div class="dashboard-operacional-valor" th:text="${dashboardOperacional.cancelados}">0</div>
                     </div>
                 </div>
             </a>
@@ -89,15 +89,15 @@
 
         <div class="col-12 col-sm-6 col-xl-3">
             <a th:href="@{/pedidos(dataAgendada=${dataDashboardIso}, ordenarPor='valorTotal', direcao='desc')}"
-               class="card h-100 border-0 shadow-sm text-decoration-none text-body">
-                <div class="card-body d-flex justify-content-between align-items-start gap-3 p-4">
-                    <div>
-                        <div class="text-body-secondary text-uppercase small fw-semibold mb-2">Valor do dia</div>
-                        <div class="h3 fw-bold lh-1 mb-0 text-nowrap"
-                             th:text="${@formatacao.formatarMoeda(dashboardOperacional.valorDoDia)}">R$ 0,00</div>
+               class="card dashboard-operacional-card h-100 border-0 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="dashboard-operacional-icone dashboard-operacional-icone-valor">
+                        <i class="bi bi-cash-coin" aria-hidden="true"></i>
                     </div>
-                    <div class="rounded-circle p-3 bg-success-subtle text-success">
-                        <i class="bi bi-cash-coin fs-4" aria-hidden="true"></i>
+                    <div>
+                        <div class="dashboard-operacional-titulo">Valor do dia</div>
+                        <div class="dashboard-operacional-valor text-nowrap"
+                             th:text="${@formatacao.formatarMoeda(dashboardOperacional.valorDoDia)}">R$ 0,00</div>
                     </div>
                 </div>
             </a>
@@ -128,13 +128,9 @@
                 </div>
 
                 <div class="col-lg-2 col-md-6">
-                    <label for="dataAgendadaVisual" class="form-label">Data agendada</label>
-                    <input type="text" id="dataAgendadaVisual" class="form-control"
-                           inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"
-                           th:value="${dataAgendada != null
-                                ? #temporals.format(dataAgendada, 'dd/MM/yyyy') : ''}"
-                           data-data-brasileira>
-                    <input type="hidden" name="dataAgendada" th:value="${dataAgendada}" data-data-iso>
+                    <label for="dataAgendada" class="form-label">Data agendada</label>
+                    <input type="date" id="dataAgendada" name="dataAgendada"
+                           class="form-control" th:value="${dataAgendadaIso}">
                 </div>
 
                 <div class="col-lg-2 d-grid">
