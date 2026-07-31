@@ -35,4 +35,8 @@ public class Usuario {
     @Column(nullable = false)
     @Builder.Default
     private Boolean ativo = true;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean trocarSenhaPrimeiroAcesso = false;
 }
