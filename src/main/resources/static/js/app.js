@@ -684,7 +684,7 @@ function inicializarImpressaoComandas() {
             const formato = botao.dataset.formatoImpressao;
 
             document.body.classList.toggle("formato-a4", formato === "a4");
-            document.body.classList.toggle("formato-termica", formato !== "a4");
+            document.body.classList.toggle("formato-etiqueta", formato === "etiqueta");
 
             document.querySelectorAll("[data-formato-impressao]").forEach(item => {
                 item.classList.toggle("active", item === botao);
