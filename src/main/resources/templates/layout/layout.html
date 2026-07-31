@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</title>
+
+    <!-- Bootstrap via Maven / WebJars -->
+    <link rel="stylesheet"
+          th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+
+    <!-- Bootstrap Icons via Maven / WebJars -->
+    <link rel="stylesheet"
+          th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
+
+    <!-- CSS da aplicação -->
+    <link rel="stylesheet"
+          th:href="@{/css/app.css}">
+
+</head>
+
+
+
+<body class="bg-body-tertiary" th:classappend="${configuracaoEmpresa.temaCss}">
+
+<!-- Navbar principal -->
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<!-- Sidebar -->
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+<!-- Conteúdo das páginas -->
+<main class="main-content p-4">
+
+    <div class="container-fluid">
+
+        <div layout:fragment="content">
+            <!-- O conteúdo específico de cada página entra aqui -->
+        </div>
+
+    </div>
+
+</main>
+
+<div th:replace="~{fragments/modal-exclusao :: modalExclusao}"></div>
+
+<div th:replace="~{fragments/modal-cancelamento-pedido :: modalCancelamentoPedido}"></div>
+
+<div th:replace="~{fragments/modal-detalhes-pedido :: modalDetalhesPedido}"></div>
+
+<div th:replace="~{fragments/modal-redefinir-senha-usuario :: modalRedefinirSenhaUsuario}"></div>
+
+<div th:replace="~{fragments/toast :: toast}"></div>
+
+<!-- Bootstrap JavaScript via Maven / WebJars -->
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.9/dist/inputmask.min.js"></script>
+
+<!-- JavaScript da aplicação -->
+<script th:src="@{/js/app.js}"></script>
+
+</body>
+</html>

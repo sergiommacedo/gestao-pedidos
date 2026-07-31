@@ -1,5 +1,6 @@
 package br.com.sergio.gestaopedidos.dto.pedido;
 
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -18,14 +19,20 @@ public record ItemPedidoResponse(
         @Schema(description = "Nome do produto", example = "Feijoada Grande")
         String produtoNome,
 
+        @Schema(description = "Unidade de venda do produto", example = "UNIDADE")
+        UnidadeVenda unidadeVenda,
+
         @Schema(description = "Quantidade", example = "2")
-        Integer quantidade,
+        BigDecimal quantidade,
 
         @Schema(description = "Valor unitário do produto", example = "49.90")
         BigDecimal valorUnitario,
 
         @Schema(description = "Subtotal do item", example = "99.80")
-        BigDecimal subtotal
+        BigDecimal subtotal,
+
+        @Schema(description = "Observação do item", example = "Sem farofa")
+        String observacao
 
 ) {
 }

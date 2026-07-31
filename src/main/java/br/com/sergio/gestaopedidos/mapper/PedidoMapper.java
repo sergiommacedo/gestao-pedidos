@@ -14,11 +14,14 @@ public interface PedidoMapper {
 
     @Mapping(target = "clienteId", source = "cliente.id")
     @Mapping(target = "clienteNome", source = "cliente.nome")
+    @Mapping(target = "clienteTelefone", source = "cliente.telefone")
     @Mapping(target = "criadoEm", source = "dataPedido")
+    @Mapping(target = "motivoCancelamento", source = "motivoCancelamento")
     PedidoResponse toResponse(Pedido pedido);
 
     @Mapping(target = "produtoId", source = "produto.id")
     @Mapping(target = "produtoNome", source = "produto.nome")
+    @Mapping(target = "unidadeVenda", source = "produto.unidadeVenda")
     @Mapping(target = "valorUnitario", source = "precoUnitario")
     ItemPedidoResponse toItemResponse(ItemPedido itemPedido);
 

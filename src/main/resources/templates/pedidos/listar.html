@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout}">
+
+<section layout:fragment="content">
+
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-0">
+                <i class="bi bi-receipt-cutoff"></i>
+                Pedidos
+            </h2>
+            <small class="text-muted">Consulte e acompanhe os pedidos cadastrados</small>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 align-self-start align-self-sm-auto">
+            <div class="btn-group" role="group" aria-label="Visualização dos pedidos">
+                <a th:href="@{/pedidos}" class="btn btn-outline-secondary active" aria-current="page">
+                    <i class="bi bi-list-ul"></i> Lista
+                </a>
+                <a th:href="@{/pedidos/kanban}" class="btn btn-outline-secondary">
+                    <i class="bi bi-kanban"></i> Kanban
+                </a>
+            </div>
+            <a th:href="@{/pedidos/novo}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>
+                Novo Pedido
+            </a>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h3 class="h5 mb-0">Dashboard Operacional</h3>
+            <small class="text-muted">
+                Indicadores de
+                <span th:text="${#temporals.format(dashboardOperacional.data, 'dd/MM/yyyy')}"></span>
+            </small>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a th:href="@{/pedidos/kanban(dataAgendada=${dataDashboardIso})}"
+               class="card dashboard-operacional-card h-100 border-0 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="dashboard-operacional-icone bg-primary-subtle text-primary">
+                        <i class="bi bi-calendar2-check" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <div class="dashboard-operacional-titulo">Agendados</div>
+                        <div class="dashboard-operacional-valor" th:text="${dashboardOperacional.agendados}">0</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a th:href="@{/pedidos(dataAgendada=${dataDashboardIso}, status='ENTREGUE')}"
+               class="card dashboard-operacional-card h-100 border-0 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="dashboard-operacional-icone bg-success-subtle text-success">
+                        <i class="bi bi-truck" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <div class="dashboard-operacional-titulo">Entregues</div>
+                        <div class="dashboard-operacional-valor" th:text="${dashboardOperacional.entregues}">0</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a th:href="@{/pedidos(dataAgendada=${dataDashboardIso}, status='CANCELADO')}"
+               class="card dashboard-operacional-card h-100 border-0 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="dashboard-operacional-icone bg-danger-subtle text-danger">
+                        <i class="bi bi-x-circle" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <div class="dashboard-operacional-titulo">Cancelados</div>
+                        <div class="dashboard-operacional-valor" th:text="${dashboardOperacional.cancelados}">0</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a th:href="@{/pedidos(dataAgendada=${dataDashboardIso}, ordenarPor='valorTotal', direcao='desc')}"
+               class="card dashboard-operacional-card h-100 border-0 text-decoration-none text-body">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="dashboard-operacional-icone dashboard-operacional-icone-valor">
+                        <i class="bi bi-cash-coin" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <div class="dashboard-operacional-titulo">Valor do dia</div>
+                        <div class="dashboard-operacional-valor text-nowrap"
+                             th:text="${@formatacao.formatarMoeda(dashboardOperacional.valorDoDia)}">R$ 0,00</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <form th:action="@{/pedidos}" method="get" class="row g-3 align-items-end">
+                <div class="col-lg-5 col-md-12">
+                    <label for="filtro" class="form-label">Cliente</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="search" id="filtro" name="filtro" class="form-control"
+                               placeholder="Nome ou telefone" th:value="${filtro}">
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <label for="status" class="form-label">Status</label>
+                    <select id="status" name="status" class="form-select">
+                        <option value="">Todos os status</option>
+                        <option th:each="statusPedido : ${statusPedidos}"
+                                th:value="${statusPedido}"
+                                th:text="${statusPedido.descricao}"
+                                th:selected="${statusSelecionado == statusPedido}"></option>
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label for="dataAgendada" class="form-label">Data agendada</label>
+                    <input type="date" id="dataAgendada" name="dataAgendada"
+                           class="form-control" th:value="${dataAgendadaIso}">
+                </div>
+
+                <div class="col-lg-2 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i>
+                        Filtrar
+                    </button>
+                </div>
+
+                <div class="col-12"
+                     th:if="${(filtro != null and !filtro.isBlank())
+                              or statusSelecionado != null or dataAgendada != null}">
+                    <a th:href="@{/pedidos}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i>
+                        Limpar filtros
+                    </a>
+                </div>
+
+                <input type="hidden" name="pagina" value="0">
+                <input type="hidden" name="tamanho" th:value="${tamanho}">
+                <input type="hidden" name="ordenarPor" th:value="${ordenarPor}">
+                <input type="hidden" name="direcao" th:value="${direcao}">
+            </form>
+        </div>
+
+        <div class="card-header bg-white border-top py-3">
+            <button type="button" title="Imprimir comandas selecionadas"
+                    class="btn btn-outline-primary"
+                    data-imprimir-selecionados
+                    th:data-url="@{/pedidos/comandas}"
+                    disabled>
+                <i class="bi bi-printer"></i>
+                <span data-texto-imprimir-selecionados>Imprimir selecionados</span>
+            </button>
+        </div>
+
+        <div class="card-body p-0" data-lista-selecionavel>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th class="text-center">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   data-selecionar-todos
+                                   aria-label="Selecionar todos os pedidos desta página">
+                        </th>
+
+                        <th>
+                            <a class="text-decoration-none text-dark"
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='id',
+                                    direcao=${ordenarPor == 'id' and direcao == 'asc' ? 'desc' : 'asc'})}">
+                                ID
+                                <i th:if="${ordenarPor == 'id'}"
+                                   th:class="${direcao == 'asc'} ? 'bi bi-arrow-up' : 'bi bi-arrow-down'"></i>
+                            </a>
+                        </th>
+
+                        <th>
+                            <a class="text-decoration-none text-dark"
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='dataAgendada',
+                                    direcao=${ordenarPor == 'dataAgendada' and direcao == 'asc' ? 'desc' : 'asc'})}">
+                                Data agendada
+                                <i th:if="${ordenarPor == 'dataAgendada'}"
+                                   th:class="${direcao == 'asc'} ? 'bi bi-arrow-up' : 'bi bi-arrow-down'"></i>
+                            </a>
+                        </th>
+
+                        <th>
+                            <a class="text-decoration-none text-dark"
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='cliente.nome',
+                                    direcao=${ordenarPor == 'cliente.nome' and direcao == 'asc' ? 'desc' : 'asc'})}">
+                                Cliente
+                                <i th:if="${ordenarPor == 'cliente.nome'}"
+                                   th:class="${direcao == 'asc'} ? 'bi bi-arrow-up' : 'bi bi-arrow-down'"></i>
+                            </a>
+                        </th>
+
+                        <th>Telefone</th>
+
+                        <th>
+                            <a class="text-decoration-none text-dark"
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='status',
+                                    direcao=${ordenarPor == 'status' and direcao == 'asc' ? 'desc' : 'asc'})}">
+                                Status
+                                <i th:if="${ordenarPor == 'status'}"
+                                   th:class="${direcao == 'asc'} ? 'bi bi-arrow-up' : 'bi bi-arrow-down'"></i>
+                            </a>
+                        </th>
+
+                        <th>Entrega</th>
+                        <th>Pagamento</th>
+
+                        <th class="text-end">
+                            <a class="text-decoration-none text-dark"
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='valorTotal',
+                                    direcao=${ordenarPor == 'valorTotal' and direcao == 'asc' ? 'desc' : 'asc'})}">
+                                Valor total
+                                <i th:if="${ordenarPor == 'valorTotal'}"
+                                   th:class="${direcao == 'asc'} ? 'bi bi-arrow-up' : 'bi bi-arrow-down'"></i>
+                            </a>
+                        </th>
+
+                        <th class="text-center">Ações</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    <tr th:each="pedido : ${pedidos}">
+                        <td class="text-center">
+                            <input type="checkbox"
+                                   th:if="${statusImprimiveis.contains(pedido.status)}"
+                                   class="form-check-input"
+                                   name="pedidoSelecionado"
+                                   th:value="${pedido.id}"
+                                   data-pedido-checkbox
+                                   th:aria-label="'Selecionar pedido ' + ${pedido.id}">
+                            <i th:unless="${statusImprimiveis.contains(pedido.status)}"
+                               class="bi bi-lock text-muted" title="Impressão indisponível"
+                               aria-label="Impressão indisponível"></i>
+                        </td>
+                        <td class="fw-semibold" th:text="${pedido.id}"></td>
+                        <td class="text-nowrap" th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></td>
+                        <td th:text="${pedido.clienteNome}"></td>
+                        <td class="text-nowrap" th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-sm dropdown-toggle rounded-pill"
+                                        data-bs-toggle="dropdown" data-bs-boundary="viewport"
+                                        data-status-dropdown
+                                        aria-expanded="false"
+                                        th:classappend="${pedido.status.name() == 'CANCELADO'} ? ' btn-danger' :
+                                            (${pedido.status.name() == 'ENTREGUE'} ? ' btn-success' :
+                                            (${pedido.status.name() == 'PENDENTE'} ? ' btn-warning' :
+                                            (${pedido.status.name() == 'SAIU_PARA_ENTREGA'} ? ' btn-info' : ' btn-primary')))"
+                                        th:text="${pedido.status.descricao}">
+                                    Status
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-status shadow-sm">
+                                    <li th:each="statusOpcao : ${statusPedidos}">
+                                        <form th:if="${transicoesStatus[pedido.id].contains(statusOpcao)}"
+                                              th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
+                                              method="post">
+                                            <input type="hidden" name="filtro" th:value="${filtro}">
+                                            <input type="hidden" name="statusFiltro" th:value="${statusSelecionado}">
+                                            <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
+                                            <input type="hidden" name="pagina" th:value="${paginaPedidos.number}">
+                                            <input type="hidden" name="tamanho" th:value="${tamanho}">
+                                            <input type="hidden" name="ordenarPor" th:value="${ordenarPor}">
+                                            <input type="hidden" name="direcao" th:value="${direcao}">
+                                            <button th:if="${statusOpcao.name() != 'CANCELADO'}"
+                                                    type="submit" name="novoStatus" th:value="${statusOpcao}"
+                                                    class="dropdown-item d-flex align-items-center gap-2">
+                                                <span class="badge rounded-circle p-1"
+                                                      th:classappend="${statusOpcao.name() == 'CANCELADO'} ? ' text-bg-danger' :
+                                                          (${statusOpcao.name() == 'ENTREGUE'} ? ' text-bg-success' :
+                                                          (${statusOpcao.name() == 'PENDENTE'} ? ' text-bg-warning' :
+                                                          (${statusOpcao.name() == 'SAIU_PARA_ENTREGA'} ? ' text-bg-info' : ' text-bg-primary')))"
+                                                      aria-hidden="true">&nbsp;</span>
+                                                <span th:text="${statusOpcao.descricao}"></span>
+                                            </button>
+                                            <button th:if="${statusOpcao.name() == 'CANCELADO'}"
+                                                    type="button"
+                                                    class="dropdown-item d-flex align-items-center gap-2"
+                                                    data-cancelar-pedido
+                                                    th:data-pedido-id="${pedido.id}"
+                                                    th:data-cliente="${pedido.clienteNome}">
+                                                <span class="badge rounded-circle p-1 text-bg-danger"
+                                                      aria-hidden="true">&nbsp;</span>
+                                                <span th:text="${statusOpcao.descricao}"></span>
+                                            </button>
+                                        </form>
+                                        <span th:unless="${transicoesStatus[pedido.id].contains(statusOpcao)}"
+                                              class="dropdown-item disabled d-flex align-items-center gap-2"
+                                              th:classappend="${pedido.status == statusOpcao} ? ' fw-semibold'"
+                                              aria-disabled="true">
+                                            <span class="badge rounded-circle p-1"
+                                                  th:classappend="${statusOpcao.name() == 'CANCELADO'} ? ' text-bg-danger' :
+                                                      (${statusOpcao.name() == 'ENTREGUE'} ? ' text-bg-success' :
+                                                      (${statusOpcao.name() == 'PENDENTE'} ? ' text-bg-warning' :
+                                                      (${statusOpcao.name() == 'SAIU_PARA_ENTREGA'} ? ' text-bg-info' : ' text-bg-primary')))"
+                                                  aria-hidden="true">&nbsp;</span>
+                                            <span th:text="${statusOpcao.descricao}"></span>
+                                            <i th:if="${pedido.status == statusOpcao}"
+                                               class="bi bi-check ms-auto" aria-label="Status atual"></i>
+                                        </span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-nowrap"
+                                  th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></span>
+                        </td>
+                        <td th:text="${pedido.formaPagamento.descricao}"></td>
+                        <td class="text-end fw-semibold text-nowrap"
+                            th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm" role="group"
+                                 th:aria-label="'Ações do pedido ' + ${pedido.id}">
+                                <button type="button" class="btn btn-outline-secondary"
+                                        title="Visualizar pedido"
+                                        th:aria-label="'Visualizar pedido ' + ${pedido.id}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalDetalhesPedido"
+                                        th:data-detalhes-url="@{/pedidos/{id}/detalhes(id=${pedido.id}, origem='lista')}">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <a th:if="${statusEditaveis.contains(pedido.status)}"
+                                   th:href="@{/pedidos/{id}/editar(id=${pedido.id}, origem='lista')}"
+                                   class="btn btn-outline-secondary"
+                                   title="Editar pedido"
+                                   th:aria-label="'Editar pedido ' + ${pedido.id}">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a th:if="${statusImprimiveis.contains(pedido.status)}"
+                                   th:href="@{/pedidos/{id}/comanda(id=${pedido.id}, origem='lista')}"
+                                   class="btn btn-outline-primary"
+                                   target="_blank"
+                                   rel="noopener"
+                                   title="Imprimir comanda"
+                                   th:aria-label="'Imprimir comanda do pedido ' + ${pedido.id}">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr th:if="${paginaPedidos.empty}">
+                        <td colspan="10" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                            <span th:if="${(filtro == null or filtro.isBlank())
+                                          and statusSelecionado == null and dataAgendada == null}">
+                                Nenhum pedido cadastrado.
+                            </span>
+                            <span th:unless="${(filtro == null or filtro.isBlank())
+                                              and statusSelecionado == null and dataAgendada == null}">
+                                Nenhum pedido encontrado para os filtros informados.
+                            </span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-footer bg-white" th:if="${paginaPedidos.totalPages > 0}">
+            <div class="row align-items-center g-3">
+                <div class="col-md">
+                    <small class="text-muted">
+                        Exibindo <span th:text="${paginaPedidos.numberOfElements}"></span>
+                        de <span th:text="${paginaPedidos.totalElements}"></span> pedidos
+                    </small>
+                </div>
+
+                <div class="col-md-auto">
+                    <form th:action="@{/pedidos}" method="get" class="d-flex align-items-center gap-2">
+                        <label for="tamanhoPagina" class="small text-muted text-nowrap">Itens por página:</label>
+                        <select id="tamanhoPagina" name="tamanho" class="form-select form-select-sm"
+                                onchange="this.form.submit()">
+                            <option value="10" th:selected="${tamanho == 10}">10</option>
+                            <option value="20" th:selected="${tamanho == 20}">20</option>
+                            <option value="50" th:selected="${tamanho == 50}">50</option>
+                        </select>
+                        <input type="hidden" name="filtro" th:value="${filtro}">
+                        <input type="hidden" name="status" th:value="${statusSelecionado}">
+                        <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
+                        <input type="hidden" name="pagina" value="0">
+                        <input type="hidden" name="ordenarPor" th:value="${ordenarPor}">
+                        <input type="hidden" name="direcao" th:value="${direcao}">
+                    </form>
+                </div>
+
+                <div class="col-md-auto">
+                    <nav aria-label="Paginação de pedidos">
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item" th:classappend="${paginaPedidos.first} ? 'disabled'">
+                                <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                    dataAgendada=${dataAgendadaIso}, pagina=${paginaPedidos.number - 1}, tamanho=${tamanho},
+                                    ordenarPor=${ordenarPor}, direcao=${direcao})}">Anterior</a>
+                            </li>
+
+                            <li class="page-item"
+                                th:each="numeroPagina : ${#numbers.sequence(0, paginaPedidos.totalPages - 1)}"
+                                th:classappend="${numeroPagina == paginaPedidos.number} ? 'active'">
+                                <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                    dataAgendada=${dataAgendadaIso}, pagina=${numeroPagina}, tamanho=${tamanho},
+                                    ordenarPor=${ordenarPor}, direcao=${direcao})}"
+                                   th:text="${numeroPagina + 1}"></a>
+                            </li>
+
+                            <li class="page-item" th:classappend="${paginaPedidos.last} ? 'disabled'">
+                                <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                    dataAgendada=${dataAgendadaIso}, pagina=${paginaPedidos.number + 1}, tamanho=${tamanho},
+                                    ordenarPor=${ordenarPor}, direcao=${direcao})}">Próxima</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
+</html>

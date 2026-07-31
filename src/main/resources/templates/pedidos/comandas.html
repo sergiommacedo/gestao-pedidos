@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${'Impressão de comandas - ' + configuracaoEmpresa.nomeEmpresa}">
+        Impressão de comandas
+    </title>
+
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+
+    <style>
+        :root {
+            color-scheme: light;
+        }
+
+        body {
+            background: #eeeeee;
+            color: #000000;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+        }
+
+        .barra-impressao {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #ffffff;
+            border-bottom: 1px solid #cccccc;
+            padding: 0.75rem;
+        }
+
+        .folha-comandas {
+            margin: 1.5rem auto;
+        }
+
+        .pedido-impressao {
+            background: #ffffff;
+            border: 1px solid #000000;
+            margin: 0 auto 1.5rem;
+        }
+
+        .formato-etiqueta .folha-comandas,
+        .formato-etiqueta .pedido-impressao {
+            width: 100mm;
+            max-width: 100%;
+        }
+
+        .formato-etiqueta .pedido-impressao {
+            padding: 5mm;
+        }
+
+        .formato-a4 .folha-comandas {
+            width: 210mm;
+            max-width: calc(100% - 2rem);
+        }
+
+        .formato-a4 .pedido-impressao {
+            width: 100%;
+            max-width: 180mm;
+            padding: 12mm;
+        }
+
+        .comanda-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            object-fit: cover;
+            filter: grayscale(1) contrast(1.15);
+        }
+
+        .pedido-cabecalho,
+        .pedido-total {
+            border-bottom: 1px dashed #000000;
+        }
+
+        .pedido-total {
+            border-top: 1px dashed #000000;
+            border-bottom: 0;
+        }
+
+        .pedido-impressao table {
+            font-size: inherit;
+        }
+
+        .pedido-impressao th,
+        .pedido-impressao td {
+            border-color: #000000;
+            padding: 0.3rem 0.2rem;
+        }
+
+        .conteudo-a4 {
+            display: none;
+        }
+
+        .formato-a4 .conteudo-etiqueta {
+            display: none;
+        }
+
+        .formato-a4 .conteudo-a4 {
+            display: block;
+        }
+
+        .etiqueta-titulo-pedido {
+            border: 2px solid #000000;
+            font-size: 1.65rem;
+            letter-spacing: 0.04em;
+            padding: 0.2rem 0.4rem;
+        }
+
+        .etiqueta-destaque {
+            border: 1px solid #000000;
+            padding: 0.5rem;
+        }
+
+        .etiqueta-item {
+            border-top: 1px solid #000000;
+            padding: 0.55rem 0;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .etiqueta-item:last-child {
+            border-bottom: 1px solid #000000;
+        }
+
+        .etiqueta-item-nome {
+            font-size: 1.08rem;
+            line-height: 1.2;
+            overflow-wrap: break-word;
+        }
+
+        .bloco-sem-quebra {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .quebra-linha {
+            overflow-wrap: anywhere;
+        }
+
+        @page etiqueta {
+            size: 100mm 150mm;
+            margin: 4mm;
+        }
+
+        @page normal {
+            size: A4 portrait;
+            margin: 12mm;
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+                font-size: 11pt;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .folha-comandas {
+                margin: 0;
+            }
+
+            .pedido-impressao {
+                border: 0;
+                box-shadow: none;
+                margin: 0;
+            }
+
+            .formato-etiqueta .pedido-impressao {
+                page: etiqueta;
+                width: 92mm;
+                max-width: none;
+                padding: 0;
+                font-size: 10.5pt;
+                line-height: 1.25;
+            }
+
+            .formato-a4 .pedido-impressao {
+                page: normal;
+                width: 100%;
+                max-width: none;
+                padding: 0;
+            }
+
+            .pedido-impressao + .pedido-impressao {
+                break-before: page;
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body class="formato-etiqueta" th:classappend="${configuracaoEmpresa.temaCss}" data-pagina-comandas>
+
+<div class="barra-impressao no-print">
+    <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a th:href="@{/pedidos}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i>
+                Voltar para Pedidos
+            </a>
+            <a th:if="${dataRetornoKanban != null}"
+               th:href="@{/pedidos/kanban(dataAgendada=${dataRetornoKanbanIso})}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-kanban"></i>
+                Voltar para Kanban
+            </a>
+            <a th:unless="${dataRetornoKanban != null}"
+               th:href="@{/pedidos/kanban}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-kanban"></i>
+                Voltar para Kanban
+            </a>
+            <a th:href="@{/pedidos/novo}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i>
+                Novo Pedido
+            </a>
+
+            <div class="btn-group" role="group" aria-label="Formato de impressão">
+                <button type="button" class="btn btn-outline-secondary active"
+                        data-formato-impressao="etiqueta">
+                    <i class="bi bi-tag"></i>
+                    Etiqueta 100x150
+                </button>
+                <button type="button" class="btn btn-outline-secondary"
+                        data-formato-impressao="a4">
+                    <i class="bi bi-file-earmark"></i>
+                    Impressão normal
+                </button>
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-dark" data-imprimir-pagina>
+            <i class="bi bi-printer"></i>
+            Imprimir
+        </button>
+    </div>
+</div>
+
+<main class="folha-comandas" aria-label="Comandas para impressão">
+    <article class="pedido-impressao" th:each="pedido : ${pedidos}">
+        <div class="conteudo-etiqueta">
+        <header class="pedido-cabecalho text-center pb-2 mb-2">
+            <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
+                <img class="comanda-logo"
+                     th:src="${configuracaoEmpresa.logoUrl}"
+                     th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}">
+                <div class="text-start">
+                    <div class="fw-bold fs-5"
+                         th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</div>
+                    <div class="small">Comanda de produção</div>
+                </div>
+            </div>
+            <div class="etiqueta-titulo-pedido fw-bold" th:text="'PEDIDO Nº ' + ${pedido.id}">PEDIDO Nº 0</div>
+        </header>
+
+        <section class="etiqueta-destaque bloco-sem-quebra mb-2">
+            <div class="fw-bold fs-5 quebra-linha" th:text="${pedido.clienteNome}"></div>
+            <div class="d-flex justify-content-between gap-2">
+                <strong th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></strong>
+                <strong th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'ENTREGA' : 'RETIRADA'"></strong>
+            </div>
+            <div th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></div>
+            <div>Pagamento: <span th:text="${pedido.formaPagamento.descricao}"></span></div>
+        </section>
+
+        <section class="mb-2" aria-label="Itens do pedido">
+            <h2 class="fs-6 fw-bold text-uppercase mb-1">Itens</h2>
+            <div class="etiqueta-item" th:each="item : ${pedido.itens}">
+                <div class="etiqueta-item-nome fw-bold" th:text="${item.produtoNome}"></div>
+                <div class="d-flex justify-content-between gap-2">
+                    <strong th:text="${@formatacao.formatarQuantidade(item.quantidade, item.unidadeVenda)}"></strong>
+                    <span th:text="${@formatacao.formatarMoeda(item.subtotal)}"></span>
+                </div>
+                <div class="quebra-linha mt-1"
+                     th:if="${item.observacao != null and !item.observacao.isBlank()}">
+                    <strong>OBS.:</strong> <span th:text="${item.observacao}"></span>
+                </div>
+            </div>
+            <div th:if="${pedido.itens == null or pedido.itens.isEmpty()}">Pedido sem itens.</div>
+        </section>
+
+        <section class="etiqueta-destaque bloco-sem-quebra mb-2 quebra-linha"
+                 th:if="${pedido.observacao != null and !pedido.observacao.isBlank()}">
+            <strong>OBSERVAÇÃO GERAL:</strong>
+            <div th:text="${pedido.observacao}"></div>
+        </section>
+
+        <footer class="pedido-total bloco-sem-quebra pt-2">
+            <div class="d-flex justify-content-between">
+                <span>Taxa:</span>
+                <strong th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}"></strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center fs-4 mt-1">
+                <span class="fw-bold">TOTAL</span>
+                <strong th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></strong>
+            </div>
+        </footer>
+        </div>
+
+        <div class="conteudo-a4">
+        <header class="pedido-cabecalho d-flex justify-content-between align-items-center pb-3 mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <img class="comanda-logo" th:src="${configuracaoEmpresa.logoUrl}"
+                     th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}">
+                <div>
+                    <h1 class="h4 mb-0"
+                        th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</h1>
+                    <div>Resumo detalhado do pedido</div>
+                </div>
+            </div>
+            <div class="text-end">
+                <div class="small text-uppercase">Pedido</div>
+                <div class="fw-bold fs-3" th:text="'#' + ${pedido.id}">#0</div>
+            </div>
+        </header>
+
+        <section class="row g-3 mb-4">
+            <div class="col-md-7">
+                <strong>Cliente</strong>
+                <div class="fs-5 quebra-linha" th:text="${pedido.clienteNome}"></div>
+                <div th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></div>
+            </div>
+            <div class="col-md-5">
+                <div><strong>Data agendada:</strong> <span th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></span></div>
+                <div><strong>Tipo:</strong> <span th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></span></div>
+                <div><strong>Pagamento:</strong> <span th:text="${pedido.formaPagamento.descricao}"></span></div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th class="text-center">Qtd.</th>
+                    <th class="text-end">Preço</th>
+                    <th class="text-end">Subtotal</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="item : ${pedido.itens}">
+                    <td class="quebra-linha">
+                        <div th:text="${item.produtoNome}"></div>
+                        <small th:if="${item.observacao != null and !item.observacao.isBlank()}">
+                            Obs.: <span th:text="${item.observacao}"></span>
+                        </small>
+                    </td>
+                    <td class="text-center"
+                        th:text="${@formatacao.formatarQuantidade(item.quantidade, item.unidadeVenda)}"></td>
+                    <td class="text-end text-nowrap"
+                        th:text="${@formatacao.formatarMoeda(item.valorUnitario)}"></td>
+                    <td class="text-end text-nowrap"
+                        th:text="${@formatacao.formatarMoeda(item.subtotal)}"></td>
+                </tr>
+                <tr th:if="${pedido.itens == null or pedido.itens.isEmpty()}">
+                    <td colspan="4" class="text-center">Pedido sem itens.</td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="mb-3 quebra-linha"
+                 th:if="${pedido.observacao != null and !pedido.observacao.isBlank()}">
+            <strong>Observação geral:</strong>
+            <div th:text="${pedido.observacao}"></div>
+        </section>
+
+        <footer class="pedido-total pt-3">
+            <div class="d-flex justify-content-between">
+                <span>Subtotal:</span>
+                <strong th:text="${@formatacao.formatarMoeda(pedido.subtotal)}"></strong>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span>Taxa de entrega:</span>
+                <strong th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}"></strong>
+            </div>
+            <div class="d-flex justify-content-between fs-5 mt-2">
+                <span class="fw-bold">VALOR TOTAL:</span>
+                <strong th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></strong>
+            </div>
+        </footer>
+        </div>
+    </article>
+
+    <div class="alert alert-warning no-print" th:if="${pedidos == null or pedidos.isEmpty()}">
+        Nenhum pedido foi selecionado para impressão.
+    </div>
+</main>
+
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

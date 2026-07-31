@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout}">
+
+<section layout:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">
+                <i class="bi bi-box-seam-fill"></i>
+                <span th:text="${titulo}">Produto</span>
+            </h2>
+            <small class="text-muted">Informe os dados do produto</small>
+        </div>
+        <a th:href="@{/produtos}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0"><i class="bi bi-card-list me-1"></i> Dados do produto</h5>
+        </div>
+        <div class="card-body p-4">
+            <form th:object="${produto}"
+                  th:action="${modoEdicao} ? @{/produtos/{id}(id=${produtoId})} : @{/produtos}"
+                  method="post" novalidate>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <input type="text" id="nome" class="form-control"
+                                   th:classappend="${#fields.hasErrors('nome')} ? 'is-invalid' : ''"
+                                   th:field="*{nome}" placeholder="Nome do produto" maxlength="100" autofocus>
+                            <label for="nome">Nome *</label>
+                            <div class="invalid-feedback" th:errors="*{nome}"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <textarea id="descricao" class="form-control" style="height: 100px"
+                                      th:classappend="${#fields.hasErrors('descricao')} ? 'is-invalid' : ''"
+                                      th:field="*{descricao}" placeholder="Descrição do produto"
+                                      maxlength="255"></textarea>
+                            <label for="descricao">Descrição</label>
+                            <div class="invalid-feedback" th:errors="*{descricao}"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="number" id="preco" class="form-control"
+                                   th:classappend="${#fields.hasErrors('preco')} ? 'is-invalid' : ''"
+                                   th:field="*{preco}" placeholder="0,00" min="0.01" step="0.01">
+                            <label for="preco">Preço *</label>
+                            <div class="invalid-feedback" th:errors="*{preco}"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <select id="unidadeVenda" class="form-select"
+                                    th:classappend="${#fields.hasErrors('unidadeVenda')} ? 'is-invalid' : ''"
+                                    th:field="*{unidadeVenda}">
+                                <option value="">Selecione</option>
+                                <option th:each="unidade : ${unidadesVenda}"
+                                        th:value="${unidade}"
+                                        th:text="${unidade.descricao}"></option>
+                            </select>
+                            <label for="unidadeVenda">Unidade de venda *</label>
+                            <div class="invalid-feedback" th:errors="*{unidadeVenda}"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-check form-switch border rounded p-3 ps-5 h-100">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="permiteAcompanhamento" th:field="*{permiteAcompanhamento}">
+                            <label class="form-check-label" for="permiteAcompanhamento">
+                                Permite acompanhamento
+                            </label>
+                            <div class="text-danger small" th:if="${#fields.hasErrors('permiteAcompanhamento')}"
+                                 th:errors="*{permiteAcompanhamento}"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-check form-switch border rounded p-3 ps-5 h-100">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="ativo" th:field="*{ativo}">
+                            <label class="form-check-label" for="ativo">Produto ativo</label>
+                            <div class="text-danger small" th:if="${#fields.hasErrors('ativo')}"
+                                 th:errors="*{ativo}"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+                <div class="d-flex justify-content-end gap-2">
+                    <a th:href="@{/produtos}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i>
+                        <span th:text="${modoEdicao} ? 'Salvar alterações' : 'Cadastrar produto'">Salvar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</section>
+</html>

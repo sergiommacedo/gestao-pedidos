@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout}">
+
+<section layout:fragment="content">
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-0">
+                <i class="bi bi-person-gear"></i>
+                Usuários
+            </h2>
+            <small class="text-muted">Lista de usuários cadastrados</small>
+        </div>
+
+        <a th:href="@{/usuarios/novo}" class="btn btn-primary align-self-start align-self-sm-auto">
+            <i class="bi bi-plus-circle"></i>
+            Novo usuário
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <form th:action="@{/usuarios}" method="get" class="row g-2 align-items-center">
+                <div class="col-md-7">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white" aria-hidden="true">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="search" name="filtro" class="form-control"
+                               placeholder="Pesquisar por nome ou login/e-mail"
+                               aria-label="Pesquisar usuários por nome ou login/e-mail"
+                               th:value="${filtro}">
+                    </div>
+                </div>
+
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i>
+                        Pesquisar
+                    </button>
+                </div>
+
+                <div class="col-md-auto" th:if="${filtro != null and !filtro.isBlank()}">
+                    <a th:href="@{/usuarios}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i>
+                        Limpar
+                    </a>
+                </div>
+
+                <input type="hidden" name="pagina" value="0">
+                <input type="hidden" name="tamanho" th:value="${tamanho}">
+            </form>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th>ID <i class="bi bi-arrow-down" aria-label="Ordenação decrescente"></i></th>
+                        <th>Nome</th>
+                        <th>Login/E-mail</th>
+                        <th>Perfil</th>
+                        <th>Status</th>
+                        <th>Troca de senha</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    <tr th:each="usuario : ${usuarios}">
+                        <td th:text="${usuario.id}"></td>
+                        <td class="fw-medium" th:text="${usuario.nome}"></td>
+                        <td th:text="${usuario.email}"></td>
+                        <td>
+                            <span class="badge text-bg-light border text-dark"
+                                  th:text="${usuario.perfil.name() == 'ADMIN' ? 'Administrador' : 'Atendente'}">
+                                Perfil
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill"
+                                  th:classappend="${usuario.ativo} ? ' text-bg-success' : ' text-bg-secondary'">
+                                <i th:class="${usuario.ativo} ? 'bi bi-check-circle' : 'bi bi-x-circle'"
+                                   aria-hidden="true"></i>
+                                <span th:text="${usuario.ativo} ? 'Ativo' : 'Inativo'">Ativo</span>
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill"
+                                  th:classappend="${usuario.trocarSenhaPrimeiroAcesso} ? ' text-bg-warning' : ' text-bg-light border text-dark'"
+                                  th:text="${usuario.trocarSenhaPrimeiroAcesso} ? 'Pendente' : 'Não'">
+                                Não
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Ações do usuário">
+                                <a th:href="@{/usuarios/{id}/editar(id=${usuario.id})}"
+                                   class="btn btn-outline-primary" title="Editar usuário"
+                                   aria-label="Editar usuário">
+                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                </a>
+
+                                <form th:if="${usuario.ativo}"
+                                      th:action="@{/usuarios/{id}/inativar(id=${usuario.id})}" method="post">
+                                    <button type="submit" class="btn btn-outline-secondary rounded-0"
+                                            title="Inativar usuário" aria-label="Inativar usuário">
+                                        <i class="bi bi-person-dash" aria-hidden="true"></i>
+                                    </button>
+                                </form>
+
+                                <form th:unless="${usuario.ativo}"
+                                      th:action="@{/usuarios/{id}/ativar(id=${usuario.id})}" method="post">
+                                    <button type="submit" class="btn btn-outline-success rounded-0"
+                                            title="Ativar usuário" aria-label="Ativar usuário">
+                                        <i class="bi bi-person-check" aria-hidden="true"></i>
+                                    </button>
+                                </form>
+
+                                <button type="button" class="btn btn-outline-warning"
+                                        title="Redefinir senha" aria-label="Redefinir senha"
+                                        data-bs-toggle="modal" data-bs-target="#modalRedefinirSenhaUsuario"
+                                        th:data-usuario-nome="${usuario.nome}"
+                                        th:data-redefinir-senha-url="@{/usuarios/{id}/redefinir-senha(id=${usuario.id})}">
+                                    <i class="bi bi-key" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr th:if="${paginaUsuarios.empty}">
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                            <span th:if="${filtro == null or filtro.isBlank()}">
+                                Nenhum usuário cadastrado.
+                            </span>
+                            <span th:unless="${filtro == null or filtro.isBlank()}">
+                                Nenhum usuário encontrado para
+                                <strong th:text="${'“' + filtro + '”'}"></strong>
+                            </span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-footer bg-white" th:if="${paginaUsuarios.totalPages > 0}">
+            <div class="row align-items-center g-3">
+                <div class="col-md">
+                    <small class="text-muted">
+                        Exibindo <span th:text="${paginaUsuarios.numberOfElements}"></span>
+                        de <span th:text="${paginaUsuarios.totalElements}"></span> usuários
+                    </small>
+                </div>
+
+                <div class="col-md-auto">
+                    <form th:action="@{/usuarios}" method="get" class="d-flex align-items-center gap-2">
+                        <label for="tamanhoPagina" class="small text-muted text-nowrap">Itens por página:</label>
+                        <select id="tamanhoPagina" name="tamanho" class="form-select form-select-sm"
+                                onchange="this.form.submit()">
+                            <option value="10" th:selected="${tamanho == 10}">10</option>
+                            <option value="20" th:selected="${tamanho == 20}">20</option>
+                            <option value="50" th:selected="${tamanho == 50}">50</option>
+                        </select>
+                        <input type="hidden" name="filtro" th:value="${filtro}">
+                        <input type="hidden" name="pagina" value="0">
+                    </form>
+                </div>
+
+                <div class="col-md-auto" th:if="${paginaUsuarios.totalPages > 1}">
+                    <nav aria-label="Paginação de usuários">
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item" th:classappend="${paginaUsuarios.first} ? 'disabled'">
+                                <a class="page-link" th:href="@{/usuarios(
+                                    filtro=${filtro}, pagina=${paginaUsuarios.number - 1}, tamanho=${tamanho}
+                                )}">Anterior</a>
+                            </li>
+
+                            <li class="page-item"
+                                th:each="numeroPagina : ${#numbers.sequence(0, paginaUsuarios.totalPages - 1)}"
+                                th:classappend="${numeroPagina == paginaUsuarios.number} ? 'active'">
+                                <a class="page-link" th:href="@{/usuarios(
+                                    filtro=${filtro}, pagina=${numeroPagina}, tamanho=${tamanho}
+                                )}" th:text="${numeroPagina + 1}"></a>
+                            </li>
+
+                            <li class="page-item" th:classappend="${paginaUsuarios.last} ? 'disabled'">
+                                <a class="page-link" th:href="@{/usuarios(
+                                    filtro=${filtro}, pagina=${paginaUsuarios.number + 1}, tamanho=${tamanho}
+                                )}">Próxima</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="modalCancelamentoPedido"
+     class="modal fade"
+     id="modalCancelamentoPedido"
+     tabindex="-1"
+     aria-labelledby="tituloModalCancelamentoPedido"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" data-form-cancelamento-pedido novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloModalCancelamentoPedido">
+                        <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+                        Cancelar pedido
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                            aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p data-mensagem-cancelamento>
+                        Deseja cancelar este pedido?
+                    </p>
+
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <input type="hidden" name="novoStatus" value="CANCELADO">
+                    <input type="hidden" name="filtro">
+                    <input type="hidden" name="statusFiltro">
+                    <input type="hidden" name="dataAgendada">
+                    <input type="hidden" name="pagina">
+                    <input type="hidden" name="tamanho">
+                    <input type="hidden" name="ordenarPor">
+                    <input type="hidden" name="direcao">
+                    <input type="hidden" name="visualizacao">
+                    <input type="hidden" name="mostrarCancelados">
+
+                    <label for="motivoCancelamento" class="form-label">
+                        Motivo do cancelamento *
+                    </label>
+                    <textarea id="motivoCancelamento" name="motivoCancelamento"
+                              class="form-control" rows="4" maxlength="500" required
+                              placeholder="Ex.: cliente desistiu, pedido duplicado, alteração de data..."
+                              data-motivo-cancelamento></textarea>
+                    <div class="invalid-feedback">Informe o motivo do cancelamento.</div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        Voltar
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-octagon me-1"></i>
+                        Confirmar cancelamento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+</html>

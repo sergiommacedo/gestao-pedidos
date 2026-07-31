@@ -8,6 +8,8 @@ import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
 import br.com.sergio.gestaopedidos.mapper.ProdutoMapper;
 import br.com.sergio.gestaopedidos.repository.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,9 +32,45 @@ public class ProdutoService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ProdutoResponse> listarPaginado(
+            String filtro,
+            Pageable pageable
+    ) {
+        Page<Produto> paginaProdutos;
+
+        if (filtro == null || filtro.isBlank()) {
+            paginaProdutos = produtoRepository.findAll(pageable);
+        } else {
+            String filtroTratado = filtro.trim();
+
+            paginaProdutos = produtoRepository
+                    .findByNomeContainingIgnoreCaseOrDescricaoContainingIgnoreCase(
+                            filtroTratado,
+                            filtroTratado,
+                            pageable
+                    );
+        }
+
+        return paginaProdutos.map(produtoMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
     public ProdutoResponse buscarPorId(Long id) {
         Produto produto = buscarEntidadePorId(id);
         return produtoMapper.toResponse(produto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> buscarAtivosPorNome(String termo) {
+        String termoTratado = termo == null ? "" : termo.trim();
+
+        return produtoRepository
+                .findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
+                        termoTratado
+                )
+                .stream()
+                .map(produtoMapper::toResponse)
+                .toList();
     }
 
     public ProdutoResponse salvar(ProdutoRequest request) {
@@ -61,6 +99,9 @@ public class ProdutoService {
         if (request.ativo() != null) {
             produto.setAtivo(request.ativo());
         }
+
+        produto.setUnidadeVenda(request.unidadeVenda());
+        produto.setPermiteAcompanhamento(request.permiteAcompanhamento());
 
         Produto produtoAtualizado = produtoRepository.save(produto);
 

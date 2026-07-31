@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${'Entrar - ' + configuracaoEmpresa.nomeEmpresa}">Entrar</title>
+
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+
+<body class="login-page" th:classappend="${configuracaoEmpresa.temaCss}">
+<main class="login-container container px-3">
+    <section class="card login-card border-0" aria-labelledby="loginTitulo">
+        <div class="card-body p-4 p-sm-5">
+            <header class="text-center mb-4">
+                <img class="login-logo mb-3"
+                     th:src="${configuracaoEmpresa.logoUrl}"
+                     th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}">
+                <h1 class="h3 fw-bold mb-2" id="loginTitulo"
+                    th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</h1>
+                <p class="text-body-secondary mb-1"
+                   th:text="${configuracaoEmpresa.textoBoasVindas}">
+                    Bem-vindo ao sistema.
+                </p>
+                <small class="text-body-secondary">Acesse sua conta para continuar</small>
+            </header>
+
+            <div id="loginErro" class="alert alert-danger d-flex align-items-center gap-2 py-2"
+                 role="alert" th:if="${param.error}">
+                <i class="bi bi-exclamation-circle-fill flex-shrink-0" aria-hidden="true"></i>
+                <span>E-mail ou senha inválidos.</span>
+            </div>
+
+            <div id="logoutSucesso" class="alert alert-success d-flex align-items-center gap-2 py-2"
+                role="status" th:if="${param.logout}">
+                <i class="bi bi-check-circle-fill flex-shrink-0" aria-hidden="true"></i>
+                <span>Você saiu do sistema com sucesso.</span>
+            </div>
+
+            <div class="alert alert-success d-flex align-items-center gap-2 py-2"
+                 role="status" th:if="${param.senhaAlterada}">
+                <i class="bi bi-check-circle-fill flex-shrink-0" aria-hidden="true"></i>
+                <span>Senha alterada com sucesso. Entre novamente.</span>
+            </div>
+
+            <form th:action="@{/login}" method="post">
+                <div class="mb-3">
+                    <label for="email" class="form-label">E-mail ou usuário</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white" aria-hidden="true">
+                            <i class="bi bi-person"></i>
+                        </span>
+                        <input type="text" id="email" name="username"
+                               class="form-control" autocomplete="username"
+                               autocapitalize="none" spellcheck="false" required autofocus
+                               aria-describedby="loginErro">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="senha" class="form-label">Senha</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white" aria-hidden="true">
+                            <i class="bi bi-lock"></i>
+                        </span>
+                        <input type="password" id="senha" name="password"
+                               class="form-control" autocomplete="current-password" required
+                               aria-describedby="loginErro">
+                        <button type="button" class="btn btn-outline-secondary"
+                                data-alternar-senha data-campo-senha="#senha"
+                                aria-label="Mostrar senha" aria-pressed="false"
+                                title="Mostrar senha">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100">
+                    <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>
+                    Entrar
+                </button>
+            </form>
+        </div>
+    </section>
+</main>
+
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>

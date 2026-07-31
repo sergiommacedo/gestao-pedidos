@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +29,9 @@ public class Pedido {
 
     @Column(nullable = false)
     private LocalDateTime dataPedido;
+
+    @Column(nullable = false)
+    private LocalDate dataAgendada;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -52,6 +56,9 @@ public class Pedido {
 
     @Column(length = 500)
     private String observacao;
+
+    @Column(name = "motivo_cancelamento", length = 500)
+    private String motivoCancelamento;
 
     @ManyToOne
     @JoinColumn(name = "cliente_id", nullable = false)

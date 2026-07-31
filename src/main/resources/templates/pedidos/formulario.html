@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout}">
+
+<section layout:fragment="content">
+
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-receipt"></i> <span th:text="${titulo}">Novo Pedido</span></h2>
+            <small class="text-muted" th:text="${descricaoFormulario}">Selecione o cliente, organize os itens e confira o total</small>
+        </div>
+        <a th:href="@{/pedidos}" class="btn btn-outline-secondary align-self-start align-self-sm-auto">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <form th:object="${pedido}" th:action="${urlFormulario}" method="post"
+          data-formulario-pedido novalidate>
+        <input type="hidden" name="acao" value="salvar" data-acao-pedido>
+        <input type="hidden" name="origem" th:value="${origem != null ? origem : 'lista'}">
+        <input type="hidden" name="dataRetornoKanban"
+               th:value="${dataRetornoKanbanIso != null ? dataRetornoKanbanIso : ''}">
+        <input type="hidden" name="mostrarCancelados"
+               th:value="${mostrarCancelados != null ? mostrarCancelados : false}">
+
+        <div class="alert alert-danger" th:if="${#fields.hasGlobalErrors()}">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            <span th:each="erro : ${#fields.globalErrors()}" th:text="${erro}"></span>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-xl-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0"><i class="bi bi-person-check me-1"></i> Cliente</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <input type="hidden" th:field="*{clienteId}" data-cliente-id>
+
+                        <label for="buscaCliente" class="form-label">Buscar por nome ou telefone *</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                            <input type="search" id="buscaCliente" class="form-control"
+                                   placeholder="Digite pelo menos 2 caracteres"
+                                   autocomplete="off" data-busca-cliente
+                                   th:classappend="${#fields.hasErrors('clienteId')} ? 'is-invalid' : ''">
+                        </div>
+                        <div class="invalid-feedback d-block" th:errors="*{clienteId}"></div>
+
+                        <div class="list-group mt-2 d-none" data-resultados-clientes></div>
+
+                        <div class="alert alert-light border mt-3 mb-0 d-none" data-cliente-selecionado>
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                <div>
+                                    <div class="fw-semibold" data-cliente-nome
+                                         th:text="${clienteSelecionado != null ? clienteSelecionado.nome : ''}"></div>
+                                    <div class="text-muted" data-cliente-telefone
+                                         th:text="${clienteSelecionado != null
+                                            ? @formatacao.formatarTelefone(clienteSelecionado.telefone) : ''}"></div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-trocar-cliente>
+                                    Trocar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center gap-2">
+                        <h5 class="mb-0"><i class="bi bi-basket2 me-1"></i> Itens do pedido</h5>
+                        <span class="badge text-bg-light border" data-total-itens>0 itens</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <label for="buscaProduto" class="form-label">Adicionar produto</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                            <input type="search" id="buscaProduto" class="form-control"
+                                   placeholder="Digite o nome do produto" autocomplete="off"
+                                   data-busca-produto>
+                        </div>
+                        <div class="list-group mt-2 d-none" data-resultados-produtos></div>
+
+                        <div class="mt-4" data-itens-pedido>
+                            <div class="card border mb-3 item-pedido"
+                                 th:each="item, iteracao : *{itens}"
+                                 th:data-produto-id="${item.produtoId}"
+                                 th:data-produto-nome="${produtosSelecionados[item.produtoId].nome}"
+                                 th:data-produto-preco="${produtosSelecionados[item.produtoId].preco}"
+                                 th:data-produto-unidade="${produtosSelecionados[item.produtoId].unidadeVenda}"
+                                 th:data-permite-acompanhamento="${produtosSelecionados[item.produtoId].permiteAcompanhamento}">
+                                <div class="card-body">
+                                    <input type="hidden" name="itemIds"
+                                           th:value="${itemIds != null and iteracao.index < itemIds.size()
+                                                ? itemIds[iteracao.index] : ''}"
+                                           data-item-id>
+                                    <input type="hidden"
+                                           th:field="*{itens[__${iteracao.index}__].produtoId}"
+                                           data-item-produto-id>
+                                    <div class="row align-items-center g-3">
+                                        <div class="col-md">
+                                            <div class="fw-semibold" th:text="${produtosSelecionados[item.produtoId].nome}"></div>
+                                            <small class="text-muted">
+                                                <span th:text="${produtosSelecionados[item.produtoId].unidadeVenda.descricao}"></span>
+                                                · <span th:text="${@formatacao.formatarMoeda(produtosSelecionados[item.produtoId].preco)}"></span>
+                                            </small>
+                                        </div>
+                                        <div class="col-sm-4 col-md-3">
+                                            <label class="form-label small">Quantidade *</label>
+                                            <div class="input-group">
+                                                <button type="button" class="btn btn-outline-secondary"
+                                                        th:if="${produtosSelecionados[item.produtoId].unidadeVenda.name() == 'UNIDADE'}"
+                                                        data-diminuir-quantidade aria-label="Diminuir quantidade">
+                                                    <i class="bi bi-dash"></i>
+                                                </button>
+                                                <input type="text" class="form-control text-center" inputmode="decimal" required
+                                                       th:value="${@formatacao.formatarQuantidadeInput(
+                                                            item.quantidade,
+                                                            produtosSelecionados[item.produtoId].unidadeVenda)}"
+                                                       data-item-quantidade-visual>
+                                                <button type="button" class="btn btn-outline-secondary"
+                                                        th:if="${produtosSelecionados[item.produtoId].unidadeVenda.name() == 'UNIDADE'}"
+                                                        data-aumentar-quantidade aria-label="Aumentar quantidade">
+                                                    <i class="bi bi-plus"></i>
+                                                </button>
+                                            </div>
+                                            <input type="hidden"
+                                                   th:field="*{itens[__${iteracao.index}__].quantidade}"
+                                                   data-item-quantidade>
+                                            <div class="invalid-feedback d-block"
+                                                 th:errors="*{itens[__${iteracao.index}__].quantidade}"></div>
+                                        </div>
+                                        <div class="col-sm-5 col-md-3 text-md-end">
+                                            <small class="text-muted d-block">Subtotal</small>
+                                            <strong data-item-subtotal>R$ 0,00</strong>
+                                        </div>
+                                        <div class="col-sm-3 col-md-auto">
+                                            <button type="button" class="btn btn-outline-danger" data-remover-item
+                                                    aria-label="Remover item"><i class="bi bi-trash"></i></button>
+                                        </div>
+                                        <div class="col-12"
+                                             th:classappend="${!produtosSelecionados[item.produtoId].permiteAcompanhamento} ? ' d-none'"
+                                             data-item-observacao-container>
+                                            <label class="form-label small">Observação do item</label>
+                                            <input type="text" class="form-control form-control-sm" maxlength="255"
+                                                   placeholder="Ex.: sem farofa"
+                                                   th:field="*{itens[__${iteracao.index}__].observacao}"
+                                                   data-item-observacao>
+                                            <div class="invalid-feedback d-block"
+                                                 th:errors="*{itens[__${iteracao.index}__].observacao}"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center text-muted border rounded py-5" data-itens-vazio>
+                            <i class="bi bi-basket fs-1 d-block mb-2"></i>
+                            Adicione ao menos um produto ao pedido.
+                        </div>
+                        <div class="text-danger small mt-2" th:errors="*{itens}"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-4">
+                <div class="card shadow-sm mb-4 pedido-dados-card">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0"><i class="bi bi-calendar-event me-1"></i> Dados do pedido</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label for="dataAgendadaVisual" class="form-label">Data agendada *</label>
+                            <input type="text" id="dataAgendadaVisual" class="form-control"
+                                   inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10"
+                                   required
+                                   th:value="${pedido.dataAgendada != null
+                                        ? #temporals.format(pedido.dataAgendada, 'dd/MM/yyyy') : ''}"
+                                   data-data-brasileira
+                                   th:classappend="${#fields.hasErrors('dataAgendada')} ? 'is-invalid' : ''">
+                            <input type="hidden" id="dataAgendada" th:field="*{dataAgendada}" data-data-iso>
+                            <div class="invalid-feedback" th:errors="*{dataAgendada}"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="formaPagamento" class="form-label">Forma de pagamento *</label>
+                            <select id="formaPagamento" class="form-select" th:field="*{formaPagamento}"
+                                    th:classappend="${#fields.hasErrors('formaPagamento')} ? 'is-invalid' : ''">
+                                <option value="">Selecione</option>
+                                <option th:each="forma : ${formasPagamento}" th:value="${forma}"
+                                        th:text="${forma.descricao}"></option>
+                            </select>
+                            <div class="invalid-feedback" th:errors="*{formaPagamento}"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tipoEntrega" class="form-label">Tipo de entrega *</label>
+                            <select id="tipoEntrega" class="form-select" th:field="*{tipoEntrega}"
+                                    th:classappend="${#fields.hasErrors('tipoEntrega')} ? 'is-invalid' : ''">
+                                <option value="">Selecione</option>
+                                <option th:each="tipo : ${tiposEntrega}" th:value="${tipo}"
+                                        th:text="${tipo.name() == 'ENTREGA' ? 'Entrega' : 'Retirada'}"></option>
+                            </select>
+                            <div class="invalid-feedback" th:errors="*{tipoEntrega}"></div>
+                        </div>
+
+                        <div class="mb-3" data-taxa-entrega-container>
+                            <label for="taxaEntregaVisual" class="form-label">Taxa de entrega</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                <input type="text" id="taxaEntregaVisual" class="form-control"
+                                       inputmode="decimal"
+                                       th:value="${@formatacao.formatarDecimalBrasileiro(pedido.taxaEntrega, 2)}"
+                                       data-moeda-visual
+                                       th:classappend="${#fields.hasErrors('taxaEntrega')} ? 'is-invalid' : ''">
+                                <input type="hidden" id="taxaEntrega" th:field="*{taxaEntrega}"
+                                       data-taxa-entrega data-moeda-decimal>
+                                <div class="invalid-feedback" th:errors="*{taxaEntrega}"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="observacao" class="form-label">Observação geral</label>
+                            <textarea id="observacao" class="form-control" rows="4" maxlength="500"
+                                      th:field="*{observacao}" placeholder="Informações gerais do pedido"
+                                      th:classappend="${#fields.hasErrors('observacao')} ? 'is-invalid' : ''"></textarea>
+                            <div class="invalid-feedback" th:errors="*{observacao}"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm pedido-resumo-card">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0"><i class="bi bi-calculator me-1"></i> Resumo</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Itens distintos</span>
+                            <strong data-resumo-itens>0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 d-none"
+                             data-resumo-quantidade-container>
+                            <span class="text-muted">Quantidade total</span>
+                            <strong data-resumo-quantidade></strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Subtotal</span>
+                            <strong data-pedido-subtotal>R$ 0,00</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="text-muted">Taxa de entrega</span>
+                            <strong data-resumo-taxa>R$ 0,00</strong>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <span class="fs-5 fw-semibold">Total</span>
+                            <strong class="fs-4 text-primary" data-pedido-total>R$ 0,00</strong>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" value="salvar" class="btn btn-primary btn-lg"
+                                    data-botao-salvar>
+                                <i class="bi bi-check-circle"></i> <span th:text="${textoSalvar}">Salvar pedido</span>
+                            </button>
+                            <button type="submit" value="salvarImprimir"
+                                    th:if="${pedidoId == null or statusImprimivelEdicao == null or statusImprimivelEdicao}"
+                                    class="btn btn-outline-secondary" data-botao-salvar>
+                                <i class="bi bi-printer"></i> Salvar e imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="modal fade" id="modalNovoCliente" tabindex="-1"
+         aria-labelledby="tituloModalNovoCliente" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <form th:action="@{/pedidos/clientes}" method="post" data-form-novo-cliente>
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="tituloModalNovoCliente">
+                            <i class="bi bi-person-plus me-1"></i> Cadastrar novo cliente
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger d-none" data-erros-cliente></div>
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <label for="novoClienteNome" class="form-label">Nome *</label>
+                                <input type="text" id="novoClienteNome" name="nome" class="form-control"
+                                       maxlength="100" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label for="novoClienteTelefone" class="form-label">Telefone *</label>
+                                <input type="text" id="novoClienteTelefone" name="telefone" class="form-control"
+                                       maxlength="20" data-mascara-telefone required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="novoClienteCep" class="form-label">CEP</label>
+                                <input type="text" id="novoClienteCep" name="cep" class="form-control" maxlength="10"
+                                       data-mascara-cep data-cep
+                                       data-endereco="#novoClienteEndereco"
+                                       data-bairro="#novoClienteBairro"
+                                       data-cidade="#novoClienteCidade"
+                                       data-numero="#novoClienteNumero">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="novoClienteNumero" class="form-label">Número</label>
+                                <input type="text" id="novoClienteNumero" name="numero" class="form-control" maxlength="20">
+                            </div>
+                            <div class="col-12">
+                                <label for="novoClienteEndereco" class="form-label">Endereço</label>
+                                <input type="text" id="novoClienteEndereco" name="endereco" class="form-control" maxlength="150">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="novoClienteBairro" class="form-label">Bairro</label>
+                                <input type="text" id="novoClienteBairro" name="bairro" class="form-control" maxlength="100">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="novoClienteCidade" class="form-label">Cidade</label>
+                                <input type="text" id="novoClienteCidade" name="cidade" class="form-control" maxlength="100">
+                            </div>
+                            <div class="col-12">
+                                <label for="novoClienteComplemento" class="form-label">Complemento</label>
+                                <input type="text" id="novoClienteComplemento" name="complemento" class="form-control" maxlength="150">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Salvar cliente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</section>
+</html>

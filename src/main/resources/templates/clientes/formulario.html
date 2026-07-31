@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout}">
+
+<section layout:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="mb-0">
+                <i class="bi bi-person-vcard-fill"></i>
+                <span th:text="${titulo}">Cliente</span>
+            </h2>
+
+            <small class="text-muted">
+                Informe os dados do cliente
+            </small>
+        </div>
+
+        <a th:href="@{/clientes}"
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-arrow-left"></i>
+            Voltar
+
+        </a>
+
+    </div>
+
+    <div class="card shadow-sm">
+
+        <div class="card-header bg-white py-3">
+
+            <h5 class="mb-0">
+                <i class="bi bi-person-lines-fill me-1"></i>
+                Dados do cliente
+            </h5>
+
+        </div>
+
+        <div class="card-body p-4">
+
+            <form th:object="${cliente}"
+                  th:action="${modoEdicao} ? @{/clientes/{id}(id=${clienteId})} : @{/clientes}"
+                  method="post"
+                  novalidate>
+
+                <div class="row g-3">
+
+                    <!-- Nome -->
+
+                    <div class="col-12">
+
+                        <div class="form-floating">
+
+                            <input type="text"
+                                   id="nome"
+                                   class="form-control"
+                                   th:classappend="${#fields.hasErrors('nome')} ? 'is-invalid' : ''"
+                                   th:field="*{nome}"
+                                   placeholder="Nome completo"
+                                   maxlength="100"
+                                   autofocus>
+
+                            <label for="nome">
+                                Nome completo *
+                            </label>
+
+                            <div class="invalid-feedback"
+                                 th:errors="*{nome}">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Telefone -->
+
+                    <div class="col-md-6">
+
+                        <div class="form-floating">
+
+                            <input type="text"
+                                   id="telefone"
+                                   class="form-control"
+                                   th:classappend="${#fields.hasErrors('telefone')} ? 'is-invalid' : ''"
+                                   th:field="*{telefone}"
+                                   placeholder="(41) 99999-9999"
+                                   maxlength="20">
+
+                            <label for="telefone">
+                                Telefone *
+                            </label>
+
+                            <div class="invalid-feedback"
+                                 th:errors="*{telefone}">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- CEP -->
+
+                    <div class="col-md-6">
+
+                        <div class="form-floating">
+
+                            <input type="text"
+                                   id="cep"
+                                   class="form-control"
+                                   th:classappend="${#fields.hasErrors('cep')}
+                   ? 'is-invalid'
+                   : ''"
+                                   th:field="*{cep}"
+                                   placeholder="80000-000"
+                                   maxlength="10"
+                                   inputmode="numeric"
+                                   autocomplete="postal-code">
+
+                            <label for="cep">
+                                CEP
+                            </label>
+
+                            <div class="invalid-feedback"
+                                 th:if="${#fields.hasErrors('cep')}"
+                                 th:errors="*{cep}">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Endereço -->
+
+                    <div class="col-md-9">
+
+                        <div class="form-floating">
+
+                            <input type="text"
+                                   id="endereco"
+                                   class="form-control"
+                                   th:classappend="${#fields.hasErrors('endereco')} ? 'is-invalid' : ''"
+                                   th:field="*{endereco}"
+                                   placeholder="Rua, avenida..."
+                                   maxlength="150">
+
+                            <label for="endereco">
+                                Endereço
+                            </label>
+
+                            <div class="invalid-feedback"
+                                 th:errors="*{endereco}">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Número -->
+
+                    <div class="col-md-3">
+
+                        <div class="form-floating">
+
+                            <input type="text"
+                                   id="numero"
+                                   class="form-control"
+                                   th:classappend="${#fields.hasErrors('numero')} ? 'is-invalid' : ''"
+                                   th:field="*{numero}"
+                                   placeholder="Número"
+                                   maxlength="20">
+
+                            <label for="numero">
+                                Número
+                            </label>
+
+                            <div class="invalid-feedback"
+                                 th:errors="*{numero}">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Complemento -->
+
+                    <div class="col-12">
+
+                        <div class="form-floating">
+
+                            <input type="text"
+                                   id="complemento"
+                                   class="form-control"
+                                   th:classappend="${#fields.hasErrors('complemento')} ? 'is-invalid' : ''"
+                                   th:field="*{complemento}"
+                                   placeholder="Apartamento, bloco ou referência"
+                                   maxlength="150">
+
+                            <label for="complemento">
+                                Complemento
+                            </label>
+
+                            <div class="invalid-feedback"
+                                 th:errors="*{complemento}">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Bairro -->
+
+                    <div class="col-md-6">
+
+                        <div class="form-floating">
+
+                            <input type="text"
+                                   id="bairro"
+                                   class="form-control"
+                                   th:classappend="${#fields.hasErrors('bairro')} ? 'is-invalid' : ''"
+                                   th:field="*{bairro}"
+                                   placeholder="Bairro"
+                                   maxlength="100">
+
+                            <label for="bairro">
+                                Bairro
+                            </label>
+
+                            <div class="invalid-feedback"
+                                 th:errors="*{bairro}">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Cidade -->
+
+                    <div class="col-md-6">
+
+                        <div class="form-floating">
+
+                            <input type="text"
+                                   id="cidade"
+                                   class="form-control"
+                                   th:classappend="${#fields.hasErrors('cidade')} ? 'is-invalid' : ''"
+                                   th:field="*{cidade}"
+                                   placeholder="Cidade"
+                                   maxlength="100">
+
+                            <label for="cidade">
+                                Cidade
+                            </label>
+
+                            <div class="invalid-feedback"
+                                 th:errors="*{cidade}">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <hr class="my-4">
+
+                <div class="d-flex justify-content-end gap-2">
+
+                    <a th:href="@{/clientes}"
+                       class="btn btn-outline-secondary">
+
+                        <i class="bi bi-x-circle"></i>
+                        Cancelar
+
+                    </a>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+
+                        <i class="bi bi-check-circle"></i>
+
+                        <span th:text="${modoEdicao}
+                            ? 'Salvar alterações'
+                            : 'Cadastrar cliente'">
+                            Salvar
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</section>
+
+</html>

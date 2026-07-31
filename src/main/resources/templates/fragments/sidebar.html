@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<body>
+
+<aside th:fragment="sidebar"
+       id="sidebar"
+       class="offcanvas-lg offcanvas-start app-sidebar border-end"
+       tabindex="-1"
+       aria-labelledby="sidebarLabel"
+       style="--bs-offcanvas-width: 250px;">
+
+    <!-- Cabeçalho exibido no menu mobile -->
+    <div class="offcanvas-header d-lg-none border-bottom">
+
+        <h5 class="offcanvas-title"
+            id="sidebarLabel">
+
+            Menu
+
+        </h5>
+
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="offcanvas"
+                data-bs-target="#sidebar"
+                aria-label="Fechar menu">
+        </button>
+
+    </div>
+
+    <div class="offcanvas-body d-flex flex-column p-0">
+
+        <div class="app-sidebar-heading px-3 pt-3 pb-2">
+            <small class="text-uppercase fw-semibold">Painel Administrativo</small>
+        </div>
+
+        <nav class="nav nav-pills flex-column gap-1 px-3 pb-3" aria-label="Navegação administrativa">
+
+            <span class="app-section-title text-uppercase small fw-semibold px-3 mb-1">
+
+                Principal
+
+            </span>
+
+            <a th:href="@{/}"
+               class="nav-link active d-flex align-items-center gap-3">
+
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
+
+            </a>
+
+            <a th:href="@{/pedidos}"
+               class="nav-link d-flex align-items-center gap-3">
+
+                <i class="bi bi-card-checklist"></i>
+                <span>Pedidos</span>
+
+            </a>
+
+            <a th:href="@{/clientes}"
+               class="nav-link d-flex align-items-center gap-3">
+
+                <i class="bi bi-people"></i>
+                <span>Clientes</span>
+
+            </a>
+
+            <a th:href="@{/produtos}"
+               class="nav-link d-flex align-items-center gap-3">
+
+                <i class="bi bi-box-seam"></i>
+                <span>Produtos</span>
+
+            </a>
+
+            <hr class="my-3">
+
+            <span class="app-section-title text-uppercase small fw-semibold px-3 mb-1">
+
+                Gestão
+
+            </span>
+
+            <a th:href="@{/usuarios}"
+               sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3">
+
+                <i class="bi bi-person-gear"></i>
+                <span>Usuários</span>
+
+            </a>
+
+            <a th:href="@{/relatorios}"
+               class="nav-link d-flex align-items-center gap-3">
+
+                <i class="bi bi-bar-chart"></i>
+                <span>Relatórios</span>
+
+            </a>
+
+            <a th:href="@{/configuracoes}"
+               sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3">
+
+                <i class="bi bi-gear"></i>
+                <span>Configurações</span>
+
+            </a>
+
+        </nav>
+
+        <div class="mt-auto border-top p-3">
+
+            <form th:action="@{/logout}"
+                  method="post">
+
+                <input type="hidden"
+                       th:name="${_csrf.parameterName}"
+                       th:value="${_csrf.token}">
+
+                <button type="submit"
+                        class="btn btn-outline-danger w-100
+                               d-flex align-items-center
+                               justify-content-center gap-2">
+
+                    <i class="bi bi-box-arrow-right"></i>
+                    Sair
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</aside>
+
+</body>
+</html>
