@@ -130,6 +130,10 @@ public class SecurityConfig {
                 )
 
                 .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .clearAuthentication(true)
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )

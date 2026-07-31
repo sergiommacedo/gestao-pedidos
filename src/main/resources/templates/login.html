@@ -30,9 +30,9 @@
             </div>
 
             <div id="logoutSucesso" class="alert alert-success d-flex align-items-center gap-2 py-2"
-                 role="status" th:if="${param.logout}">
+                role="status" th:if="${param.logout}">
                 <i class="bi bi-check-circle-fill flex-shrink-0" aria-hidden="true"></i>
-                <span>Logout realizado com sucesso.</span>
+                <span>Você saiu do sistema com sucesso.</span>
             </div>
 
             <form th:action="@{/login}" method="post">
