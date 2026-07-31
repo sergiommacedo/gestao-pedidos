@@ -8,6 +8,7 @@ import br.com.sergio.gestaopedidos.mapper.ClienteMapper;
 import br.com.sergio.gestaopedidos.repository.ClienteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +60,26 @@ public class ClienteService {
         Cliente cliente = buscarEntidadePorId(id);
 
         return clienteMapper.toResponse(cliente);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClienteResponse> buscarPorNomeOuTelefone(String termo) {
+        if (termo == null || termo.isBlank()) {
+            return List.of();
+        }
+
+        String termoTratado = termo.trim();
+
+        return clienteRepository
+                .findByNomeContainingIgnoreCaseOrTelefoneContainingIgnoreCase(
+                        termoTratado,
+                        termoTratado,
+                        PageRequest.of(0, 10)
+                )
+                .getContent()
+                .stream()
+                .map(clienteMapper::toResponse)
+                .toList();
     }
 
     public ClienteResponse salvar(ClienteRequest request) {

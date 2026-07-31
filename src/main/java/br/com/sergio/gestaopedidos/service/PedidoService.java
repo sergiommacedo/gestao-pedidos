@@ -8,6 +8,7 @@ import br.com.sergio.gestaopedidos.entity.ItemPedido;
 import br.com.sergio.gestaopedidos.entity.Pedido;
 import br.com.sergio.gestaopedidos.entity.Produto;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import br.com.sergio.gestaopedidos.exception.BusinessException;
 import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
 import br.com.sergio.gestaopedidos.mapper.PedidoMapper;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -94,6 +96,7 @@ public class PedidoService {
             Produto produto = buscarProdutoPorId(itemRequest.produtoId());
 
             validarProdutoAtivo(produto);
+            validarQuantidade(produto, itemRequest.quantidade());
 
             ItemPedido itemPedido = criarItemPedido(
                     pedido,
@@ -121,7 +124,7 @@ public class PedidoService {
             Cliente cliente
     ) {
         BigDecimal taxaEntrega = request.taxaEntrega() != null
-                ? request.taxaEntrega()
+                ? request.taxaEntrega().setScale(2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
         return Pedido.builder()
@@ -144,13 +147,16 @@ public class PedidoService {
             ItemPedidoRequest request
     ) {
         BigDecimal subtotalItem = produto.getPreco().multiply(
-                BigDecimal.valueOf(request.quantidade())
-        );
+                request.quantidade()
+        ).setScale(2, RoundingMode.HALF_UP);
 
         return ItemPedido.builder()
                 .quantidade(request.quantidade())
                 .precoUnitario(produto.getPreco())
                 .subtotal(subtotalItem)
+                .observacao(Boolean.TRUE.equals(produto.getPermiteAcompanhamento())
+                        ? request.observacao()
+                        : null)
                 .pedido(pedido)
                 .produto(produto)
                 .build();
@@ -188,6 +194,23 @@ public class PedidoService {
             throw new BusinessException(
                     "O produto " + produto.getNome()
                             + " está inativo e não pode ser adicionado ao pedido."
+            );
+        }
+    }
+
+    private void validarQuantidade(
+            Produto produto,
+            BigDecimal quantidade
+    ) {
+        if (quantidade == null || quantidade.signum() <= 0) {
+            throw new BusinessException("Quantidade deve ser maior que zero.");
+        }
+
+        if (produto.getUnidadeVenda() == UnidadeVenda.UNIDADE
+                && quantidade.stripTrailingZeros().scale() > 0) {
+            throw new BusinessException(
+                    "A quantidade do produto " + produto.getNome()
+                            + " deve ser um número inteiro."
             );
         }
     }

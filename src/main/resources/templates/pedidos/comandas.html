@@ -216,7 +216,12 @@
                 </thead>
                 <tbody>
                 <tr th:each="item : ${pedido.itens}">
-                    <td class="quebra-linha" th:text="${item.produtoNome}"></td>
+                    <td class="quebra-linha">
+                        <div th:text="${item.produtoNome}"></div>
+                        <small th:if="${item.observacao != null and !item.observacao.isBlank()}">
+                            Obs.: <span th:text="${item.observacao}"></span>
+                        </small>
+                    </td>
                     <td class="text-center" th:text="${item.quantidade}"></td>
                     <td class="text-end text-nowrap"
                         th:text="${#numbers.formatCurrency(item.valorUnitario)}"></td>

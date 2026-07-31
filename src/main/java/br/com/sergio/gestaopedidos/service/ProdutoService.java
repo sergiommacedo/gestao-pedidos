@@ -60,6 +60,19 @@ public class ProdutoService {
         return produtoMapper.toResponse(produto);
     }
 
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> buscarAtivosPorNome(String termo) {
+        String termoTratado = termo == null ? "" : termo.trim();
+
+        return produtoRepository
+                .findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
+                        termoTratado
+                )
+                .stream()
+                .map(produtoMapper::toResponse)
+                .toList();
+    }
+
     public ProdutoResponse salvar(ProdutoRequest request) {
         validarNomeDuplicado(request.nome());
 

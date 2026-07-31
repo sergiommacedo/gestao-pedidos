@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Entity
 @Table(name = "itens_pedido")
@@ -20,14 +21,17 @@ public class ItemPedido {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @Column(nullable = false)
-    private Integer quantidade;
+    @Column(nullable = false, precision = 10, scale = 3)
+    private BigDecimal quantidade;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal precoUnitario;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
+
+    @Column(length = 255)
+    private String observacao;
 
     @ManyToOne
     @JoinColumn(name = "pedido_id", nullable = false)
@@ -41,9 +45,8 @@ public class ItemPedido {
     @PreUpdate
     public void calcularSubtotal() {
         if (quantidade != null && precoUnitario != null) {
-            subtotal = precoUnitario.multiply(
-                    BigDecimal.valueOf(quantidade)
-            );
+            subtotal = precoUnitario.multiply(quantidade)
+                    .setScale(2, RoundingMode.HALF_UP);
         }
     }
 }

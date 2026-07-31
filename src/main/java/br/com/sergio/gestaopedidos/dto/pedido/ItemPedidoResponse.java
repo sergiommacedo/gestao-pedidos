@@ -19,13 +19,16 @@ public record ItemPedidoResponse(
         String produtoNome,
 
         @Schema(description = "Quantidade", example = "2")
-        Integer quantidade,
+        BigDecimal quantidade,
 
         @Schema(description = "Valor unitário do produto", example = "49.90")
         BigDecimal valorUnitario,
 
         @Schema(description = "Subtotal do item", example = "99.80")
-        BigDecimal subtotal
+        BigDecimal subtotal,
+
+        @Schema(description = "Observação do item", example = "Sem farofa")
+        String observacao
 
 ) {
 }

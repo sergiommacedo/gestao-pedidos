@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public interface ProdutoRepository extends JpaRepository<Produto, Long> {
 
     boolean existsByNomeIgnoreCase(String nome);
@@ -13,5 +15,9 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
             String nome,
             String descricao,
             Pageable pageable
+    );
+
+    List<Produto> findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
+            String nome
     );
 }
