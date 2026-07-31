@@ -45,7 +45,7 @@
                         <input type="email" id="email" name="username"
                                class="form-control" autocomplete="username"
                                autocapitalize="none" spellcheck="false" required autofocus
-                               th:aria-describedby="${param.error != null ? 'loginErro' : null}">
+                               aria-describedby="loginErro">
                     </div>
                 </div>
 
@@ -57,7 +57,7 @@
                         </span>
                         <input type="password" id="senha" name="password"
                                class="form-control" autocomplete="current-password" required
-                               th:aria-describedby="${param.error != null ? 'loginErro' : null}">
+                               aria-describedby="loginErro">
                         <button type="button" class="btn btn-outline-secondary"
                                 data-alternar-senha data-campo-senha="#senha"
                                 aria-label="Mostrar senha" aria-pressed="false"
