@@ -95,7 +95,14 @@
                                 Não
                             </span>
                         </td>
-                        <td class="text-center text-muted" aria-label="Nenhuma ação disponível">—</td>
+                        <td class="text-center">
+                            <a th:href="@{/usuarios/{id}/editar(id=${usuario.id})}"
+                               class="btn btn-sm btn-outline-primary"
+                               title="Editar usuário"
+                               aria-label="Editar usuário">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                            </a>
+                        </td>
                     </tr>
 
                     <tr th:if="${paginaUsuarios.empty}">

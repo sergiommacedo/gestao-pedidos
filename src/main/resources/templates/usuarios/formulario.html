@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout}">
+
+<section layout:fragment="content">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a th:href="@{/usuarios}" class="btn btn-outline-secondary" aria-label="Voltar para usuários">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h2 class="mb-0" th:text="${titulo}">Usuário</h2>
+            <small class="text-muted">
+                <span th:if="${modoEdicao}">Atualize os dados de acesso do usuário</span>
+                <span th:unless="${modoEdicao}">Cadastre um novo acesso ao sistema</span>
+            </small>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <form th:action="${modoEdicao} ? @{/usuarios/{id}(id=${usuarioId})} : @{/usuarios}"
+                  th:object="${usuario}" method="post">
+                <div class="alert alert-danger" role="alert" th:if="${#fields.hasGlobalErrors()}">
+                    <p class="mb-0" th:each="erro : ${#fields.globalErrors()}" th:text="${erro}"></p>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="nome" class="form-label">Nome *</label>
+                        <input type="text" id="nome" class="form-control" th:field="*{nome}"
+                               maxlength="100" required autofocus
+                               th:classappend="${#fields.hasErrors('nome')} ? 'is-invalid'">
+                        <div class="invalid-feedback" th:errors="*{nome}"></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="login" class="form-label">Login ou e-mail *</label>
+                        <input type="text" id="login" class="form-control" th:field="*{login}"
+                               maxlength="100" autocomplete="username" required
+                               th:classappend="${#fields.hasErrors('login')} ? 'is-invalid'">
+                        <div class="invalid-feedback" th:errors="*{login}"></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="perfil" class="form-label">Perfil *</label>
+                        <select id="perfil" class="form-select" th:field="*{perfil}" required
+                                th:classappend="${#fields.hasErrors('perfil')} ? 'is-invalid'">
+                            <option value="">Selecione</option>
+                            <option th:each="perfil : ${perfis}" th:value="${perfil}"
+                                    th:text="${perfil.name() == 'ADMIN' ? 'Administrador' : 'Atendente'}">
+                            </option>
+                        </select>
+                        <div class="invalid-feedback" th:errors="*{perfil}"></div>
+                    </div>
+
+                    <div class="col-md-6 d-flex flex-column justify-content-center gap-3 pt-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="ativo" th:field="*{ativo}">
+                            <label class="form-check-label" for="ativo">Usuário ativo</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="trocarSenha" th:field="*{trocarSenhaPrimeiroAcesso}">
+                            <label class="form-check-label" for="trocarSenha">
+                                Trocar senha no próximo acesso
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-12"><hr class="my-2"></div>
+
+                    <div class="col-md-6">
+                        <label for="senha" class="form-label">
+                            <span th:text="${modoEdicao} ? 'Nova senha' : 'Senha *'">Senha</span>
+                        </label>
+                        <input type="password" id="senha" class="form-control" th:field="*{senha}"
+                               minlength="6" autocomplete="new-password"
+                               th:attr="required=${!modoEdicao}"
+                               th:classappend="${#fields.hasErrors('senha')} ? 'is-invalid'">
+                        <div class="invalid-feedback" th:errors="*{senha}"></div>
+                        <div class="form-text" th:if="${modoEdicao}">
+                            Deixe em branco para manter a senha atual.
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="confirmarSenha" class="form-label">
+                            <span th:text="${modoEdicao} ? 'Confirmar nova senha' : 'Confirmar senha *'">
+                                Confirmar senha
+                            </span>
+                        </label>
+                        <input type="password" id="confirmarSenha" class="form-control"
+                               th:field="*{confirmarSenha}" minlength="6" autocomplete="new-password"
+                               th:attr="required=${!modoEdicao}"
+                               th:classappend="${#fields.hasErrors('confirmarSenha')} ? 'is-invalid'">
+                        <div class="invalid-feedback" th:errors="*{confirmarSenha}"></div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4">
+                    <a th:href="@{/usuarios}" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>
+                        <span th:text="${modoEdicao} ? 'Salvar alterações' : 'Cadastrar usuário'">
+                            Salvar
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+</html>

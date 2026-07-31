@@ -3,7 +3,9 @@ package br.com.sergio.gestaopedidos.service;
 import br.com.sergio.gestaopedidos.dto.usuario.UsuarioRequest;
 import br.com.sergio.gestaopedidos.dto.usuario.UsuarioResponse;
 import br.com.sergio.gestaopedidos.dto.usuario.AlterarSenhaInicialRequest;
+import br.com.sergio.gestaopedidos.dto.usuario.UsuarioWebForm;
 import br.com.sergio.gestaopedidos.entity.Usuario;
+import br.com.sergio.gestaopedidos.enums.PerfilUsuario;
 import br.com.sergio.gestaopedidos.exception.BusinessException;
 import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
 import br.com.sergio.gestaopedidos.mapper.UsuarioMapper;
@@ -70,6 +72,71 @@ public class UsuarioService {
         Usuario usuarioSalvo = usuarioRepository.save(usuario);
 
         return usuarioMapper.toResponse(usuarioSalvo);
+    }
+
+    public UsuarioResponse cadastrarWeb(UsuarioWebForm form) {
+        String login = form.getLogin().trim();
+        validarEmailDuplicado(login);
+
+        Usuario usuario = Usuario.builder()
+                .nome(form.getNome().trim())
+                .email(login)
+                .senha(passwordEncoder.encode(form.getSenha()))
+                .perfil(form.getPerfil())
+                .ativo(Boolean.TRUE.equals(form.getAtivo()))
+                .trocarSenhaPrimeiroAcesso(
+                        Boolean.TRUE.equals(form.getTrocarSenhaPrimeiroAcesso())
+                )
+                .build();
+
+        return usuarioMapper.toResponse(usuarioRepository.save(usuario));
+    }
+
+    public UsuarioResponse atualizarWeb(
+            Long id,
+            UsuarioWebForm form,
+            String loginAdministrador
+    ) {
+        Usuario usuario = buscarEntidadePorId(id);
+        String novoLogin = form.getLogin().trim();
+        boolean proprioUsuario = usuario.getEmail().equalsIgnoreCase(loginAdministrador);
+        boolean novoAtivo = Boolean.TRUE.equals(form.getAtivo());
+
+        if (usuarioRepository.existsByEmailIgnoreCaseAndIdNot(novoLogin, id)) {
+            throw new BusinessException("Já existe um usuário cadastrado com esse login ou e-mail.");
+        }
+
+        if (proprioUsuario && !novoAtivo) {
+            throw new BusinessException("Você não pode inativar seu próprio usuário.");
+        }
+
+        if (proprioUsuario && form.getPerfil() != PerfilUsuario.ADMIN) {
+            throw new BusinessException("Você não pode remover seu próprio perfil de administrador.");
+        }
+
+        boolean deixariaDeSerAdminAtivo =
+                usuario.getPerfil() == PerfilUsuario.ADMIN
+                        && Boolean.TRUE.equals(usuario.getAtivo())
+                        && (form.getPerfil() != PerfilUsuario.ADMIN || !novoAtivo);
+
+        if (deixariaDeSerAdminAtivo
+                && usuarioRepository.countByPerfilAndAtivoTrue(PerfilUsuario.ADMIN) <= 1) {
+            throw new BusinessException("O sistema deve possuir ao menos um administrador ativo.");
+        }
+
+        usuario.setNome(form.getNome().trim());
+        usuario.setEmail(novoLogin);
+        usuario.setPerfil(form.getPerfil());
+        usuario.setAtivo(novoAtivo);
+        usuario.setTrocarSenhaPrimeiroAcesso(
+                Boolean.TRUE.equals(form.getTrocarSenhaPrimeiroAcesso())
+        );
+
+        if (form.getSenha() != null && !form.getSenha().isBlank()) {
+            usuario.setSenha(passwordEncoder.encode(form.getSenha()));
+        }
+
+        return usuarioMapper.toResponse(usuarioRepository.save(usuario));
     }
 
     public UsuarioResponse atualizar(Long id, UsuarioRequest request) {
@@ -165,7 +232,7 @@ public class UsuarioService {
     private void validarEmailDuplicado(String email) {
         if (usuarioRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException(
-                    "Já existe um usuário cadastrado com esse e-mail."
+                    "Já existe um usuário cadastrado com esse login ou e-mail."
             );
         }
     }
