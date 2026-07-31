@@ -32,7 +32,9 @@ function inicializarModalCancelamentoPedido() {
         "pagina",
         "tamanho",
         "ordenarPor",
-        "direcao"
+        "direcao",
+        "visualizacao",
+        "mostrarCancelados"
     ];
     const modal = bootstrap.Modal.getOrCreateInstance(modalElemento);
 

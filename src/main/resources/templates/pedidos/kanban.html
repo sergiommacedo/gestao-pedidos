@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout}">
+
+<section layout:fragment="content">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-kanban"></i> Kanban de Pedidos</h2>
+            <small class="text-muted">Acompanhe e avance os pedidos do dia</small>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <div class="btn-group" role="group" aria-label="Visualização dos pedidos">
+                <a th:href="@{/pedidos}" class="btn btn-outline-secondary">
+                    <i class="bi bi-list-ul"></i> Lista
+                </a>
+                <a th:href="@{/pedidos/kanban(dataAgendada=${dataAgendada}, mostrarCancelados=${mostrarCancelados})}"
+                   class="btn btn-outline-secondary active" aria-current="page">
+                    <i class="bi bi-kanban"></i> Kanban
+                </a>
+            </div>
+            <a th:href="@{/pedidos/novo}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Novo Pedido
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form th:action="@{/pedidos/kanban}" method="get"
+                  class="row g-3 align-items-end">
+                <div class="col-sm-6 col-lg-3">
+                    <label for="dataKanbanVisual" class="form-label">Data dos pedidos</label>
+                    <input type="text" id="dataKanbanVisual" class="form-control form-control-lg"
+                           inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"
+                           th:value="${#temporals.format(dataAgendada, 'dd/MM/yyyy')}"
+                           data-data-brasileira>
+                    <input type="hidden" name="dataAgendada" th:value="${dataAgendada}" data-data-iso>
+                </div>
+                <div class="col-sm-6 col-lg-auto">
+                    <div class="form-check form-switch pb-2">
+                        <input type="checkbox" id="mostrarCancelados" name="mostrarCancelados"
+                               value="true" class="form-check-input"
+                               th:checked="${mostrarCancelados}">
+                        <label for="mostrarCancelados" class="form-check-label">
+                            Visualizar cancelados
+                        </label>
+                    </div>
+                </div>
+                <div class="col-lg-auto">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-calendar-check"></i> Aplicar
+                    </button>
+                </div>
+                <div class="col-lg-auto">
+                    <a th:href="@{/pedidos/kanban}" class="btn btn-outline-secondary btn-lg">
+                        Hoje
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="kanban-pedidos" aria-label="Fluxo de pedidos">
+        <section class="kanban-coluna"
+                 th:each="statusColuna : ${statusKanban}">
+            <header class="kanban-cabecalho"
+                    th:classappend="${statusColuna.name() == 'PENDENTE'} ? ' bg-warning text-dark' :
+                        (${statusColuna.name() == 'CONFIRMADO'} ? ' bg-primary text-white' :
+                        (${statusColuna.name() == 'EM_PREPARACAO'} ? ' bg-info text-dark' :
+                        (${statusColuna.name() == 'PRONTO'} ? ' bg-success-subtle text-success-emphasis' :
+                        (${statusColuna.name() == 'SAIU_PARA_ENTREGA'} ? ' bg-dark text-white' : ' bg-success text-white'))))">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <h3 class="h6 fw-bold mb-0" th:text="${statusColuna.descricao}">Status</h3>
+                    <span class="badge text-bg-light border"
+                          th:text="${pedidosPorStatus[statusColuna].size()}">0</span>
+                </div>
+            </header>
+
+            <div class="kanban-corpo">
+                <article class="card kanban-cartao border shadow-sm"
+                         th:each="pedido : ${pedidosPorStatus[statusColuna]}">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <strong class="fs-5" th:text="'#' + ${pedido.id}">#0</strong>
+                            <span class="badge"
+                                  th:classappend="${pedido.tipoEntrega.name() == 'ENTREGA'}
+                                      ? ' text-bg-primary' : ' text-bg-secondary'"
+                                  th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'">
+                            </span>
+                        </div>
+
+                        <div class="fw-bold fs-5 quebra-linha" th:text="${pedido.clienteNome}"></div>
+                        <div class="text-muted mb-2">
+                            <i class="bi bi-telephone me-1"></i>
+                            <span th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></span>
+                        </div>
+                        <div class="small text-muted mb-3" th:if="${pedido.criadoEm != null}">
+                            <i class="bi bi-clock me-1"></i>
+                            Cadastro às <span th:text="${#temporals.format(pedido.criadoEm, 'HH:mm')}"></span>
+                        </div>
+
+                        <div class="kanban-itens mb-3">
+                            <div class="d-flex justify-content-between gap-2 small"
+                                 th:each="item, itemStat : ${pedido.itens}"
+                                 th:if="${itemStat.index < 3}">
+                                <span class="text-truncate" th:text="${item.produtoNome}"></span>
+                                <strong class="text-nowrap"
+                                        th:text="${@formatacao.formatarQuantidade(item.quantidade, item.unidadeVenda)}"></strong>
+                            </div>
+                            <small class="text-muted" th:if="${pedido.itens != null and pedido.itens.size() > 3}"
+                                   th:text="'+' + ${pedido.itens.size() - 3} + ' item(ns)'"></small>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center border-top pt-2 mb-3">
+                            <span class="text-muted">Total</span>
+                            <strong class="fs-5" th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></strong>
+                        </div>
+
+                        <form th:if="${proximosStatus[pedido.id] != pedido.status}"
+                              th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
+                              method="post" class="d-grid mb-2">
+                            <input type="hidden" name="novoStatus" th:value="${proximosStatus[pedido.id]}">
+                            <input type="hidden" name="dataAgendada" th:value="${dataAgendada}">
+                            <input type="hidden" name="visualizacao" value="kanban">
+                            <input type="hidden" name="mostrarCancelados" th:value="${mostrarCancelados}">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                Avançar para
+                                <span th:text="${proximosStatus[pedido.id].descricao}"></span>
+                                <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </form>
+
+                        <div class="d-flex gap-2">
+                            <a th:href="@{/pedidos/{id}/editar(id=${pedido.id})}"
+                               class="btn btn-outline-secondary flex-fill" title="Editar pedido">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                            <a th:href="@{/pedidos/{id}/comanda(id=${pedido.id})}"
+                               class="btn btn-outline-secondary flex-fill" target="_blank" rel="noopener"
+                               title="Imprimir comanda">
+                                <i class="bi bi-printer"></i> Imprimir
+                            </a>
+                        </div>
+
+                        <form th:if="${transicoesStatus[pedido.id].contains(statusCancelado)}"
+                              th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
+                              method="post" class="d-grid mt-2">
+                            <input type="hidden" name="dataAgendada" th:value="${dataAgendada}">
+                            <input type="hidden" name="visualizacao" value="kanban">
+                            <input type="hidden" name="mostrarCancelados" th:value="${mostrarCancelados}">
+                            <button type="button" class="btn btn-outline-danger"
+                                    data-cancelar-pedido th:data-pedido-id="${pedido.id}"
+                                    th:data-cliente="${pedido.clienteNome}">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </button>
+                        </form>
+                    </div>
+                </article>
+
+                <div class="kanban-vazio" th:if="${pedidosPorStatus[statusColuna].isEmpty()}">
+                    <i class="bi bi-inbox d-block fs-3 mb-2"></i>
+                    Nenhum pedido
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="mt-4" th:if="${mostrarCancelados}">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <h3 class="h5 mb-0 text-danger"><i class="bi bi-x-octagon"></i> Cancelados</h3>
+            <span class="badge text-bg-danger" th:text="${pedidosCancelados.size()}">0</span>
+        </div>
+        <div class="row g-3" th:if="${!pedidosCancelados.isEmpty()}">
+            <div class="col-md-6 col-xl-4" th:each="pedido : ${pedidosCancelados}">
+                <article class="card border border-danger-subtle shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between gap-2 mb-2">
+                            <strong class="fs-5" th:text="'#' + ${pedido.id}"></strong>
+                            <span class="badge text-bg-danger">Cancelado</span>
+                        </div>
+                        <div class="fw-bold" th:text="${pedido.clienteNome}"></div>
+                        <div class="text-muted mb-3"
+                             th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></div>
+                        <div class="d-flex gap-2">
+                            <a th:href="@{/pedidos/{id}/editar(id=${pedido.id})}"
+                               class="btn btn-outline-secondary flex-fill">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                            <a th:href="@{/pedidos/{id}/comanda(id=${pedido.id})}"
+                               class="btn btn-outline-secondary flex-fill" target="_blank" rel="noopener">
+                                <i class="bi bi-printer"></i> Imprimir
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
+        <div class="alert alert-light border text-muted" th:if="${pedidosCancelados.isEmpty()}">
+            Nenhum pedido cancelado nesta data.
+        </div>
+    </section>
+</section>
+</html>

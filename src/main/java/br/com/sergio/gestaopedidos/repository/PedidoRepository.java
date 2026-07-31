@@ -4,15 +4,20 @@ import br.com.sergio.gestaopedidos.entity.Pedido;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     boolean existsByClienteId(Long clienteId);
+
+    @EntityGraph(attributePaths = {"cliente", "itens", "itens.produto"})
+    List<Pedido> findByDataAgendadaOrderByDataPedidoAsc(LocalDate dataAgendada);
 
     @Query("""
             SELECT p

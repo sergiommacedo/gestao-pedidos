@@ -36,6 +36,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -128,6 +129,73 @@ public class PedidoWebController {
         model.addAttribute("transicoesStatus", transicoesStatus);
 
         return "pedidos/listar";
+    }
+
+    @GetMapping("/kanban")
+    public String kanban(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate dataAgendada,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
+            Model model
+    ) {
+        LocalDate dataSelecionada = dataAgendada == null
+                ? LocalDate.now()
+                : dataAgendada;
+        List<PedidoResponse> pedidos = pedidoService.listarPorData(dataSelecionada);
+
+        model.addAttribute("dataAgendada", dataSelecionada);
+        model.addAttribute("mostrarCancelados", mostrarCancelados);
+        model.addAttribute("statusCancelado", StatusPedido.CANCELADO);
+        model.addAttribute(
+                "pedidosCancelados",
+                mostrarCancelados
+                        ? filtrarPorStatus(pedidos, StatusPedido.CANCELADO)
+                        : List.of()
+        );
+        Map<StatusPedido, List<PedidoResponse>> pedidosPorStatus = new EnumMap<>(StatusPedido.class);
+        pedidosPorStatus.put(StatusPedido.PENDENTE, filtrarPorStatus(pedidos, StatusPedido.PENDENTE));
+        pedidosPorStatus.put(StatusPedido.CONFIRMADO, filtrarPorStatus(pedidos, StatusPedido.CONFIRMADO));
+        pedidosPorStatus.put(StatusPedido.EM_PREPARACAO, filtrarPorStatus(pedidos, StatusPedido.EM_PREPARACAO));
+        pedidosPorStatus.put(StatusPedido.PRONTO, filtrarPorStatus(pedidos, StatusPedido.PRONTO));
+        pedidosPorStatus.put(
+                StatusPedido.SAIU_PARA_ENTREGA,
+                filtrarPorStatus(pedidos, StatusPedido.SAIU_PARA_ENTREGA)
+        );
+        pedidosPorStatus.put(StatusPedido.ENTREGUE, filtrarPorStatus(pedidos, StatusPedido.ENTREGUE));
+        model.addAttribute("pedidosPorStatus", pedidosPorStatus);
+        model.addAttribute(
+                "statusKanban",
+                List.of(
+                        StatusPedido.PENDENTE,
+                        StatusPedido.CONFIRMADO,
+                        StatusPedido.EM_PREPARACAO,
+                        StatusPedido.PRONTO,
+                        StatusPedido.SAIU_PARA_ENTREGA,
+                        StatusPedido.ENTREGUE
+                )
+        );
+
+        Map<Long, Set<StatusPedido>> transicoesStatus = pedidos.stream()
+                .collect(Collectors.toMap(
+                        PedidoResponse::id,
+                        pedido -> pedidoService.transicoesPermitidas(
+                                pedido.status(),
+                                pedido.tipoEntrega()
+                        )
+                ));
+        Map<Long, StatusPedido> proximosStatus = pedidos.stream()
+                .collect(Collectors.toMap(
+                        PedidoResponse::id,
+                        pedido -> transicoesStatus.get(pedido.id()).stream()
+                                .filter(status -> status != StatusPedido.CANCELADO)
+                                .findFirst()
+                                .orElse(pedido.status())
+                ));
+        model.addAttribute("transicoesStatus", transicoesStatus);
+        model.addAttribute("proximosStatus", proximosStatus);
+
+        return "pedidos/kanban";
     }
 
     @GetMapping("/novo")
@@ -248,6 +316,8 @@ public class PedidoWebController {
             @RequestParam(defaultValue = "10") int tamanho,
             @RequestParam(defaultValue = "dataAgendada") String ordenarPor,
             @RequestParam(defaultValue = "asc") String direcao,
+            @RequestParam(defaultValue = "lista") String visualizacao,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
             RedirectAttributes redirectAttributes
     ) {
         try {
@@ -263,6 +333,16 @@ public class PedidoWebController {
             );
         } catch (BusinessException | ResourceNotFoundException exception) {
             redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
+        }
+
+        if ("kanban".equals(visualizacao)) {
+            if (dataAgendada != null) {
+                redirectAttributes.addAttribute("dataAgendada", dataAgendada);
+            }
+            if (mostrarCancelados) {
+                redirectAttributes.addAttribute("mostrarCancelados", true);
+            }
+            return "redirect:/pedidos/kanban";
         }
 
         redirectAttributes.addAttribute("filtro", filtro == null ? "" : filtro.trim());
@@ -283,6 +363,15 @@ public class PedidoWebController {
         }
 
         return "redirect:/pedidos";
+    }
+
+    private List<PedidoResponse> filtrarPorStatus(
+            List<PedidoResponse> pedidos,
+            StatusPedido status
+    ) {
+        return pedidos.stream()
+                .filter(pedido -> pedido.status() == status)
+                .toList();
     }
 
     @GetMapping("/clientes/buscar")

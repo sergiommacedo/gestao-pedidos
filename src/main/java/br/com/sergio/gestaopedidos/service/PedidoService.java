@@ -78,6 +78,14 @@ public class PedidoService {
     }
 
     @Transactional(readOnly = true)
+    public List<PedidoResponse> listarPorData(LocalDate dataAgendada) {
+        return pedidoRepository.findByDataAgendadaOrderByDataPedidoAsc(dataAgendada)
+                .stream()
+                .map(pedidoMapper::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public PedidoResponse buscarPorId(Long id) {
         Pedido pedido = buscarEntidadePorId(id);
         return pedidoMapper.toResponse(pedido);
