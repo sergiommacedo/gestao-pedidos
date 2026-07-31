@@ -167,6 +167,14 @@ body {
     line-height: 1.1;
 }
 
+.dashboard-operacional-nota {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    line-height: 1.15;
+}
+
 .dashboard-boas-vindas {
     padding: 0.65rem 0.9rem;
     color: var(--color-primary-dark);
@@ -208,15 +216,30 @@ body {
     background-color: rgba(243, 227, 216, 0.35);
 }
 
+.dashboard-acoes-pedido .btn {
+    min-width: 2.15rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+}
+
 .dashboard-resumo-status {
     padding: 0.4rem 1.15rem 0.8rem;
 }
 
 .dashboard-resumo-status-item {
-    margin-bottom: 0.2rem;
-    padding: 0.55rem 0.6rem;
+    margin-bottom: 0.1rem;
+    padding: 0.42rem 0.55rem;
     border-radius: 0.55rem;
     transition: background-color 0.18s ease;
+}
+
+.dashboard-resumo-status-item-zero {
+    opacity: 0.58;
+}
+
+.dashboard-resumo-status-item-zero:hover,
+.dashboard-resumo-status-item-zero:focus-visible {
+    opacity: 0.8;
 }
 
 .dashboard-resumo-status-item:last-child {
@@ -296,6 +319,10 @@ body {
     .dashboard-atencao-vazio td {
         display: block;
         width: 100%;
+    }
+
+    .dashboard-secao-cabecalho .btn {
+        flex: 1 1 auto;
     }
 }
 
