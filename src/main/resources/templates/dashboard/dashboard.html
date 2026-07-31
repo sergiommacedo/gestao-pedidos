@@ -198,7 +198,7 @@
     <!-- Conteúdo inferior -->
     <div class="row g-4">
 
-        <!-- Últimos pedidos -->
+        <!-- Pedidos que precisam de atenção -->
         <div class="col-12 col-xl-8">
 
             <div class="card h-100">
@@ -209,15 +209,15 @@
 
                         <div>
                             <h2 class="h5 fw-semibold mb-1">
-                                Últimos pedidos
+                                Pedidos que precisam de atenção
                             </h2>
 
                             <p class="text-body-secondary small mb-0">
-                                Pedidos registrados recentemente.
+                                Prioridades operacionais de hoje.
                             </p>
                         </div>
 
-                        <a th:href="@{/pedidos}"
+                        <a th:href="@{/pedidos/kanban(dataAgendada=${dataReferenciaIso})}"
                            class="btn btn-sm btn-outline-secondary">
 
                             Ver todos
@@ -238,44 +238,66 @@
                             <tr>
                                 <th>Pedido</th>
                                 <th>Cliente</th>
+                                <th>Tipo de entrega</th>
                                 <th>Status</th>
                                 <th class="text-end">Valor</th>
+                                <th class="text-center">Ações</th>
                             </tr>
                             </thead>
 
                             <tbody>
 
-                            <tr>
-                                <td>#0012</td>
-                                <td>Maria Silva</td>
+                            <tr th:each="pedido : ${pedidosAtencao}">
+                                <td class="fw-semibold" th:text="'#' + ${pedido.id}">#0</td>
+                                <td th:text="${pedido.clienteNome}">Cliente</td>
                                 <td>
-                                    <span class="badge text-bg-warning">
-                                        Em preparo
+                                    <span th:text="${pedido.tipoEntrega.name() == 'ENTREGA'}
+                                        ? 'Entrega' : 'Retirada'">Entrega</span>
+                                </td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${pedido.status.name() == 'PENDENTE'} ? ' text-bg-warning' :
+                                              (${pedido.status.name() == 'SAIU_PARA_ENTREGA'} ? ' text-bg-info' :
+                                              (${pedido.status.name() == 'PRONTO'} ? ' text-bg-success' : ' text-bg-primary'))"
+                                          th:text="${pedido.status.descricao}">
+                                        Status
                                     </span>
                                 </td>
-                                <td class="text-end">R$ 180,00</td>
+                                <td class="text-end text-nowrap"
+                                    th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}">R$ 0,00</td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group"
+                                         th:aria-label="'Ações do pedido ' + ${pedido.id}">
+                                        <button type="button" class="btn btn-outline-secondary"
+                                                title="Visualizar pedido"
+                                                th:aria-label="'Visualizar pedido ' + ${pedido.id}"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modalDetalhesPedido"
+                                                th:data-detalhes-url="@{/pedidos/{id}/detalhes(id=${pedido.id}, origem='lista')}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <a th:if="${statusEditaveis.contains(pedido.status)}"
+                                           th:href="@{/pedidos/{id}/editar(id=${pedido.id}, origem='lista')}"
+                                           class="btn btn-outline-secondary" title="Editar pedido"
+                                           th:aria-label="'Editar pedido ' + ${pedido.id}">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a th:if="${statusImprimiveis.contains(pedido.status)}"
+                                           th:href="@{/pedidos/{id}/comanda(id=${pedido.id}, origem='lista')}"
+                                           class="btn btn-outline-primary" target="_blank" rel="noopener"
+                                           title="Imprimir comanda"
+                                           th:aria-label="'Imprimir comanda do pedido ' + ${pedido.id}">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
+                                    </div>
+                                </td>
                             </tr>
 
-                            <tr>
-                                <td>#0011</td>
-                                <td>João Santos</td>
-                                <td>
-                                    <span class="badge text-bg-success">
-                                        Entregue
-                                    </span>
+                            <tr th:if="${#lists.isEmpty(pedidosAtencao)}">
+                                <td colspan="6" class="text-center text-body-secondary py-5">
+                                    <i class="bi bi-check-circle fs-1 d-block mb-2"></i>
+                                    Nenhum pedido pendente de atenção hoje.
                                 </td>
-                                <td class="text-end">R$ 95,00</td>
-                            </tr>
-
-                            <tr>
-                                <td>#0010</td>
-                                <td>Ana Oliveira</td>
-                                <td>
-                                    <span class="badge text-bg-secondary">
-                                        Novo
-                                    </span>
-                                </td>
-                                <td class="text-end">R$ 220,00</td>
                             </tr>
 
                             </tbody>
