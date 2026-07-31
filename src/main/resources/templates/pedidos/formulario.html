@@ -87,6 +87,10 @@
                                  th:data-produto-unidade="${produtosSelecionados[item.produtoId].unidadeVenda}"
                                  th:data-permite-acompanhamento="${produtosSelecionados[item.produtoId].permiteAcompanhamento}">
                                 <div class="card-body">
+                                    <input type="hidden" name="itemIds"
+                                           th:value="${itemIds != null and iteracao.index < itemIds.size()
+                                                ? itemIds[iteracao.index] : ''}"
+                                           data-item-id>
                                     <input type="hidden"
                                            th:field="*{itens[__${iteracao.index}__].produtoId}"
                                            data-item-produto-id>

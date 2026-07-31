@@ -25,7 +25,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -97,7 +101,11 @@ public class PedidoService {
         return pedidoMapper.toResponse(pedidoSalvo);
     }
 
-    public PedidoResponse atualizar(Long id, PedidoRequest request) {
+    public PedidoResponse atualizar(
+            Long id,
+            PedidoRequest request,
+            List<Long> itemIds
+    ) {
         Pedido pedido = buscarEntidadePorId(id);
         Cliente cliente = buscarClientePorId(request.clienteId());
 
@@ -108,9 +116,85 @@ public class PedidoService {
         pedido.setTaxaEntrega(normalizarTaxaEntrega(request.taxaEntrega()));
         pedido.setObservacao(request.observacao());
 
-        substituirItensERecalcular(pedido, request);
+        atualizarItensERecalcular(pedido, request, itemIds);
 
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
+    }
+
+    private void atualizarItensERecalcular(
+            Pedido pedido,
+            PedidoRequest request,
+            List<Long> itemIds
+    ) {
+        if (itemIds == null || itemIds.size() != request.itens().size()) {
+            throw new BusinessException("Os itens informados para edição são inválidos.");
+        }
+
+        Map<Long, ItemPedido> itensOriginais = new HashMap<>();
+        pedido.getItens().forEach(item -> itensOriginais.put(item.getId(), item));
+
+        Set<Long> idsMantidos = new HashSet<>();
+        Set<Long> produtosInformados = new HashSet<>();
+        BigDecimal subtotalPedido = BigDecimal.ZERO;
+
+        for (int indice = 0; indice < request.itens().size(); indice++) {
+            ItemPedidoRequest itemRequest = request.itens().get(indice);
+            Long itemId = itemIds.get(indice);
+
+            if (!produtosInformados.add(itemRequest.produtoId())) {
+                throw new BusinessException("Um produto não pode ser repetido no pedido.");
+            }
+
+            ItemPedido itemPedido;
+
+            if (itemId != null) {
+                itemPedido = itensOriginais.get(itemId);
+
+                if (itemPedido == null || !idsMantidos.add(itemId)) {
+                    throw new BusinessException(
+                            "O item informado não pertence ao pedido em edição."
+                    );
+                }
+
+                if (!itemPedido.getProduto().getId().equals(itemRequest.produtoId())) {
+                    throw new BusinessException("O produto do item existente é inválido.");
+                }
+
+                atualizarItemExistente(itemPedido, itemRequest);
+            } else {
+                Produto produto = buscarProdutoPorId(itemRequest.produtoId());
+                validarProdutoAtivo(produto);
+                validarQuantidade(produto, itemRequest.quantidade());
+                itemPedido = criarItemPedido(pedido, produto, itemRequest);
+                pedido.getItens().add(itemPedido);
+            }
+
+            subtotalPedido = subtotalPedido.add(itemPedido.getSubtotal());
+        }
+
+        pedido.getItens().removeIf(item ->
+                item.getId() != null && !idsMantidos.contains(item.getId())
+        );
+        pedido.setSubtotal(subtotalPedido);
+        pedido.calcularValorTotal();
+    }
+
+    private void atualizarItemExistente(
+            ItemPedido itemPedido,
+            ItemPedidoRequest request
+    ) {
+        Produto produto = itemPedido.getProduto();
+        validarQuantidade(produto, request.quantidade());
+
+        itemPedido.setQuantidade(request.quantidade());
+        itemPedido.setObservacao(Boolean.TRUE.equals(produto.getPermiteAcompanhamento())
+                ? request.observacao()
+                : null);
+        itemPedido.setSubtotal(
+                itemPedido.getPrecoUnitario()
+                        .multiply(request.quantidade())
+                        .setScale(2, RoundingMode.HALF_UP)
+        );
     }
 
     private void substituirItensERecalcular(

@@ -129,7 +129,7 @@ public class PedidoWebController {
                 .build();
 
         model.addAttribute("pedido", pedido);
-        prepararFormulario(model, pedido, null);
+        prepararFormulario(model, pedido, null, List.of());
 
         return "pedidos/formulario";
     }
@@ -139,11 +139,12 @@ public class PedidoWebController {
             @Valid @ModelAttribute("pedido") PedidoRequest pedido,
             BindingResult bindingResult,
             @RequestParam(defaultValue = "salvar") String acao,
+            @RequestParam(name = "itemIds", required = false) List<String> itemIds,
             Model model,
             RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
-            prepararFormulario(model, pedido, null);
+            prepararFormulario(model, pedido, null, itemIds);
             return "pedidos/formulario";
         }
 
@@ -161,7 +162,7 @@ public class PedidoWebController {
             return "redirect:/pedidos";
         } catch (BusinessException | ResourceNotFoundException exception) {
             bindingResult.reject("pedido.invalido", exception.getMessage());
-            prepararFormulario(model, pedido, null);
+            prepararFormulario(model, pedido, null, itemIds);
             return "pedidos/formulario";
         }
     }
@@ -175,7 +176,12 @@ public class PedidoWebController {
         PedidoRequest pedido = converterParaRequest(pedidoSalvo);
 
         model.addAttribute("pedido", pedido);
-        prepararFormulario(model, pedido, id);
+        List<String> itemIds = pedidoSalvo.itens() == null
+                ? List.of()
+                : pedidoSalvo.itens().stream()
+                    .map(item -> item.id().toString())
+                    .toList();
+        prepararFormulario(model, pedido, id, itemIds);
 
         return "pedidos/formulario";
     }
@@ -186,16 +192,21 @@ public class PedidoWebController {
             @Valid @ModelAttribute("pedido") PedidoRequest pedido,
             BindingResult bindingResult,
             @RequestParam(defaultValue = "salvar") String acao,
+            @RequestParam(name = "itemIds", required = false) List<String> itemIds,
             Model model,
             RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
-            prepararFormulario(model, pedido, id);
+            prepararFormulario(model, pedido, id, itemIds);
             return "pedidos/formulario";
         }
 
         try {
-            PedidoResponse pedidoAtualizado = pedidoService.atualizar(id, pedido);
+            PedidoResponse pedidoAtualizado = pedidoService.atualizar(
+                    id,
+                    pedido,
+                    converterItemIds(itemIds, pedido.itens().size())
+            );
 
             if ("salvarImprimir".equals(acao)) {
                 return "redirect:/pedidos/" + pedidoAtualizado.id() + "/comanda";
@@ -208,7 +219,7 @@ public class PedidoWebController {
             return "redirect:/pedidos";
         } catch (BusinessException | ResourceNotFoundException exception) {
             bindingResult.reject("pedido.invalido", exception.getMessage());
-            prepararFormulario(model, pedido, id);
+            prepararFormulario(model, pedido, id, itemIds);
             return "pedidos/formulario";
         }
     }
@@ -280,7 +291,8 @@ public class PedidoWebController {
     private void prepararFormulario(
             Model model,
             PedidoRequest pedido,
-            Long pedidoId
+            Long pedidoId,
+            List<String> itemIds
     ) {
         boolean edicao = pedidoId != null;
         model.addAttribute("pedidoId", pedidoId);
@@ -293,6 +305,7 @@ public class PedidoWebController {
         );
         model.addAttribute("urlFormulario", edicao ? "/pedidos/" + pedidoId : "/pedidos");
         model.addAttribute("textoSalvar", edicao ? "Salvar alterações" : "Salvar pedido");
+        model.addAttribute("itemIds", itemIds == null ? List.of() : itemIds);
         model.addAttribute("dataMinima", LocalDate.now());
 
         if (pedido.clienteId() != null) {
@@ -333,6 +346,31 @@ public class PedidoWebController {
         }
 
         model.addAttribute("produtosSelecionados", produtosSelecionados);
+    }
+
+    private List<Long> converterItemIds(
+            List<String> valores,
+            int quantidadeItens
+    ) {
+        List<String> valoresSeguros = valores == null ? List.of() : valores;
+
+        if (valoresSeguros.size() != quantidadeItens) {
+            throw new BusinessException("Os itens informados para edição são inválidos.");
+        }
+
+        return valoresSeguros.stream()
+                .map(valor -> {
+                    if (valor == null || valor.isBlank()) {
+                        return (Long) null;
+                    }
+
+                    try {
+                        return Long.valueOf(valor);
+                    } catch (NumberFormatException exception) {
+                        throw new BusinessException("Identificador de item inválido.");
+                    }
+                })
+                .toList();
     }
 
     private PedidoRequest converterParaRequest(PedidoResponse pedido) {

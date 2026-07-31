@@ -476,6 +476,7 @@ function inicializarFormularioPedido() {
 
         item.innerHTML = `
             <div class="card-body">
+                <input type="hidden" name="itemIds" value="" data-item-id>
                 <input type="hidden" value="${produto.id}" data-item-produto-id>
                 <div class="row align-items-center g-3">
                     <div class="col-md">
