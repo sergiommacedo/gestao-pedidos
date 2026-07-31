@@ -4,6 +4,7 @@ import br.com.sergio.gestaopedidos.dto.usuario.UsuarioRequest;
 import br.com.sergio.gestaopedidos.dto.usuario.UsuarioResponse;
 import br.com.sergio.gestaopedidos.dto.usuario.AlterarSenhaInicialRequest;
 import br.com.sergio.gestaopedidos.dto.usuario.UsuarioWebForm;
+import br.com.sergio.gestaopedidos.dto.usuario.RedefinirSenhaUsuarioRequest;
 import br.com.sergio.gestaopedidos.entity.Usuario;
 import br.com.sergio.gestaopedidos.enums.PerfilUsuario;
 import br.com.sergio.gestaopedidos.exception.BusinessException;
@@ -170,7 +171,38 @@ public class UsuarioService {
 
     public void inativar(Long id) {
         Usuario usuario = buscarEntidadePorId(id);
+        validarUltimoAdministradorAtivo(usuario);
         usuario.setAtivo(false);
+    }
+
+    public void inativar(Long id, String loginAdministrador) {
+        Usuario usuario = buscarEntidadePorId(id);
+
+        if (usuario.getEmail().equalsIgnoreCase(loginAdministrador)) {
+            throw new BusinessException("Você não pode inativar seu próprio usuário.");
+        }
+
+        validarUltimoAdministradorAtivo(usuario);
+        usuario.setAtivo(false);
+    }
+
+    public void redefinirSenha(
+            Long id,
+            RedefinirSenhaUsuarioRequest request
+    ) {
+        Usuario usuario = buscarEntidadePorId(id);
+
+        if (request.novaSenha() == null || request.novaSenha().length() < 6) {
+            throw new BusinessException("Nova senha deve ter no mínimo 6 caracteres.");
+        }
+
+        if (!request.novaSenha().equals(request.confirmarSenha())) {
+            throw new BusinessException("A confirmação da senha não coincide.");
+        }
+
+        usuario.setSenha(passwordEncoder.encode(request.novaSenha()));
+        usuario.setTrocarSenhaPrimeiroAcesso(Boolean.TRUE.equals(request.obrigarTroca()));
+        usuarioRepository.save(usuario);
     }
 
     @Transactional(readOnly = true)
@@ -227,6 +259,14 @@ public class UsuarioService {
     private Usuario buscarEntidadePorEmail(String email) {
         return usuarioRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
+    }
+
+    private void validarUltimoAdministradorAtivo(Usuario usuario) {
+        if (usuario.getPerfil() == PerfilUsuario.ADMIN
+                && Boolean.TRUE.equals(usuario.getAtivo())
+                && usuarioRepository.countByPerfilAndAtivoTrue(PerfilUsuario.ADMIN) <= 1) {
+            throw new BusinessException("O sistema deve possuir ao menos um administrador ativo.");
+        }
     }
 
     private void validarEmailDuplicado(String email) {

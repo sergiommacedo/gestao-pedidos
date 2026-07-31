@@ -2,6 +2,7 @@ package br.com.sergio.gestaopedidos.controller.web;
 
 import br.com.sergio.gestaopedidos.dto.usuario.UsuarioResponse;
 import br.com.sergio.gestaopedidos.dto.usuario.UsuarioWebForm;
+import br.com.sergio.gestaopedidos.dto.usuario.RedefinirSenhaUsuarioRequest;
 import br.com.sergio.gestaopedidos.enums.PerfilUsuario;
 import br.com.sergio.gestaopedidos.exception.BusinessException;
 import jakarta.validation.Valid;
@@ -144,6 +145,58 @@ public class UsuarioWebController {
                 "mensagemSucesso",
                 "Usuário atualizado com sucesso."
         );
+        return "redirect:/usuarios";
+    }
+
+    @PostMapping("/{id}/ativar")
+    public String ativar(
+            @PathVariable Long id,
+            RedirectAttributes redirectAttributes
+    ) {
+        usuarioService.ativar(id);
+        redirectAttributes.addFlashAttribute("mensagemSucesso", "Usuário ativado com sucesso.");
+        return "redirect:/usuarios";
+    }
+
+    @PostMapping("/{id}/inativar")
+    public String inativar(
+            @PathVariable Long id,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            usuarioService.inativar(id, authentication.getName());
+            redirectAttributes.addFlashAttribute("mensagemSucesso", "Usuário inativado com sucesso.");
+        } catch (BusinessException exception) {
+            redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
+        }
+
+        return "redirect:/usuarios";
+    }
+
+    @PostMapping("/{id}/redefinir-senha")
+    public String redefinirSenha(
+            @PathVariable Long id,
+            @Valid @ModelAttribute RedefinirSenhaUsuarioRequest redefinicao,
+            BindingResult bindingResult,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (bindingResult.hasErrors()) {
+            String mensagem = bindingResult.getAllErrors().getFirst().getDefaultMessage();
+            redirectAttributes.addFlashAttribute("mensagemErro", mensagem);
+            return "redirect:/usuarios";
+        }
+
+        try {
+            usuarioService.redefinirSenha(id, redefinicao);
+            redirectAttributes.addFlashAttribute(
+                    "mensagemSucesso",
+                    "Senha redefinida com sucesso."
+            );
+        } catch (BusinessException exception) {
+            redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
+        }
+
         return "redirect:/usuarios";
     }
 

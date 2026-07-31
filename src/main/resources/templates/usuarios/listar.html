@@ -96,12 +96,37 @@
                             </span>
                         </td>
                         <td class="text-center">
-                            <a th:href="@{/usuarios/{id}/editar(id=${usuario.id})}"
-                               class="btn btn-sm btn-outline-primary"
-                               title="Editar usuário"
-                               aria-label="Editar usuário">
-                                <i class="bi bi-pencil" aria-hidden="true"></i>
-                            </a>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Ações do usuário">
+                                <a th:href="@{/usuarios/{id}/editar(id=${usuario.id})}"
+                                   class="btn btn-outline-primary" title="Editar usuário"
+                                   aria-label="Editar usuário">
+                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                </a>
+
+                                <form th:if="${usuario.ativo}"
+                                      th:action="@{/usuarios/{id}/inativar(id=${usuario.id})}" method="post">
+                                    <button type="submit" class="btn btn-outline-secondary rounded-0"
+                                            title="Inativar usuário" aria-label="Inativar usuário">
+                                        <i class="bi bi-person-dash" aria-hidden="true"></i>
+                                    </button>
+                                </form>
+
+                                <form th:unless="${usuario.ativo}"
+                                      th:action="@{/usuarios/{id}/ativar(id=${usuario.id})}" method="post">
+                                    <button type="submit" class="btn btn-outline-success rounded-0"
+                                            title="Ativar usuário" aria-label="Ativar usuário">
+                                        <i class="bi bi-person-check" aria-hidden="true"></i>
+                                    </button>
+                                </form>
+
+                                <button type="button" class="btn btn-outline-warning"
+                                        title="Redefinir senha" aria-label="Redefinir senha"
+                                        data-bs-toggle="modal" data-bs-target="#modalRedefinirSenhaUsuario"
+                                        th:data-usuario-nome="${usuario.nome}"
+                                        th:data-redefinir-senha-url="@{/usuarios/{id}/redefinir-senha(id=${usuario.id})}">
+                                    <i class="bi bi-key" aria-hidden="true"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
 

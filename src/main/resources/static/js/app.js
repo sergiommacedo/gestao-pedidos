@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarImpressaoComandas();
     inicializarFormularioPedido();
     inicializarAlternanciaSenha();
+    inicializarModalRedefinirSenhaUsuario();
 
 });
 
@@ -40,6 +41,48 @@ function inicializarAlternanciaSenha() {
 
             campo.focus();
         });
+    });
+}
+
+
+function inicializarModalRedefinirSenhaUsuario() {
+    const modalElemento = document.querySelector("#modalRedefinirSenhaUsuario");
+
+    if (!modalElemento) {
+        return;
+    }
+
+    const formulario = modalElemento.querySelector("[data-form-redefinir-senha-usuario]");
+    const mensagem = modalElemento.querySelector("[data-usuario-redefinicao]");
+    const novaSenha = modalElemento.querySelector("[data-nova-senha-usuario]");
+    const confirmarSenha = modalElemento.querySelector("[data-confirmar-senha-usuario]");
+
+    modalElemento.addEventListener("show.bs.modal", event => {
+        const botao = event.relatedTarget;
+        formulario.action = botao?.dataset.redefinirSenhaUrl || "";
+        mensagem.textContent = `Informe uma nova senha para ${botao?.dataset.usuarioNome || "o usuário"}.`;
+    });
+
+    formulario.addEventListener("submit", event => {
+        const senhaValida = novaSenha.value.length >= 6;
+        const confirmacaoValida = novaSenha.value === confirmarSenha.value;
+
+        novaSenha.classList.toggle("is-invalid", !senhaValida);
+        confirmarSenha.classList.toggle("is-invalid", !confirmacaoValida);
+
+        if (!senhaValida || !confirmacaoValida) {
+            event.preventDefault();
+            (!senhaValida ? novaSenha : confirmarSenha).focus();
+        }
+    });
+
+    modalElemento.addEventListener("shown.bs.modal", () => novaSenha.focus());
+    modalElemento.addEventListener("hidden.bs.modal", () => {
+        formulario.reset();
+        formulario.removeAttribute("action");
+        mensagem.textContent = "Informe uma nova senha para o usuário.";
+        novaSenha.classList.remove("is-invalid");
+        confirmarSenha.classList.remove("is-invalid");
     });
 }
 
