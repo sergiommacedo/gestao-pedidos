@@ -90,6 +90,35 @@ public class PedidoService {
 
         Pedido pedido = criarPedido(request, cliente);
 
+        substituirItensERecalcular(pedido, request);
+
+        Pedido pedidoSalvo = pedidoRepository.save(pedido);
+
+        return pedidoMapper.toResponse(pedidoSalvo);
+    }
+
+    public PedidoResponse atualizar(Long id, PedidoRequest request) {
+        Pedido pedido = buscarEntidadePorId(id);
+        Cliente cliente = buscarClientePorId(request.clienteId());
+
+        pedido.setCliente(cliente);
+        pedido.setDataAgendada(request.dataAgendada());
+        pedido.setFormaPagamento(request.formaPagamento());
+        pedido.setTipoEntrega(request.tipoEntrega());
+        pedido.setTaxaEntrega(normalizarTaxaEntrega(request.taxaEntrega()));
+        pedido.setObservacao(request.observacao());
+
+        substituirItensERecalcular(pedido, request);
+
+        return pedidoMapper.toResponse(pedidoRepository.save(pedido));
+    }
+
+    private void substituirItensERecalcular(
+            Pedido pedido,
+            PedidoRequest request
+    ) {
+        pedido.getItens().clear();
+
         BigDecimal subtotalPedido = BigDecimal.ZERO;
 
         for (ItemPedidoRequest itemRequest : request.itens()) {
@@ -113,20 +142,12 @@ public class PedidoService {
 
         pedido.setSubtotal(subtotalPedido);
         pedido.calcularValorTotal();
-
-        Pedido pedidoSalvo = pedidoRepository.save(pedido);
-
-        return pedidoMapper.toResponse(pedidoSalvo);
     }
 
     private Pedido criarPedido(
             PedidoRequest request,
             Cliente cliente
     ) {
-        BigDecimal taxaEntrega = request.taxaEntrega() != null
-                ? request.taxaEntrega().setScale(2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
         return Pedido.builder()
                 .dataPedido(LocalDateTime.now())
                 .dataAgendada(request.dataAgendada())
@@ -134,11 +155,17 @@ public class PedidoService {
                 .formaPagamento(request.formaPagamento())
                 .tipoEntrega(request.tipoEntrega())
                 .subtotal(BigDecimal.ZERO)
-                .taxaEntrega(taxaEntrega)
+                .taxaEntrega(normalizarTaxaEntrega(request.taxaEntrega()))
                 .valorTotal(BigDecimal.ZERO)
                 .observacao(request.observacao())
                 .cliente(cliente)
                 .build();
+    }
+
+    private BigDecimal normalizarTaxaEntrega(BigDecimal taxaEntrega) {
+        return taxaEntrega != null
+                ? taxaEntrega.setScale(2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
     }
 
     private ItemPedido criarItemPedido(

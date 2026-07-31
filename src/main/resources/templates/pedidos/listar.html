@@ -175,7 +175,7 @@
                             </a>
                         </th>
 
-                        <th class="text-center">Imprimir</th>
+                        <th class="text-center">Ações</th>
                     </tr>
                     </thead>
 
@@ -209,14 +209,23 @@
                         <td class="text-end fw-semibold text-nowrap"
                             th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></td>
                         <td class="text-center">
-                            <a th:href="@{/pedidos/{id}/comanda(id=${pedido.id})}"
-                               class="btn btn-sm btn-outline-primary"
-                               target="_blank"
-                               rel="noopener"
-                               title="Imprimir comanda"
-                               th:aria-label="'Imprimir comanda do pedido ' + ${pedido.id}">
-                                <i class="bi bi-printer"></i>
-                            </a>
+                            <div class="btn-group btn-group-sm" role="group"
+                                 th:aria-label="'Ações do pedido ' + ${pedido.id}">
+                                <a th:href="@{/pedidos/{id}/editar(id=${pedido.id})}"
+                                   class="btn btn-outline-secondary"
+                                   title="Editar pedido"
+                                   th:aria-label="'Editar pedido ' + ${pedido.id}">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a th:href="@{/pedidos/{id}/comanda(id=${pedido.id})}"
+                                   class="btn btn-outline-primary"
+                                   target="_blank"
+                                   rel="noopener"
+                                   title="Imprimir comanda"
+                                   th:aria-label="'Imprimir comanda do pedido ' + ${pedido.id}">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
 

@@ -8,15 +8,15 @@
 
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
         <div>
-            <h2 class="mb-0"><i class="bi bi-receipt"></i> Novo Pedido</h2>
-            <small class="text-muted">Selecione o cliente, organize os itens e confira o total</small>
+            <h2 class="mb-0"><i class="bi bi-receipt"></i> <span th:text="${titulo}">Novo Pedido</span></h2>
+            <small class="text-muted" th:text="${descricaoFormulario}">Selecione o cliente, organize os itens e confira o total</small>
         </div>
         <a th:href="@{/pedidos}" class="btn btn-outline-secondary align-self-start align-self-sm-auto">
             <i class="bi bi-arrow-left"></i> Voltar
         </a>
     </div>
 
-    <form th:object="${pedido}" th:action="@{/pedidos}" method="post"
+    <form th:object="${pedido}" th:action="${urlFormulario}" method="post"
           data-formulario-pedido novalidate>
         <input type="hidden" name="acao" value="salvar" data-acao-pedido>
 
@@ -252,7 +252,7 @@
                         <div class="d-grid gap-2">
                             <button type="submit" value="salvar" class="btn btn-primary btn-lg"
                                     data-botao-salvar>
-                                <i class="bi bi-check-circle"></i> Salvar pedido
+                                <i class="bi bi-check-circle"></i> <span th:text="${textoSalvar}">Salvar pedido</span>
                             </button>
                             <button type="submit" value="salvarImprimir"
                                     class="btn btn-outline-secondary" data-botao-salvar>

@@ -4,6 +4,7 @@ import br.com.sergio.gestaopedidos.dto.cliente.ClienteRequest;
 import br.com.sergio.gestaopedidos.dto.cliente.ClienteResponse;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoRequest;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoResponse;
+import br.com.sergio.gestaopedidos.dto.pedido.ItemPedidoRequest;
 import br.com.sergio.gestaopedidos.dto.produto.ProdutoResponse;
 import br.com.sergio.gestaopedidos.enums.FormaPagamento;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
@@ -128,7 +129,7 @@ public class PedidoWebController {
                 .build();
 
         model.addAttribute("pedido", pedido);
-        prepararFormulario(model, pedido);
+        prepararFormulario(model, pedido, null);
 
         return "pedidos/formulario";
     }
@@ -142,7 +143,7 @@ public class PedidoWebController {
             RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
-            prepararFormulario(model, pedido);
+            prepararFormulario(model, pedido, null);
             return "pedidos/formulario";
         }
 
@@ -160,7 +161,54 @@ public class PedidoWebController {
             return "redirect:/pedidos";
         } catch (BusinessException | ResourceNotFoundException exception) {
             bindingResult.reject("pedido.invalido", exception.getMessage());
-            prepararFormulario(model, pedido);
+            prepararFormulario(model, pedido, null);
+            return "pedidos/formulario";
+        }
+    }
+
+    @GetMapping("/{id}/editar")
+    public String editar(
+            @PathVariable Long id,
+            Model model
+    ) {
+        PedidoResponse pedidoSalvo = pedidoService.buscarPorId(id);
+        PedidoRequest pedido = converterParaRequest(pedidoSalvo);
+
+        model.addAttribute("pedido", pedido);
+        prepararFormulario(model, pedido, id);
+
+        return "pedidos/formulario";
+    }
+
+    @PostMapping("/{id}")
+    public String atualizar(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("pedido") PedidoRequest pedido,
+            BindingResult bindingResult,
+            @RequestParam(defaultValue = "salvar") String acao,
+            Model model,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (bindingResult.hasErrors()) {
+            prepararFormulario(model, pedido, id);
+            return "pedidos/formulario";
+        }
+
+        try {
+            PedidoResponse pedidoAtualizado = pedidoService.atualizar(id, pedido);
+
+            if ("salvarImprimir".equals(acao)) {
+                return "redirect:/pedidos/" + pedidoAtualizado.id() + "/comanda";
+            }
+
+            redirectAttributes.addFlashAttribute(
+                    "mensagemSucesso",
+                    "Pedido atualizado com sucesso."
+            );
+            return "redirect:/pedidos";
+        } catch (BusinessException | ResourceNotFoundException exception) {
+            bindingResult.reject("pedido.invalido", exception.getMessage());
+            prepararFormulario(model, pedido, id);
             return "pedidos/formulario";
         }
     }
@@ -229,8 +277,22 @@ public class PedidoWebController {
         return "pedidos/comandas";
     }
 
-    private void prepararFormulario(Model model, PedidoRequest pedido) {
-        model.addAttribute("titulo", "Novo Pedido");
+    private void prepararFormulario(
+            Model model,
+            PedidoRequest pedido,
+            Long pedidoId
+    ) {
+        boolean edicao = pedidoId != null;
+        model.addAttribute("pedidoId", pedidoId);
+        model.addAttribute("titulo", edicao ? "Editar Pedido" : "Novo Pedido");
+        model.addAttribute(
+                "descricaoFormulario",
+                edicao
+                        ? "Atualize o cliente, os itens e os dados do pedido"
+                        : "Selecione o cliente, organize os itens e confira o total"
+        );
+        model.addAttribute("urlFormulario", edicao ? "/pedidos/" + pedidoId : "/pedidos");
+        model.addAttribute("textoSalvar", edicao ? "Salvar alterações" : "Salvar pedido");
         model.addAttribute("dataMinima", LocalDate.now());
 
         if (pedido.clienteId() != null) {
@@ -271,6 +333,28 @@ public class PedidoWebController {
         }
 
         model.addAttribute("produtosSelecionados", produtosSelecionados);
+    }
+
+    private PedidoRequest converterParaRequest(PedidoResponse pedido) {
+        List<ItemPedidoRequest> itens = pedido.itens() == null
+                ? List.of()
+                : pedido.itens().stream()
+                    .map(item -> ItemPedidoRequest.builder()
+                            .produtoId(item.produtoId())
+                            .quantidade(item.quantidade())
+                            .observacao(item.observacao())
+                            .build())
+                    .toList();
+
+        return PedidoRequest.builder()
+                .clienteId(pedido.clienteId())
+                .dataAgendada(pedido.dataAgendada())
+                .formaPagamento(pedido.formaPagamento())
+                .tipoEntrega(pedido.tipoEntrega())
+                .taxaEntrega(pedido.taxaEntrega())
+                .observacao(pedido.observacao())
+                .itens(itens)
+                .build();
     }
 
     private String validarCampoOrdenacao(String ordenarPor) {
