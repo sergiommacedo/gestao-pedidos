@@ -114,6 +114,10 @@ public class PedidoWebController {
         model.addAttribute("filtro", filtroTratado);
         model.addAttribute("statusSelecionado", status);
         model.addAttribute("dataAgendada", dataAgendada);
+        model.addAttribute(
+                "dataAgendadaIso",
+                dataAgendada == null ? "" : dataAgendada.toString()
+        );
         model.addAttribute("ordenarPor", campoOrdenacao);
         model.addAttribute("direcao", direcaoOrdenacao.name().toLowerCase());
         model.addAttribute("tamanho", tamanhoValido);
@@ -145,6 +149,7 @@ public class PedidoWebController {
         List<PedidoResponse> pedidos = pedidoService.listarPorData(dataSelecionada);
 
         model.addAttribute("dataAgendada", dataSelecionada);
+        model.addAttribute("dataAgendadaIso", dataSelecionada.toString());
         model.addAttribute("mostrarCancelados", mostrarCancelados);
         model.addAttribute("statusCancelado", StatusPedido.CANCELADO);
         model.addAttribute(
@@ -335,7 +340,7 @@ public class PedidoWebController {
 
         if ("kanban".equals(visualizacao)) {
             if (dataAgendada != null) {
-                redirectAttributes.addAttribute("dataAgendada", dataAgendada);
+                redirectAttributes.addAttribute("dataAgendada", dataAgendada.toString());
             }
             if (mostrarCancelados) {
                 redirectAttributes.addAttribute("mostrarCancelados", true);
@@ -357,7 +362,7 @@ public class PedidoWebController {
         }
 
         if (dataAgendada != null) {
-            redirectAttributes.addAttribute("dataAgendada", dataAgendada);
+            redirectAttributes.addAttribute("dataAgendada", dataAgendada.toString());
         }
 
         return "redirect:/pedidos";
@@ -449,6 +454,10 @@ public class PedidoWebController {
         model.addAttribute(
                 "dataRetornoKanban",
                 mesmaData ? dataRetornoKanban : null
+        );
+        model.addAttribute(
+                "dataRetornoKanbanIso",
+                mesmaData ? dataRetornoKanban.toString() : null
         );
     }
 

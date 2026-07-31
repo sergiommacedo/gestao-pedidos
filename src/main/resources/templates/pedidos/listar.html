@@ -128,7 +128,7 @@
                         <th>
                             <a class="text-decoration-none text-dark"
                                th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
-                                    dataAgendada=${dataAgendada}, pagina=0, tamanho=${tamanho}, ordenarPor='id',
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='id',
                                     direcao=${ordenarPor == 'id' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 ID
                                 <i th:if="${ordenarPor == 'id'}"
@@ -139,7 +139,7 @@
                         <th>
                             <a class="text-decoration-none text-dark"
                                th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
-                                    dataAgendada=${dataAgendada}, pagina=0, tamanho=${tamanho}, ordenarPor='dataAgendada',
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='dataAgendada',
                                     direcao=${ordenarPor == 'dataAgendada' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 Data agendada
                                 <i th:if="${ordenarPor == 'dataAgendada'}"
@@ -150,7 +150,7 @@
                         <th>
                             <a class="text-decoration-none text-dark"
                                th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
-                                    dataAgendada=${dataAgendada}, pagina=0, tamanho=${tamanho}, ordenarPor='cliente.nome',
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='cliente.nome',
                                     direcao=${ordenarPor == 'cliente.nome' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 Cliente
                                 <i th:if="${ordenarPor == 'cliente.nome'}"
@@ -163,7 +163,7 @@
                         <th>
                             <a class="text-decoration-none text-dark"
                                th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
-                                    dataAgendada=${dataAgendada}, pagina=0, tamanho=${tamanho}, ordenarPor='status',
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='status',
                                     direcao=${ordenarPor == 'status' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 Status
                                 <i th:if="${ordenarPor == 'status'}"
@@ -177,7 +177,7 @@
                         <th class="text-end">
                             <a class="text-decoration-none text-dark"
                                th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
-                                    dataAgendada=${dataAgendada}, pagina=0, tamanho=${tamanho}, ordenarPor='valorTotal',
+                                    dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='valorTotal',
                                     direcao=${ordenarPor == 'valorTotal' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 Valor total
                                 <i th:if="${ordenarPor == 'valorTotal'}"
@@ -223,7 +223,7 @@
                                               method="post">
                                             <input type="hidden" name="filtro" th:value="${filtro}">
                                             <input type="hidden" name="statusFiltro" th:value="${statusSelecionado}">
-                                            <input type="hidden" name="dataAgendada" th:value="${dataAgendada}">
+                                            <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
                                             <input type="hidden" name="pagina" th:value="${paginaPedidos.number}">
                                             <input type="hidden" name="tamanho" th:value="${tamanho}">
                                             <input type="hidden" name="ordenarPor" th:value="${ordenarPor}">
@@ -334,7 +334,7 @@
                         </select>
                         <input type="hidden" name="filtro" th:value="${filtro}">
                         <input type="hidden" name="status" th:value="${statusSelecionado}">
-                        <input type="hidden" name="dataAgendada" th:value="${dataAgendada}">
+                        <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
                         <input type="hidden" name="pagina" value="0">
                         <input type="hidden" name="ordenarPor" th:value="${ordenarPor}">
                         <input type="hidden" name="direcao" th:value="${direcao}">
@@ -346,7 +346,7 @@
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item" th:classappend="${paginaPedidos.first} ? 'disabled'">
                                 <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
-                                    dataAgendada=${dataAgendada}, pagina=${paginaPedidos.number - 1}, tamanho=${tamanho},
+                                    dataAgendada=${dataAgendadaIso}, pagina=${paginaPedidos.number - 1}, tamanho=${tamanho},
                                     ordenarPor=${ordenarPor}, direcao=${direcao})}">Anterior</a>
                             </li>
 
@@ -354,14 +354,14 @@
                                 th:each="numeroPagina : ${#numbers.sequence(0, paginaPedidos.totalPages - 1)}"
                                 th:classappend="${numeroPagina == paginaPedidos.number} ? 'active'">
                                 <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
-                                    dataAgendada=${dataAgendada}, pagina=${numeroPagina}, tamanho=${tamanho},
+                                    dataAgendada=${dataAgendadaIso}, pagina=${numeroPagina}, tamanho=${tamanho},
                                     ordenarPor=${ordenarPor}, direcao=${direcao})}"
                                    th:text="${numeroPagina + 1}"></a>
                             </li>
 
                             <li class="page-item" th:classappend="${paginaPedidos.last} ? 'disabled'">
                                 <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
-                                    dataAgendada=${dataAgendada}, pagina=${paginaPedidos.number + 1}, tamanho=${tamanho},
+                                    dataAgendada=${dataAgendadaIso}, pagina=${paginaPedidos.number + 1}, tamanho=${tamanho},
                                     ordenarPor=${ordenarPor}, direcao=${direcao})}">Próxima</a>
                             </li>
                         </ul>

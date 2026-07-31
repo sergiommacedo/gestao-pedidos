@@ -203,7 +203,7 @@
                 Voltar para Pedidos
             </a>
             <a th:if="${dataRetornoKanban != null}"
-               th:href="@{/pedidos/kanban(dataAgendada=${dataRetornoKanban})}"
+               th:href="@{/pedidos/kanban(dataAgendada=${dataRetornoKanbanIso})}"
                class="btn btn-outline-secondary">
                 <i class="bi bi-kanban"></i>
                 Voltar para Kanban

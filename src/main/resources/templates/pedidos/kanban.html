@@ -16,7 +16,7 @@
                 <a th:href="@{/pedidos}" class="btn btn-outline-secondary">
                     <i class="bi bi-list-ul"></i> Lista
                 </a>
-                <a th:href="@{/pedidos/kanban(dataAgendada=${dataAgendada}, mostrarCancelados=${mostrarCancelados})}"
+                <a th:href="@{/pedidos/kanban(dataAgendada=${dataAgendadaIso}, mostrarCancelados=${mostrarCancelados})}"
                    class="btn btn-outline-secondary active" aria-current="page">
                     <i class="bi bi-kanban"></i> Kanban
                 </a>
@@ -37,7 +37,7 @@
                            inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"
                            th:value="${#temporals.format(dataAgendada, 'dd/MM/yyyy')}"
                            data-data-brasileira>
-                    <input type="hidden" name="dataAgendada" th:value="${dataAgendada}" data-data-iso>
+                    <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}" data-data-iso>
                 </div>
                 <div class="col-sm-6 col-lg-auto">
                     <div class="form-check form-switch pb-2">
@@ -124,7 +124,7 @@
                               th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
                               method="post" class="d-grid mb-2">
                             <input type="hidden" name="novoStatus" th:value="${proximosStatus[pedido.id]}">
-                            <input type="hidden" name="dataAgendada" th:value="${dataAgendada}">
+                            <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
                             <input type="hidden" name="visualizacao" value="kanban">
                             <input type="hidden" name="mostrarCancelados" th:value="${mostrarCancelados}">
                             <button type="submit" class="btn btn-primary btn-lg">
@@ -149,7 +149,7 @@
                         <form th:if="${transicoesStatus[pedido.id].contains(statusCancelado)}"
                               th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
                               method="post" class="d-grid mt-2">
-                            <input type="hidden" name="dataAgendada" th:value="${dataAgendada}">
+                            <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
                             <input type="hidden" name="visualizacao" value="kanban">
                             <input type="hidden" name="mostrarCancelados" th:value="${mostrarCancelados}">
                             <button type="button" class="btn btn-outline-danger"
