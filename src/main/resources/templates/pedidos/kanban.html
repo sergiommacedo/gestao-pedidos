@@ -5,13 +5,13 @@
       layout:decorate="~{layout/layout}">
 
 <section layout:fragment="content">
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 kanban-topo">
         <div>
             <h2 class="mb-0"><i class="bi bi-kanban"></i> Kanban de Pedidos</h2>
             <small class="text-muted">Acompanhe e avance os pedidos do dia</small>
         </div>
 
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-1 kanban-navegacao">
             <div class="btn-group" role="group" aria-label="Visualização dos pedidos">
                 <a th:href="@{/pedidos}" class="btn btn-outline-secondary">
                     <i class="bi bi-list-ul"></i> Lista
@@ -27,7 +27,7 @@
         </div>
     </div>
 
-    <div class="card shadow-sm mb-3 kanban-filtros">
+    <div class="card shadow-sm mb-2 kanban-filtros">
         <div class="card-body kanban-filtros-corpo">
             <form th:action="@{/pedidos/kanban}" method="get"
                   class="row g-2 align-items-end">
@@ -84,7 +84,7 @@
                 <article class="card kanban-cartao border shadow-sm"
                          th:each="pedido : ${pedidosColuna}">
                     <div class="card-body kanban-cartao-corpo">
-                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <div class="d-flex justify-content-between align-items-start gap-2 kanban-cartao-cabecalho">
                             <strong class="fs-5" th:text="'#' + ${pedido.id}">#0</strong>
                             <span class="badge"
                                   th:classappend="${pedido.tipoEntrega.name() == 'ENTREGA'}
@@ -93,14 +93,16 @@
                             </span>
                         </div>
 
-                        <div class="fw-bold fs-5 quebra-linha" th:text="${pedido.clienteNome}"></div>
-                        <div class="text-muted mb-2">
-                            <i class="bi bi-telephone me-1"></i>
-                            <span th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></span>
-                        </div>
-                        <div class="small text-muted mb-2" th:if="${pedido.criadoEm != null}">
-                            <i class="bi bi-clock me-1"></i>
-                            Cadastro às <span th:text="${#temporals.format(pedido.criadoEm, 'HH:mm')}"></span>
+                        <div class="fw-bold quebra-linha kanban-cliente" th:text="${pedido.clienteNome}"></div>
+                        <div class="d-flex flex-wrap align-items-center column-gap-2 text-muted kanban-metadados">
+                            <span class="text-nowrap">
+                                <i class="bi bi-telephone me-1"></i>
+                                <span th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></span>
+                            </span>
+                            <span class="text-nowrap" th:if="${pedido.criadoEm != null}">
+                                <i class="bi bi-clock me-1"></i>
+                                <span th:text="${#temporals.format(pedido.criadoEm, 'HH:mm')}"></span>
+                            </span>
                         </div>
 
                         <div class="kanban-itens mb-2">
@@ -115,7 +117,7 @@
                                    th:text="'+' + ${pedido.itens.size() - 3} + ' item(ns)'"></small>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center border-top pt-2 mb-2">
+                        <div class="d-flex justify-content-between align-items-center border-top kanban-total">
                             <span class="text-muted">Total</span>
                             <strong class="fs-5" th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></strong>
                         </div>
@@ -127,15 +129,14 @@
                             <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
                             <input type="hidden" name="visualizacao" value="kanban">
                             <input type="hidden" name="mostrarCancelados" th:value="${mostrarCancelados}">
-                            <button type="submit" class="btn btn-primary kanban-btn-avancar">
-                                Avançar para
-                                <span th:text="${proximosStatus[pedido.id].descricao}"></span>
+                            <button type="submit" class="btn btn-primary kanban-btn-avancar text-nowrap">
+                                <span>Avançar para </span><span th:text="${proximosStatus[pedido.id].descricao}"></span>
                                 <i class="bi bi-arrow-right ms-1"></i>
                             </button>
                         </form>
 
-                        <div class="d-flex flex-wrap gap-1 kanban-acoes-secundarias">
-                            <button type="button" class="btn btn-outline-secondary flex-fill kanban-btn-secundario"
+                        <div class="kanban-acoes-secundarias">
+                            <button type="button" class="btn btn-outline-secondary kanban-btn-secundario"
                                     title="Visualizar pedido"
                                     data-bs-toggle="modal" data-bs-target="#modalDetalhesPedido"
                                     th:data-detalhes-url="@{/pedidos/{id}/detalhes(id=${pedido.id}, origem='kanban',
@@ -145,13 +146,13 @@
                             <a th:if="${statusEditaveis.contains(pedido.status)}"
                                th:href="@{/pedidos/{id}/editar(id=${pedido.id}, origem='kanban',
                                     dataAgendada=${dataAgendadaIso}, mostrarCancelados=${mostrarCancelados})}"
-                               class="btn btn-outline-secondary flex-fill kanban-btn-secundario" title="Editar pedido">
+                               class="btn btn-outline-secondary kanban-btn-secundario" title="Editar pedido">
                                 <i class="bi bi-pencil"></i> Editar
                             </a>
                             <a th:if="${statusImprimiveis.contains(pedido.status)}"
                                th:href="@{/pedidos/{id}/comanda(id=${pedido.id}, origem='kanban',
                                     dataAgendada=${dataAgendadaIso}, mostrarCancelados=${mostrarCancelados})}"
-                               class="btn btn-outline-secondary flex-fill kanban-btn-secundario" target="_blank" rel="noopener"
+                               class="btn btn-outline-secondary kanban-btn-secundario" target="_blank" rel="noopener"
                                title="Imprimir comanda">
                                 <i class="bi bi-printer"></i> Imprimir
                             </a>
@@ -159,7 +160,7 @@
 
                         <form th:if="${transicoesStatus[pedido.id].contains(statusCancelado)}"
                               th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
-                              method="post" class="d-grid mt-2">
+                              method="post" class="d-grid kanban-cancelamento">
                             <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
                             <input type="hidden" name="visualizacao" value="kanban">
                             <input type="hidden" name="mostrarCancelados" th:value="${mostrarCancelados}">
