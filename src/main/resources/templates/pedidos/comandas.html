@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Impressão de comandas</title>
+    <title th:text="${'Impressão de comandas - ' + configuracaoEmpresa.nomeEmpresa}">
+        Impressão de comandas
+    </title>
 
     <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
     <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
@@ -246,10 +248,11 @@
         <header class="pedido-cabecalho text-center pb-2 mb-2">
             <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
                 <img class="comanda-logo"
-                     th:src="@{/img/logo-feijoada-vovo-dan.png}"
-                     alt="Logo Feijoada da Vovó Dan">
+                     th:src="${configuracaoEmpresa.logoUrl}"
+                     th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}">
                 <div class="text-start">
-                    <div class="fw-bold fs-5">Feijoada da Vovó Dan</div>
+                    <div class="fw-bold fs-5"
+                         th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</div>
                     <div class="small">Comanda de produção</div>
                 </div>
             </div>
@@ -303,10 +306,11 @@
         <div class="conteudo-a4">
         <header class="pedido-cabecalho d-flex justify-content-between align-items-center pb-3 mb-4">
             <div class="d-flex align-items-center gap-3">
-                <img class="comanda-logo" th:src="@{/img/logo-feijoada-vovo-dan.png}"
-                     alt="Logo Feijoada da Vovó Dan">
+                <img class="comanda-logo" th:src="${configuracaoEmpresa.logoUrl}"
+                     th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}">
                 <div>
-                    <h1 class="h4 mb-0">Feijoada da Vovó Dan</h1>
+                    <h1 class="h4 mb-0"
+                        th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</h1>
                     <div>Resumo detalhado do pedido</div>
                 </div>
             </div>

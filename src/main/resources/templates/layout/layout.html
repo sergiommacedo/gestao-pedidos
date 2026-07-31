@@ -9,7 +9,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Assados da Vóvó Dan</title>
+    <title th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</title>
 
     <!-- Bootstrap via Maven / WebJars -->
     <link rel="stylesheet"
@@ -27,7 +27,7 @@
 
 
 
-<body class="bg-body-tertiary">
+<body class="bg-body-tertiary" th:classappend="${configuracaoEmpresa.temaCss}">
 
 <!-- Navbar principal -->
 <div th:replace="~{fragments/navbar :: navbar}"></div>

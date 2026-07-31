@@ -26,12 +26,13 @@
         <a class="navbar-brand fw-semibold d-flex align-items-center gap-2 mb-0"
            th:href="@{/}">
 
-            <img th:src="@{/img/logo-feijoada-vovo-dan.png}"
+            <img th:src="${configuracaoEmpresa.logoUrl}"
                  class="app-logo"
-                 alt="Logo Feijoada da Vovó Dan">
+                 th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}">
 
-            <span class="d-none d-sm-inline">
-                Feijoada da Vovó Dan
+            <span class="d-none d-sm-inline"
+                  th:text="${configuracaoEmpresa.nomeCurto}">
+                Empresa
             </span>
         </a>
 
