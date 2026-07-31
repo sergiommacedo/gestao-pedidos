@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -30,6 +32,22 @@ public class UsuarioService {
                 .stream()
                 .map(usuarioMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UsuarioResponse> listarPaginado(
+            String filtro,
+            Pageable pageable
+    ) {
+        String filtroTratado = filtro == null ? "" : filtro.trim();
+
+        return usuarioRepository
+                .findByNomeContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                        filtroTratado,
+                        filtroTratado,
+                        pageable
+                )
+                .map(usuarioMapper::toResponse);
     }
 
     @Transactional(readOnly = true)

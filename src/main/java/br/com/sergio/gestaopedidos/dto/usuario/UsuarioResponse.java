@@ -21,7 +21,10 @@ public record UsuarioResponse(
         PerfilUsuario perfil,
 
         @Schema(description = "Indica se o usuário está ativo", example = "true")
-        Boolean ativo
+        Boolean ativo,
+
+        @Schema(description = "Indica se a troca da senha inicial está pendente", example = "false")
+        Boolean trocarSenhaPrimeiroAcesso
 
 ) {
 }
