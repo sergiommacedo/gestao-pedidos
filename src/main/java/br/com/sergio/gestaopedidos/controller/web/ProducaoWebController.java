@@ -41,13 +41,9 @@ public class ProducaoWebController {
     public String nova(@RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate dataProducao,
                        Model model){
         LocalDate data = dataProducao == null ? LocalDate.now() : dataProducao;
-        BigDecimal saldoSugerido = producaoService.sugerirSaldoInicial(dataProducao);
         model.addAttribute("producao",ProducaoRequest.builder().dataProducao(data)
-            .saldoInicialMateriais(saldoSugerido).valorComprasMateriais(BigDecimal.ZERO)
-            .saldoFinalMateriais(BigDecimal.ZERO).valorEmbalagens(BigDecimal.ZERO)
             .valorGasEnergia(BigDecimal.ZERO).valorOutros(BigDecimal.ZERO)
             .itens(new java.util.ArrayList<>(java.util.List.of(ItemProducaoRequest.builder().build()))).build());
-        model.addAttribute("saldoInicialSugerido", saldoSugerido);
         prepararFormulario(model,false,null);return "producoes/formulario";}
 
     @PostMapping
@@ -61,10 +57,7 @@ public class ProducaoWebController {
 
     @GetMapping("/{id}/editar")
     public String editar(@PathVariable Long id,Model model,RedirectAttributes redirect){var p=producaoService.buscarPorId(id);if(p.status()==br.com.sergio.gestaopedidos.enums.StatusProducao.CONFIRMADA){redirect.addFlashAttribute("mensagemErro","Produção confirmada não pode ser alterada.");return "redirect:/producoes/"+id;}model.addAttribute("producao",ProducaoRequest.builder()
-            .dataProducao(p.dataProducao()).saldoInicialMateriais(p.saldoInicialMateriais())
-            .valorComprasMateriais(p.valorComprasMateriais()).saldoFinalMateriais(p.saldoFinalMateriais())
-            .valorEmbalagens(p.valorEmbalagens())
-            .valorGasEnergia(p.valorGasEnergia()).valorOutros(p.valorOutros()).observacao(p.observacao())
+            .dataProducao(p.dataProducao()).valorGasEnergia(p.valorGasEnergia()).valorOutros(p.valorOutros()).observacao(p.observacao())
             .itens(new java.util.ArrayList<>(p.itens().stream().map(i->ItemProducaoRequest.builder().id(i.id()).produtoId(i.produtoId()).quantidade(i.quantidade()).build()).toList())).build());
         prepararFormulario(model,true,id);return "producoes/formulario";}
 

@@ -8,10 +8,9 @@ import br.com.sergio.gestaopedidos.enums.StatusProducao;
 
 @Builder
 public record ProducaoResponse(
-        Long id, LocalDate dataProducao, BigDecimal saldoInicialMateriais, BigDecimal valorComprasMateriais,
-        BigDecimal saldoFinalMateriais, BigDecimal recursosDisponiveis, BigDecimal custoMateriaisConsumidos,
-        BigDecimal valorEmbalagens, BigDecimal valorGasEnergia, BigDecimal valorOutros,
-        BigDecimal outrosCustos, BigDecimal totalGasto,
+        Long id, LocalDate dataProducao, BigDecimal valorInsumosConsumidos,
+        BigDecimal valorGasEnergia, BigDecimal valorOutros,
+        BigDecimal gastosAdicionais, BigDecimal custoTotal,
         String observacao, LocalDateTime criadoEm, LocalDateTime atualizadoEm,
         StatusProducao status, LocalDateTime confirmadaEm, List<ItemProducaoResponse> itens,
         BigDecimal quantidadeTotal

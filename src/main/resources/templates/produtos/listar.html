@@ -37,7 +37,7 @@
                   method="get"
                   class="row g-2 align-items-center">
 
-                <div class="col-md-7">
+                <div class="col-md-4">
 
                     <div class="input-group">
 
@@ -54,6 +54,10 @@
                     </div>
 
                 </div>
+
+                <div class="col-md-3"><select class="form-select" name="tipo"><option value="">Todos os tipos</option><option th:each="t:${tiposProduto}" th:value="${t}" th:text="${t.descricao}" th:selected="${t==tipoSelecionado}"></option></select></div>
+                <div class="col-md-2"><select class="form-select" name="ativo"><option value="">Ativos e inativos</option><option value="true" th:selected="${ativoSelecionado==true}">Ativos</option><option value="false" th:selected="${ativoSelecionado==false}">Inativos</option></select></div>
+                <div class="col-md-2"><select class="form-select" name="vendavel"><option value="">Todos</option><option value="true" th:selected="${vendavelSelecionado==true}">Vendáveis</option><option value="false" th:selected="${vendavelSelecionado==false}">Não vendáveis</option></select></div>
 
                 <div class="col-md-auto">
 
@@ -251,14 +255,14 @@
 
                         <td th:text="${produto.nome}"></td>
 
-                        <td th:text="${#numbers.formatCurrency(produto.preco)}"></td>
+                        <td th:text="${produto.preco == null ? 'Não se aplica' : #numbers.formatCurrency(produto.preco)}"></td>
 
                         <td th:text="${produto.unidadeVenda.descricao}"></td>
 
                         <td>
                             <div class="d-flex flex-column align-items-start gap-1">
                                 <span class="badge text-bg-light border"
-                                      th:text="${produto.tipoProduto.name() == 'PRODUZIDO' ? 'Produzido' : 'Revenda'}">Produzido</span>
+                                      th:text="${produto.tipoProduto.descricao}">Tipo</span>
                                 <span class="badge"
                                       th:classappend="${produto.vendavel} ? ' text-bg-primary' : ' text-bg-secondary'"
                                       th:text="${produto.vendavel} ? 'Vendável' : 'Não vendável'">Vendável</span>

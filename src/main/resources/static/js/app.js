@@ -22,8 +22,52 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarFormularioEstoque();
     inicializarFormularioFichaTecnica();
     inicializarItensProducao();
+    inicializarComposicaoProduto();
 
 });
+
+function inicializarComposicaoProduto() {
+    const formulario = document.querySelector("[data-form-composicao]");
+    if (!formulario) return;
+    const container = formulario.querySelector("[data-composicao-itens]");
+    const template = document.querySelector("[data-composicao-template]");
+    const moeda = valor => new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(valor || 0);
+    const renumerar = () => container.querySelectorAll("[data-composicao-item]").forEach((linha, indice) => linha.querySelectorAll("[data-campo]").forEach(campo => campo.name = `itens[${indice}].${campo.dataset.campo}`));
+    const totalizar = () => {
+        let total = 0;
+        container.querySelectorAll("[data-composicao-item]").forEach(linha => {
+            const opcao = linha.querySelector("[data-composicao-referencia]").selectedOptions[0];
+            const custo = Number(opcao?.dataset.custo || 0) * Number(linha.querySelector("[data-composicao-quantidade]").value || 0);
+            linha.querySelector("[data-composicao-custo]").textContent = moeda(custo); total += custo;
+        });
+        formulario.querySelector("[data-composicao-total]").textContent = moeda(total);
+    };
+    const carregar = async linha => {
+        const tipo = linha.querySelector("[data-composicao-tipo]").value;
+        const select = linha.querySelector("[data-composicao-referencia]");
+        const atual = select.dataset.valorAtual || select.value;
+        select.innerHTML = '<option value="">Selecione</option>';
+        if (!tipo) return;
+        const resposta = await fetch(`/composicoes-produtos/componentes?tipo=${encodeURIComponent(tipo)}`);
+        if (!resposta.ok) return;
+        for (const item of await resposta.json()) {
+            const opcao = document.createElement("option"); opcao.value = item.id; opcao.textContent = item.nome;
+            opcao.dataset.unidade = item.unidade; opcao.dataset.simbolo = ({UNIDADE:"un", QUILOGRAMA:"kg", GRAMA:"g", LITRO:"L", MILILITRO:"ml"})[item.unidade] || item.unidade;
+            opcao.dataset.custo = item.custoMedio; if (String(item.id) === String(atual)) opcao.selected = true; select.appendChild(opcao);
+        }
+        select.dataset.valorAtual = ""; atualizarLinha(linha);
+    };
+    const atualizarLinha = linha => { const opcao = linha.querySelector("[data-composicao-referencia]").selectedOptions[0]; linha.querySelector("[data-composicao-unidade]").textContent = opcao?.dataset.simbolo || "—"; totalizar(); };
+    const preparar = linha => {
+        linha.querySelector("[data-composicao-tipo]").addEventListener("change", () => carregar(linha));
+        linha.querySelector("[data-composicao-referencia]").addEventListener("change", () => atualizarLinha(linha));
+        linha.querySelector("[data-composicao-quantidade]").addEventListener("input", totalizar);
+        linha.querySelector("[data-composicao-remover]").addEventListener("click", () => { if (container.children.length > 1) { linha.remove(); renumerar(); totalizar(); } });
+        if (linha.querySelector("[data-composicao-tipo]").value) carregar(linha);
+    };
+    container.querySelectorAll("[data-composicao-item]").forEach(preparar);
+    formulario.querySelector("[data-composicao-adicionar]").addEventListener("click", () => { const linha = template.content.firstElementChild.cloneNode(true); container.appendChild(linha); renumerar(); preparar(linha); });
+}
 
 function inicializarFormularioFichaTecnica() {
     const formulario = document.querySelector("[data-form-ficha-tecnica]");
@@ -169,7 +213,8 @@ function inicializarFormularioEstoque() {
     const valorInicial = referencia.value;
     const atualizar = () => {
         const seletor = tipo.value === "INSUMO" ? "[data-opcoes-insumo]"
-            : tipo.value === "PRODUTO_REVENDA" ? "[data-opcoes-revenda]" : "";
+            : tipo.value === "PRODUTO_REVENDA" ? "[data-opcoes-revenda]"
+            : tipo.value === "PREPARACAO_PRODUZIDA" ? "[data-opcoes-preparacao]" : "";
         const template = seletor ? formulario.querySelector(seletor) : null;
         referencia.replaceChildren(new Option(tipo.value ? "Selecione" : "Selecione o tipo primeiro", ""));
         if (template) referencia.append(template.content.cloneNode(true));
@@ -188,12 +233,25 @@ function inicializarFormularioProduto() {
     const unidade = formulario.querySelector("#unidadeVenda");
     const grupo = formulario.querySelector("[data-estoque-minimo-produto]");
     const minimo = formulario.querySelector("#estoqueMinimo");
+    const precoGrupo = formulario.querySelector("[data-preco-produto]");
+    const preco = formulario.querySelector("#preco");
+    const acompanhamentoGrupo = formulario.querySelector("[data-acompanhamento-produto]");
+    const acompanhamento = formulario.querySelector("#permiteAcompanhamento");
+    const vendavelGrupo = formulario.querySelector("[data-vendavel-produto]");
+    const vendavel = formulario.querySelector("#vendavel");
+    const ajuda = formulario.querySelector("[data-ajuda-preparacao]");
+    const labelUnidade = formulario.querySelector("[data-label-unidade-produto]");
     const atualizar = () => {
-        const revenda = tipo.value === "REVENDA";
-        grupo.classList.toggle("d-none", !revenda);
-        minimo.disabled = !revenda;
+        const preparacao = tipo.value === "PREPARACAO_PRODUZIDA";
+        const comercial = tipo.value === "PRODUTO_COMERCIAL";
+        const controlaEstoque = preparacao || tipo.value === "PRODUTO_REVENDA";
+        grupo.classList.toggle("d-none", !controlaEstoque); minimo.disabled = !controlaEstoque;
         minimo.step = unidade.value === "UNIDADE" ? "1" : "0.001";
-        if (!revenda) minimo.value = "0";
+        if (comercial) minimo.value = "0";
+        precoGrupo.classList.toggle("d-none", preparacao); preco.disabled = preparacao; preco.required = !preparacao;
+        acompanhamentoGrupo.classList.toggle("d-none", preparacao); vendavelGrupo.classList.toggle("d-none", preparacao); ajuda.classList.toggle("d-none", !preparacao);
+        labelUnidade.textContent = preparacao ? "Unidade de controle *" : "Unidade de venda *";
+        if (preparacao) { preco.value = ""; vendavel.checked = false; acompanhamento.checked = false; }
     };
     tipo.addEventListener("change", atualizar); unidade.addEventListener("change", atualizar); atualizar();
 }

@@ -18,7 +18,7 @@ class FichaTecnicaServiceTest {
 
     @Test
     void calculaCustoTotalMargemEIndicaItemSemCusto() {
-        Fake f = new Fake(); f.produto(1, TipoProduto.PRODUZIDO, true, UnidadeVenda.UNIDADE, "20.00");
+        Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.UNIDADE, "20.00");
         f.insumo(1, UnidadeMedida.QUILOGRAMA, true); f.insumo(2, UnidadeMedida.UNIDADE, true);
         f.saldo(1, "10", "8");
         var resposta = f.service().salvar(f.request(1, f.item(null, 1, "0.300"), f.item(null, 2, "1")));
@@ -31,7 +31,7 @@ class FichaTecnicaServiceTest {
 
     @Test
     void aceitaCustoSemSaldoComoPendenteSemMovimentarEstoque() {
-        Fake f = new Fake(); f.produto(1, TipoProduto.PRODUZIDO, true, UnidadeVenda.UNIDADE, "10");
+        Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.UNIDADE, "10");
         f.insumo(1, UnidadeMedida.UNIDADE, true);
         var resposta = f.service().salvar(f.request(1, f.item(null, 1, "1")));
         assertThat(resposta.itens().getFirst().possuiCusto()).isFalse();
@@ -42,17 +42,17 @@ class FichaTecnicaServiceTest {
     @Test
     void rejeitaProdutoRevendaEProdutoInativo() {
         Fake f = new Fake(); f.insumo(1, UnidadeMedida.UNIDADE, true);
-        f.produto(1, TipoProduto.REVENDA, true, UnidadeVenda.UNIDADE, "10");
+        f.produto(1, TipoProduto.PRODUTO_REVENDA, true, UnidadeVenda.UNIDADE, "10");
         assertThatThrownBy(() -> f.service().salvar(f.request(1, f.item(null, 1, "1"))))
-                .hasMessageContaining("produzidos");
-        f.produto(2, TipoProduto.PRODUZIDO, false, UnidadeVenda.UNIDADE, "10");
+                .hasMessageContaining("preparações produzidas");
+        f.produto(2, TipoProduto.PREPARACAO_PRODUZIDA, false, UnidadeVenda.UNIDADE, "10");
         assertThatThrownBy(() -> f.service().salvar(f.request(2, f.item(null, 1, "1"))))
                 .hasMessageContaining("não está disponível");
     }
 
     @Test
     void validaItensDuplicadosVaziosInativosEQuantidadeDeUnidade() {
-        Fake f = new Fake(); f.produto(1, TipoProduto.PRODUZIDO, true, UnidadeVenda.UNIDADE, "10");
+        Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.UNIDADE, "10");
         f.insumo(1, UnidadeMedida.UNIDADE, true); f.insumo(2, UnidadeMedida.QUILOGRAMA, false);
         assertThatThrownBy(() -> f.service().salvar(f.request(1))).hasMessageContaining("ao menos um");
         assertThatThrownBy(() -> f.service().salvar(f.request(1, f.item(null, 1, "1"), f.item(null, 1, "2"))))
@@ -67,7 +67,7 @@ class FichaTecnicaServiceTest {
 
     @Test
     void impedeSegundaFichaDoMesmoProduto() {
-        Fake f = new Fake(); f.produto(1, TipoProduto.PRODUZIDO, true, UnidadeVenda.UNIDADE, "10");
+        Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.UNIDADE, "10");
         f.insumo(1, UnidadeMedida.UNIDADE, true); f.service().salvar(f.request(1, f.item(null, 1, "1")));
         assertThatThrownBy(() -> f.service().salvar(f.request(1, f.item(null, 1, "1"))))
                 .hasMessageContaining("já possui");
@@ -75,7 +75,7 @@ class FichaTecnicaServiceTest {
 
     @Test
     void edicaoPreservaInsumoHistoricoInativoERejeitaIdDeOutraFicha() {
-        Fake f = new Fake(); f.produto(1, TipoProduto.PRODUZIDO, true, UnidadeVenda.UNIDADE, "10");
+        Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.UNIDADE, "10");
         f.insumo(1, UnidadeMedida.UNIDADE, true); f.insumo(2, UnidadeMedida.UNIDADE, true);
         var salva = f.service().salvar(f.request(1, f.item(null, 1, "1")));
         Long itemId = salva.itens().getFirst().id(); f.insumos.get(1L).setAtivo(false);
@@ -87,7 +87,7 @@ class FichaTecnicaServiceTest {
 
     @Test
     void ativaInativaExcluiEListaPaginado() {
-        Fake f = new Fake(); f.produto(1, TipoProduto.PRODUZIDO, true, UnidadeVenda.QUILOGRAMA, "30");
+        Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.QUILOGRAMA, "30");
         f.insumo(1, UnidadeMedida.QUILOGRAMA, true);
         Long id = f.service().salvar(f.request(1, f.item(null, 1, "0.125"))).id();
         f.service().inativar(id); assertThat(f.fichas.get(id).getAtiva()).isFalse();

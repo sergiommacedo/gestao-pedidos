@@ -16,7 +16,7 @@ public interface ProducaoRepository extends JpaRepository<Producao, Long> {
     @Query("""
             SELECT p.id AS id,p.status AS status,COUNT(i.id) AS produtos,
                    COALESCE(SUM(i.quantidade),0) AS quantidade,
-                   COALESCE(SUM(i.custoLote),0) AS custo,p.confirmadaEm AS confirmadaEm
+                   COALESCE(SUM(i.custoTotal),0) AS custo,p.confirmadaEm AS confirmadaEm
             FROM Producao p LEFT JOIN p.itens i WHERE p.dataProducao=:data
             GROUP BY p.id,p.status,p.confirmadaEm
             """) Optional<ResumoDashboard> resumirDashboard(@Param("data")LocalDate data);

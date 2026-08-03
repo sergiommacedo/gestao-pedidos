@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Table(name="movimentacoes_estoque",uniqueConstraints={
         @UniqueConstraint(name="uk_movimento_item_tipo",columnNames={"item_compra_id","tipo"}),
         @UniqueConstraint(name="uk_movimento_pedido_produto_tipo",columnNames={"pedido_id","produto_id","tipo"})})
-@Check(constraints="(insumo_id is not null and produto_id is null and tipo_item='INSUMO') or (insumo_id is null and produto_id is not null and tipo_item in ('PRODUTO_REVENDA','PRODUTO_PRODUZIDO'))")
+@Check(constraints="(insumo_id is not null and produto_id is null and tipo_item='INSUMO') or (insumo_id is null and produto_id is not null and tipo_item in ('PRODUTO_REVENDA','PREPARACAO_PRODUZIDA'))")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @EqualsAndHashCode(onlyExplicitlyIncluded=true)
 public class MovimentacaoEstoque {
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) @EqualsAndHashCode.Include private Long id;

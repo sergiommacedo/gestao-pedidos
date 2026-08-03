@@ -28,7 +28,7 @@ public class Produto {
     @Column(length = 255)
     private String descricao;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2)
     private BigDecimal preco;
 
     @Column(nullable = false)
@@ -45,8 +45,7 @@ public class Produto {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_produto", length = 30)
-    @Builder.Default
-    private TipoProduto tipoProduto = TipoProduto.PRODUZIDO;
+    private TipoProduto tipoProduto;
 
     @Column
     @Builder.Default
@@ -58,8 +57,7 @@ public class Produto {
 
     @PrePersist
     public void aplicarDefaults() {
-        if (tipoProduto == null) tipoProduto = TipoProduto.PRODUZIDO;
-        if (vendavel == null) vendavel = true;
+        if (vendavel == null) vendavel = false;
         if (estoqueMinimo == null) estoqueMinimo = BigDecimal.ZERO.setScale(3);
     }
 }

@@ -36,8 +36,6 @@ public record ProdutoRequest(
                 example = "59.90",
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
-        @NotNull(message = "Preço é obrigatório.")
-        @DecimalMin(value = "0.01", message = "Preço deve ser maior que zero.")
         BigDecimal preco,
 
         @Schema(
@@ -60,7 +58,7 @@ public record ProdutoRequest(
         @NotNull(message = "Informe se o produto permite acompanhamento.")
         Boolean permiteAcompanhamento,
 
-        TipoProduto tipoProduto,
+        @NotNull(message = "Tipo é obrigatório.") TipoProduto tipoProduto,
 
         Boolean vendavel,
 

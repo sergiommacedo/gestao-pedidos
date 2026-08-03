@@ -1,8 +1,9 @@
 package br.com.sergio.gestaopedidos.enums;
 
 public enum TipoProduto {
-    PRODUZIDO("Produzido pela empresa"),
-    REVENDA("Produto de revenda");
+    PREPARACAO_PRODUZIDA("Preparação produzida"),
+    PRODUTO_COMERCIAL("Produto de venda"),
+    PRODUTO_REVENDA("Produto de revenda");
 
     private final String descricao;
 

@@ -1,34 +1,13 @@
 package br.com.sergio.gestaopedidos.service;
-
-import br.com.sergio.gestaopedidos.dto.produto.*;
-import br.com.sergio.gestaopedidos.entity.Produto;
-import br.com.sergio.gestaopedidos.enums.*;
-import br.com.sergio.gestaopedidos.mapper.ProdutoMapper;
-import br.com.sergio.gestaopedidos.repository.ProdutoRepository;
-import org.junit.jupiter.api.Test;
-import java.lang.reflect.*;
-import java.math.BigDecimal;
-import java.util.*;
-import static org.assertj.core.api.Assertions.assertThat;
-
-class ProdutoServiceTest {
-    @Test void deveAplicarDefaultsNoCadastroLegado() {
-        Fake f=new Fake();f.entidade=produto(1,"Frango",null,true,null);var salvo=f.service().salvar(request(null,null));
-        assertThat(salvo.tipoProduto()).isEqualTo(TipoProduto.PRODUZIDO);assertThat(salvo.vendavel()).isTrue();
-    }
-    @Test void deveBuscarSomenteAtivosEVendaveisIncluindoProduzidoERevenda() {
-        Fake f=new Fake();f.busca=List.of(produto(1,"Feijoada",TipoProduto.PRODUZIDO,true,true),produto(2,"Água",TipoProduto.REVENDA,true,true));
-        assertThat(f.service().buscarAtivosEVendaveisPorNome("")).extracting(ProdutoResponse::tipoProduto).containsExactly(TipoProduto.PRODUZIDO,TipoProduto.REVENDA);
-        assertThat(f.metodoBusca).isEqualTo("findTop20ByAtivoTrueAndVendavelTrueAndNomeContainingIgnoreCaseOrderByNomeAsc");
-    }
-    @Test void deveAtualizarTipoEVendavel() {
-        Fake f=new Fake();f.entidade=produto(1,"Água",TipoProduto.PRODUZIDO,true,true);var r=f.service().atualizar(1L,request(TipoProduto.REVENDA,false));
-        assertThat(r.tipoProduto()).isEqualTo(TipoProduto.REVENDA);assertThat(r.vendavel()).isFalse();
-    }
-    private ProdutoRequest request(TipoProduto t,Boolean v){return ProdutoRequest.builder().nome("Água").preco(BigDecimal.ONE).ativo(true).unidadeVenda(UnidadeVenda.UNIDADE).permiteAcompanhamento(false).tipoProduto(t).vendavel(v).build();}
-    private Produto produto(long id,String n,TipoProduto t,Boolean a,Boolean v){return Produto.builder().id(id).nome(n).preco(BigDecimal.ONE).ativo(a).vendavel(v).tipoProduto(t).unidadeVenda(UnidadeVenda.UNIDADE).permiteAcompanhamento(false).build();}
-    private ProdutoResponse resposta(Produto p){return ProdutoResponse.builder().id(p.getId()).nome(p.getNome()).preco(p.getPreco()).ativo(p.getAtivo()).vendavel(p.getVendavel()).tipoProduto(p.getTipoProduto()).unidadeVenda(p.getUnidadeVenda()).permiteAcompanhamento(p.getPermiteAcompanhamento()).build();}
-    private class Fake implements InvocationHandler {Produto entidade;List<Produto> busca=List.of();String metodoBusca;
-        ProdutoService service(){ProdutoRepository r=(ProdutoRepository)Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{ProdutoRepository.class},this);ProdutoMapper m=(ProdutoMapper)Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{ProdutoMapper.class},this);return new ProdutoService(r,m);}
-        public Object invoke(Object p,Method m,Object[] a){return switch(m.getName()){case"existsByNomeIgnoreCase"->false;case"toEntity"->entidade;case"save"->a[0];case"findById"->Optional.ofNullable(entidade);case"toResponse"->resposta((Produto)a[0]);case"findTop20ByAtivoTrueAndVendavelTrueAndNomeContainingIgnoreCaseOrderByNomeAsc"->{metodoBusca=m.getName();yield busca;}default->null;};}}
+import br.com.sergio.gestaopedidos.dto.produto.*;import br.com.sergio.gestaopedidos.entity.Produto;import br.com.sergio.gestaopedidos.enums.*;import br.com.sergio.gestaopedidos.exception.BusinessException;import br.com.sergio.gestaopedidos.mapper.ProdutoMapper;import br.com.sergio.gestaopedidos.repository.ProdutoRepository;import org.junit.jupiter.api.*;import java.math.*;import java.util.*;import static org.assertj.core.api.Assertions.*;import static org.mockito.Mockito.*;
+class ProdutoServiceTest{
+ ProdutoRepository repo;ProdutoMapper mapper;ProdutoService service;
+ @BeforeEach void setup(){repo=mock(ProdutoRepository.class);mapper=mock(ProdutoMapper.class);service=new ProdutoService(repo,mapper);when(repo.existsByNomeIgnoreCase(anyString())).thenReturn(false);when(repo.save(any())).thenAnswer(i->i.getArgument(0));when(mapper.toEntity(any())).thenAnswer(i->{ProdutoRequest r=i.getArgument(0);return Produto.builder().nome(r.nome()).build();});when(mapper.toResponse(any())).thenAnswer(i->resposta(i.getArgument(0)));}
+ @Test void preparacaoPodeSerSalvaSemPrecoENaoVendavelEmKg(){ProdutoResponse r=service.salvar(request(TipoProduto.PREPARACAO_PRODUZIDA,null,true,UnidadeVenda.QUILOGRAMA));assertThat(r.preco()).isNull();assertThat(r.vendavel()).isFalse();assertThat(r.unidadeVenda()).isEqualTo(UnidadeVenda.QUILOGRAMA);assertThat(r.permiteAcompanhamento()).isFalse();}
+ @Test void comercialExigePreco(){assertThatThrownBy(()->service.salvar(request(TipoProduto.PRODUTO_COMERCIAL,null,true,UnidadeVenda.UNIDADE))).isInstanceOf(BusinessException.class).hasMessageContaining("Preço");}
+ @Test void comercialPodeSerVendavel(){assertThat(service.salvar(request(TipoProduto.PRODUTO_COMERCIAL,new BigDecimal("35"),true,UnidadeVenda.UNIDADE)).vendavel()).isTrue();}
+ @Test void revendaExigePreco(){assertThatThrownBy(()->service.salvar(request(TipoProduto.PRODUTO_REVENDA,BigDecimal.ZERO,true,UnidadeVenda.UNIDADE))).hasMessageContaining("Preço");}
+ @Test void buscaPedidoUsaSomenteComercialERevenda(){Produto p=Produto.builder().tipoProduto(TipoProduto.PRODUTO_COMERCIAL).build();when(repo.buscarVendaveis(anyCollection(),eq("fei"),any())).thenReturn(List.of(p));service.buscarAtivosEVendaveisPorNome(" fei ");verify(repo).buscarVendaveis(eq(EnumSet.of(TipoProduto.PRODUTO_COMERCIAL,TipoProduto.PRODUTO_REVENDA)),eq("fei"),any());}
+ private ProdutoRequest request(TipoProduto t,BigDecimal preco,boolean vendavel,UnidadeVenda u){return ProdutoRequest.builder().nome("Feijoada").preco(preco).ativo(true).unidadeVenda(u).permiteAcompanhamento(true).tipoProduto(t).vendavel(vendavel).estoqueMinimo(BigDecimal.ZERO).build();}
+ private ProdutoResponse resposta(Produto p){return ProdutoResponse.builder().id(p.getId()).nome(p.getNome()).preco(p.getPreco()).ativo(p.getAtivo()).vendavel(p.getVendavel()).tipoProduto(p.getTipoProduto()).unidadeVenda(p.getUnidadeVenda()).permiteAcompanhamento(p.getPermiteAcompanhamento()).estoqueMinimo(p.getEstoqueMinimo()).build();}
 }

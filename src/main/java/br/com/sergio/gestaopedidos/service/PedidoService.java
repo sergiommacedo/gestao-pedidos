@@ -49,7 +49,6 @@ public class PedidoService {
     private final ClienteRepository clienteRepository;
     private final ProdutoRepository produtoRepository;
     private final PedidoMapper pedidoMapper;
-    private final EstoqueService estoqueService;
 
     @Transactional(readOnly = true)
     public List<PedidoResponse> listarTodos() {
@@ -271,9 +270,6 @@ public class PedidoService {
             );
         }
 
-        if (pedido.getStatus() == StatusPedido.PENDENTE && novoStatus == StatusPedido.EM_PREPARACAO) {
-            estoqueService.processarPedido(pedido);
-        }
         pedido.setStatus(novoStatus);
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
     }
@@ -483,7 +479,9 @@ public class PedidoService {
     }
 
     private void validarProdutoDisponivelParaVenda(Produto produto) {
-        if (!Boolean.TRUE.equals(produto.getAtivo()) || !Boolean.TRUE.equals(produto.getVendavel())) {
+        if (!Boolean.TRUE.equals(produto.getAtivo()) || !Boolean.TRUE.equals(produto.getVendavel())
+                || (produto.getTipoProduto()!=br.com.sergio.gestaopedidos.enums.TipoProduto.PRODUTO_COMERCIAL
+                && produto.getTipoProduto()!=br.com.sergio.gestaopedidos.enums.TipoProduto.PRODUTO_REVENDA)) {
             throw new BusinessException("Este produto não está disponível para venda.");
         }
     }

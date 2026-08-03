@@ -86,7 +86,7 @@ class DashboardServiceTest {
                         "getProduzidosDisponiveis",2L,"getRevendaDisponiveis",1L,"getValorInsumos",new BigDecimal("500"),
                         "getValorRevenda",new BigDecimal("100"),"getValorProduzidos",new BigDecimal("300"),"getValorTotal",new BigDecimal("900")));
         SaldoEstoqueRepository.Visao feijao = visao("INSUMO",1L,"Feijão","QUILOGRAMA",BigDecimal.ZERO,new BigDecimal("2"));
-        SaldoEstoqueRepository.Visao feijoada = visao("PRODUTO_PRODUZIDO",2L,"Feijoada","UNIDADE",new BigDecimal("20"),BigDecimal.ZERO);
+        SaldoEstoqueRepository.Visao feijoada = visao("PREPARACAO_PRODUZIDA",2L,"Feijoada","UNIDADE",new BigDecimal("20"),BigDecimal.ZERO);
         SaldoEstoqueRepository estoque = proxy(SaldoEstoqueRepository.class,Map.of("resumirDashboard",estoqueResumo,
                 "listarAlertasDashboard",List.of(feijao),"listarProduzidosDisponiveisDashboard",List.of(feijoada)));
         CompraRepository.ResumoDashboard compraResumo = proxy(CompraRepository.ResumoDashboard.class,

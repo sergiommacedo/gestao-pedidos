@@ -112,7 +112,7 @@ public class FichaTecnicaService {
         return buscarPorId(id);
     }
 
-    public void ativar(Long id) { buscarDetalhada(id).setAtiva(true); }
+    public void ativar(Long id) { FichaTecnica f=buscarDetalhada(id);if(f.getProduto().getTipoProduto()!=TipoProduto.PREPARACAO_PRODUZIDA)throw new BusinessException("Somente preparação produzida pode possuir Ficha Técnica.");if(f.getItens().isEmpty())throw new BusinessException("Adicione ao menos um Insumo antes de ativar a Ficha Técnica.");f.setAtiva(true); }
     public void inativar(Long id) { buscarDetalhada(id).setAtiva(false); }
     public void excluir(Long id) { fichaRepository.delete(buscarDetalhada(id)); }
 
@@ -132,8 +132,8 @@ public class FichaTecnicaService {
     private Produto validarProdutoNovo(Long id) {
         if (id == null) throw new BusinessException("Selecione o produto.");
         Produto produto = produtoService.buscarEntidadePorId(id);
-        if (produto.getTipoProduto() != TipoProduto.PRODUZIDO)
-            throw new BusinessException("Somente produtos produzidos podem possuir ficha técnica.");
+        if (produto.getTipoProduto() != TipoProduto.PREPARACAO_PRODUZIDA)
+            throw new BusinessException("Somente preparações produzidas podem possuir Ficha Técnica.");
         if (!Boolean.TRUE.equals(produto.getAtivo()))
             throw new BusinessException("Este produto não está disponível para uma nova ficha técnica.");
         return produto;

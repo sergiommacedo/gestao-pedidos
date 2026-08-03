@@ -642,7 +642,7 @@ public class PedidoWebController {
                                             .unidadeVenda(UnidadeVenda.UNIDADE)
                                             .permiteAcompanhamento(false)
                                             .ativo(false)
-                                            .tipoProduto(br.com.sergio.gestaopedidos.enums.TipoProduto.PRODUZIDO)
+                                            .tipoProduto(br.com.sergio.gestaopedidos.enums.TipoProduto.PREPARACAO_PRODUZIDA)
                                             .vendavel(false)
                                             .build()
                             );

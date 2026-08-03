@@ -17,11 +17,11 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>
  UNION ALL
  SELECT 'PRODUTO_REVENDA',p.id,p.nome,p.unidade_venda,p.ativo,
  COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0),COALESCE(s.custo_medio_atual,0),COALESCE(s.valor_total_estoque,0),s.atualizado_em
- FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='REVENDA'
+ FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='PRODUTO_REVENDA'
  UNION ALL
- SELECT 'PRODUTO_PRODUZIDO',p.id,p.nome,p.unidade_venda,p.ativo,
+ SELECT 'PREPARACAO_PRODUZIDA',p.id,p.nome,p.unidade_venda,p.ativo,
  COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0),COALESCE(s.custo_medio_atual,0),COALESCE(s.valor_total_estoque,0),s.atualizado_em
- FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='PRODUZIDO'
+ FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='PREPARACAO_PRODUZIDA'
  ) x WHERE (:nome='' OR LOWER(x.item_nome) LIKE LOWER(CONCAT('%',:nome,'%')))
  AND (:categoria='' OR x.tipo_item=:categoria) AND (:ativo IS NULL OR x.ativo=:ativo)
  AND (:situacao='' OR (:situacao='SEM_ESTOQUE' AND x.quantidade_atual=0)
@@ -32,8 +32,8 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>
  """,countQuery="""
  SELECT COUNT(*) FROM (
  SELECT 'INSUMO' tipo_item,i.nome item_nome,i.ativo ativo,COALESCE(s.quantidade_atual,0) quantidade_atual,COALESCE(i.estoque_minimo,0) estoque_minimo FROM insumos i LEFT JOIN saldos_estoque s ON s.insumo_id=i.id
- UNION ALL SELECT 'PRODUTO_REVENDA',p.nome,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0) FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='REVENDA'
- UNION ALL SELECT 'PRODUTO_PRODUZIDO',p.nome,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0) FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='PRODUZIDO') x
+ UNION ALL SELECT 'PRODUTO_REVENDA',p.nome,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0) FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='PRODUTO_REVENDA'
+ UNION ALL SELECT 'PREPARACAO_PRODUZIDA',p.nome,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0) FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='PREPARACAO_PRODUZIDA') x
  WHERE (:nome='' OR LOWER(x.item_nome) LIKE LOWER(CONCAT('%',:nome,'%'))) AND (:categoria='' OR x.tipo_item=:categoria) AND (:ativo IS NULL OR x.ativo=:ativo)
  AND (:situacao='' OR (:situacao='SEM_ESTOQUE' AND x.quantidade_atual=0) OR (:situacao='BAIXO' AND x.estoque_minimo>0 AND x.quantidade_atual<=x.estoque_minimo) OR (:situacao='SEM_MINIMO' AND x.estoque_minimo=0) OR (:situacao='NORMAL' AND x.quantidade_atual>0 AND (x.estoque_minimo=0 OR x.quantidade_atual>x.estoque_minimo)))
  """,nativeQuery=true)Page<Visao> listar(@Param("nome")String nome,@Param("categoria")String categoria,@Param("situacao")String situacao,@Param("ativo")Boolean ativo,Pageable pageable);
@@ -43,24 +43,24 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>
  SELECT SUM(CASE WHEN s.quantidadeAtual>0 THEN 1 ELSE 0 END) AS itensComSaldo,
  SUM(CASE WHEN ((s.insumo IS NOT NULL AND s.insumo.estoqueMinimo>0 AND s.quantidadeAtual<=s.insumo.estoqueMinimo) OR (s.produto IS NOT NULL AND s.produto.estoqueMinimo>0 AND s.quantidadeAtual<=s.produto.estoqueMinimo)) THEN 1 ELSE 0 END) AS abaixoDoMinimo,
  SUM(CASE WHEN s.quantidadeAtual=0 THEN 1 ELSE 0 END) AS semEstoque,
- SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PRODUTO_PRODUZIDO AND s.quantidadeAtual>0 THEN 1 ELSE 0 END) AS produzidosDisponiveis,
+ SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PREPARACAO_PRODUZIDA AND s.quantidadeAtual>0 THEN 1 ELSE 0 END) AS produzidosDisponiveis,
  SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PRODUTO_REVENDA AND s.quantidadeAtual>0 THEN 1 ELSE 0 END) AS revendaDisponiveis,
  COALESCE(SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.INSUMO THEN s.valorTotalEstoque ELSE 0 END),0) AS valorInsumos,
  COALESCE(SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PRODUTO_REVENDA THEN s.valorTotalEstoque ELSE 0 END),0) AS valorRevenda,
- COALESCE(SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PRODUTO_PRODUZIDO THEN s.valorTotalEstoque ELSE 0 END),0) AS valorProduzidos,
+ COALESCE(SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PREPARACAO_PRODUZIDA THEN s.valorTotalEstoque ELSE 0 END),0) AS valorProduzidos,
  COALESCE(SUM(s.valorTotalEstoque),0) AS valorTotal FROM SaldoEstoque s
  """) ResumoDashboard resumirDashboard();
  @Query(value="""
  SELECT * FROM (
  SELECT 'INSUMO' tipo_item,i.id referencia_id,i.nome item_nome,i.unidade_medida unidade,i.ativo ativo,COALESCE(s.quantidade_atual,0) quantidade_atual,COALESCE(i.estoque_minimo,0) estoque_minimo,COALESCE(s.custo_medio_atual,0) custo_medio_atual,COALESCE(s.valor_total_estoque,0) valor_total_estoque,s.atualizado_em atualizado_em FROM insumos i LEFT JOIN saldos_estoque s ON s.insumo_id=i.id
- UNION ALL SELECT CASE WHEN p.tipo_produto='PRODUZIDO' THEN 'PRODUTO_PRODUZIDO' ELSE 'PRODUTO_REVENDA' END,p.id,p.nome,p.unidade_venda,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0),COALESCE(s.custo_medio_atual,0),COALESCE(s.valor_total_estoque,0),s.atualizado_em FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id
+ UNION ALL SELECT CASE WHEN p.tipo_produto='PREPARACAO_PRODUZIDA' THEN 'PREPARACAO_PRODUZIDA' ELSE 'PRODUTO_REVENDA' END,p.id,p.nome,p.unidade_venda,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0),COALESCE(s.custo_medio_atual,0),COALESCE(s.valor_total_estoque,0),s.atualizado_em FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto IN ('PREPARACAO_PRODUZIDA','PRODUTO_REVENDA')
  ) x WHERE x.ativo=true AND (x.quantidade_atual=0 OR (x.estoque_minimo>0 AND x.quantidade_atual<=x.estoque_minimo))
  ORDER BY CASE WHEN x.quantidade_atual=0 THEN 0 ELSE 1 END,x.quantidade_atual ASC,x.item_nome ASC
  """,nativeQuery=true) List<Visao> listarAlertasDashboard(Pageable pageable);
  @Query(value="""
- SELECT 'PRODUTO_PRODUZIDO' tipo_item,p.id referencia_id,p.nome item_nome,p.unidade_venda unidade,p.ativo ativo,s.quantidade_atual quantidade_atual,COALESCE(p.estoque_minimo,0) estoque_minimo,s.custo_medio_atual custo_medio_atual,s.valor_total_estoque valor_total_estoque,s.atualizado_em atualizado_em
+ SELECT 'PREPARACAO_PRODUZIDA' tipo_item,p.id referencia_id,p.nome item_nome,p.unidade_venda unidade,p.ativo ativo,s.quantidade_atual quantidade_atual,COALESCE(p.estoque_minimo,0) estoque_minimo,s.custo_medio_atual custo_medio_atual,s.valor_total_estoque valor_total_estoque,s.atualizado_em atualizado_em
  FROM saldos_estoque s JOIN produtos p ON p.id=s.produto_id
- WHERE s.tipo_item='PRODUTO_PRODUZIDO' AND p.ativo=true AND s.quantidade_atual>0
+ WHERE s.tipo_item='PREPARACAO_PRODUZIDA' AND p.ativo=true AND s.quantidade_atual>0
  ORDER BY s.quantidade_atual DESC,p.nome ASC
  """,nativeQuery=true) List<Visao> listarProduzidosDisponiveisDashboard(Pageable pageable);
  @Query("SELECT s FROM SaldoEstoque s JOIN FETCH s.insumo WHERE s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.INSUMO AND s.insumo.id IN :ids")List<SaldoEstoque> buscarSaldosInsumos(@Param("ids")Collection<Long> ids);
