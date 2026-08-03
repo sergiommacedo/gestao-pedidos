@@ -17,6 +17,10 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>
  SELECT 'PRODUTO_REVENDA',p.id,p.nome,p.unidade_venda,p.ativo,
  COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0),COALESCE(s.custo_medio_atual,0),COALESCE(s.valor_total_estoque,0),s.atualizado_em
  FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='REVENDA'
+ UNION ALL
+ SELECT 'PRODUTO_PRODUZIDO',p.id,p.nome,p.unidade_venda,p.ativo,
+ COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0),COALESCE(s.custo_medio_atual,0),COALESCE(s.valor_total_estoque,0),s.atualizado_em
+ FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='PRODUZIDO'
  ) x WHERE (:nome='' OR LOWER(x.item_nome) LIKE LOWER(CONCAT('%',:nome,'%')))
  AND (:categoria='' OR x.tipo_item=:categoria) AND (:ativo IS NULL OR x.ativo=:ativo)
  AND (:situacao='' OR (:situacao='SEM_ESTOQUE' AND x.quantidade_atual=0)
@@ -27,7 +31,8 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>
  """,countQuery="""
  SELECT COUNT(*) FROM (
  SELECT 'INSUMO' tipo_item,i.nome item_nome,i.ativo ativo,COALESCE(s.quantidade_atual,0) quantidade_atual,COALESCE(i.estoque_minimo,0) estoque_minimo FROM insumos i LEFT JOIN saldos_estoque s ON s.insumo_id=i.id
- UNION ALL SELECT 'PRODUTO_REVENDA',p.nome,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0) FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='REVENDA') x
+ UNION ALL SELECT 'PRODUTO_REVENDA',p.nome,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0) FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='REVENDA'
+ UNION ALL SELECT 'PRODUTO_PRODUZIDO',p.nome,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0) FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='PRODUZIDO') x
  WHERE (:nome='' OR LOWER(x.item_nome) LIKE LOWER(CONCAT('%',:nome,'%'))) AND (:categoria='' OR x.tipo_item=:categoria) AND (:ativo IS NULL OR x.ativo=:ativo)
  AND (:situacao='' OR (:situacao='SEM_ESTOQUE' AND x.quantidade_atual=0) OR (:situacao='BAIXO' AND x.estoque_minimo>0 AND x.quantidade_atual<=x.estoque_minimo) OR (:situacao='SEM_MINIMO' AND x.estoque_minimo=0) OR (:situacao='NORMAL' AND x.quantidade_atual>0 AND (x.estoque_minimo=0 OR x.quantidade_atual>x.estoque_minimo)))
  """,nativeQuery=true)Page<Visao> listar(@Param("nome")String nome,@Param("categoria")String categoria,@Param("situacao")String situacao,@Param("ativo")Boolean ativo,Pageable pageable);

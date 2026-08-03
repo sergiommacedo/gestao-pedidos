@@ -44,7 +44,7 @@ public class EstoqueWebController {
         model.addAttribute("situacao", situacao);
         model.addAttribute("ativo", ativo);
         model.addAttribute("tamanho", limite);
-        model.addAttribute("categorias", categoriasManuais());
+        model.addAttribute("categorias", TipoItemEstoque.values());
         return "estoque/listar";
     }
 
