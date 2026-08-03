@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/layout}">
+<section layout:fragment="content">
+    <header class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+        <div><h1 class="h3 fw-semibold mb-1">Relatório de Produção</h1>
+            <p class="text-body-secondary mb-0">Analise as quantidades vendidas e o faturamento dos produtos por período.</p></div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" th:href="@{/relatorios/producao/imprimir(dataInicial=${dataInicial},dataFinal=${dataFinal},produto=${produto},unidadeVenda=${unidadeSelecionada},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},ordenarPor=${ordenarPor},direcao=${direcao})}"><i class="bi bi-printer me-1"></i>Imprimir</a>
+            <a class="btn btn-success" th:href="@{/relatorios/producao/excel(dataInicial=${dataInicial},dataFinal=${dataFinal},produto=${produto},unidadeVenda=${unidadeSelecionada},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},ordenarPor=${ordenarPor},direcao=${direcao})}"><i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel</a>
+            <a class="btn btn-outline-secondary" th:href="@{/relatorios}"><i class="bi bi-arrow-left me-1"></i>Voltar para Relatórios</a>
+        </div>
+    </header>
+
+    <div class="card shadow-sm mb-4"><div class="card-header bg-white py-3"><h2 class="h5 mb-0">Filtros</h2></div><div class="card-body">
+        <form th:action="@{/relatorios/producao}" method="get" data-relatorio-pedidos-form>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="hoje">Hoje</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="ultimos-7-dias">Últimos 7 dias</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="este-mes">Este mês</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="mes-anterior">Mês anterior</button>
+            </div>
+            <div class="row g-3 align-items-end">
+                <div class="col-sm-6 col-xl-2"><label class="form-label" for="dataInicial">Data inicial</label><input class="form-control" type="date" id="dataInicial" name="dataInicial" required th:value="${dataInicial}"></div>
+                <div class="col-sm-6 col-xl-2"><label class="form-label" for="dataFinal">Data final</label><input class="form-control" type="date" id="dataFinal" name="dataFinal" required th:value="${dataFinal}"></div>
+                <div class="col-md-6 col-xl-3"><label class="form-label" for="produto">Produto</label><input class="form-control" type="search" id="produto" name="produto" placeholder="Nome do produto" th:value="${produto}"></div>
+                <div class="col-sm-6 col-xl"><label class="form-label" for="unidadeVenda">Unidade</label><select class="form-select" id="unidadeVenda" name="unidadeVenda"><option value="">Todas</option><option th:each="u:${unidadesVenda}" th:value="${u}" th:text="${u.descricao}" th:selected="${u==unidadeSelecionada}"></option></select></div>
+                <div class="col-sm-6 col-xl"><label class="form-label" for="tipoEntrega">Entrega</label><select class="form-select" id="tipoEntrega" name="tipoEntrega"><option value="">Todos</option><option th:each="t:${tiposEntrega}" th:value="${t}" th:text="${t.name()=='ENTREGA'?'Entrega':'Retirada'}" th:selected="${t==tipoEntregaSelecionado}"></option></select></div>
+                <div class="col-sm-6 col-xl-2"><label class="form-label" for="formaPagamento">Pagamento</label><select class="form-select" id="formaPagamento" name="formaPagamento"><option value="">Todos</option><option th:each="f:${formasPagamento}" th:value="${f}" th:text="${f.descricao}" th:selected="${f==formaPagamentoSelecionada}"></option></select></div>
+                <div class="col-sm-auto d-grid"><button class="btn btn-primary" type="submit">Consultar</button></div>
+            </div>
+            <input type="hidden" name="pagina" value="0"><input type="hidden" name="tamanho" th:value="${tamanho}"><input type="hidden" name="ordenarPor" th:value="${ordenarPor}"><input type="hidden" name="direcao" th:value="${direcao}">
+        </form>
+        <div class="alert alert-danger mt-3 mb-0" th:if="${erroPeriodo!=null}" th:text="${erroPeriodo}"></div>
+        <div class="alert alert-warning mt-3 mb-0" th:if="${erroExportacao!=null}" th:text="${erroExportacao}"></div>
+    </div></div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
+        <div class="col"><div class="card relatorio-indicador-card h-100"><div class="card-body"><small>Produtos distintos</small><strong class="d-block fs-4" th:text="${indicadores.produtosDistintos}">0</strong></div></div></div>
+        <div class="col"><div class="card relatorio-indicador-card h-100"><div class="card-body"><small>Quantidade total</small><strong class="d-block" th:text="${@formatacao.formatarQuantidade(indicadores.totalUnidades,T(br.com.sergio.gestaopedidos.enums.UnidadeVenda).UNIDADE)+' unidades'}">0</strong><strong class="d-block" th:text="${@formatacao.formatarQuantidade(indicadores.totalQuilogramas,T(br.com.sergio.gestaopedidos.enums.UnidadeVenda).QUILOGRAMA)}">0,000 kg</strong></div></div></div>
+        <div class="col"><div class="card relatorio-indicador-card h-100"><div class="card-body"><small>Faturamento dos produtos</small><strong class="d-block fs-5" th:text="${@formatacao.formatarMoeda(indicadores.faturamentoProdutos)}">R$0</strong></div></div></div>
+        <div class="col"><div class="card relatorio-indicador-card h-100"><div class="card-body"><small>Taxas de entrega</small><strong class="d-block fs-5" th:text="${@formatacao.formatarMoeda(indicadores.taxasEntrega)}">R$0</strong></div></div></div>
+        <div class="col"><div class="card relatorio-indicador-card h-100"><div class="card-body"><small>Total geral</small><strong class="d-block fs-5" th:text="${@formatacao.formatarMoeda(indicadores.totalGeral)}">R$0</strong></div></div></div>
+        <div class="col"><div class="card relatorio-indicador-card h-100"><div class="card-body"><small>Produto líder</small><strong class="d-block" th:text="${indicadores.produtoLiderNome}">Nenhum</strong><small th:text="${@formatacao.formatarMoeda(indicadores.produtoLiderValor)}">R$0</small></div></div></div>
+    </div>
+
+    <div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0 relatorio-pedidos-table"><thead class="table-light"><tr>
+        <th>Posição</th>
+        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/producao(dataInicial=${dataInicial},dataFinal=${dataFinal},produto=${produto},unidadeVenda=${unidadeSelecionada},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},tamanho=${tamanho},ordenarPor='produto',direcao=${ordenarPor=='produto' and direcao=='asc'?'desc':'asc'})}">Produto</a></th>
+        <th>Unidade</th>
+        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/producao(dataInicial=${dataInicial},dataFinal=${dataFinal},produto=${produto},unidadeVenda=${unidadeSelecionada},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},tamanho=${tamanho},ordenarPor='quantidade',direcao=${ordenarPor=='quantidade' and direcao=='asc'?'desc':'asc'})}">Quantidade</a></th>
+        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/producao(dataInicial=${dataInicial},dataFinal=${dataFinal},produto=${produto},unidadeVenda=${unidadeSelecionada},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},tamanho=${tamanho},ordenarPor='pedidos',direcao=${ordenarPor=='pedidos' and direcao=='asc'?'desc':'asc'})}">Pedidos</a></th>
+        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/producao(dataInicial=${dataInicial},dataFinal=${dataFinal},produto=${produto},unidadeVenda=${unidadeSelecionada},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},tamanho=${tamanho},ordenarPor='faturamento',direcao=${ordenarPor=='faturamento' and direcao=='asc'?'desc':'asc'})}">Faturamento</a></th>
+        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/producao(dataInicial=${dataInicial},dataFinal=${dataFinal},produto=${produto},unidadeVenda=${unidadeSelecionada},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},tamanho=${tamanho},ordenarPor='media',direcao=${ordenarPor=='media' and direcao=='asc'?'desc':'asc'})}">Média/pedido</a></th>
+        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/producao(dataInicial=${dataInicial},dataFinal=${dataFinal},produto=${produto},unidadeVenda=${unidadeSelecionada},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},tamanho=${tamanho},ordenarPor='participacao',direcao=${ordenarPor=='participacao' and direcao=='asc'?'desc':'asc'})}">Participação</a></th>
+    </tr></thead><tbody>
+        <tr th:each="l:${linhas.content}"><td th:text="${l.posicao+'º'}">1º</td><td th:text="${l.produtoNome}">Produto</td><td th:text="${l.unidadeVenda.descricao}">Unidade</td><td th:text="${@formatacao.formatarQuantidade(l.quantidadeTotal,l.unidadeVenda)}">0</td><td th:text="${l.pedidosDistintos}">0</td><td th:text="${@formatacao.formatarMoeda(l.faturamentoTotal)}">R$0</td><td th:text="${@formatacao.formatarMoeda(l.mediaPorPedido)}">R$0</td><td th:text="${@formatacao.formatarDecimalBrasileiro(l.participacaoPercentual,2)+'%'}">0,00%</td></tr>
+        <tr th:if="${linhas.empty}"><td colspan="8" class="text-center text-body-secondary py-5">Nenhum produto vendido para os filtros informados.</td></tr>
+    </tbody></table></div>
+        <div class="card-footer bg-white" th:if="${!linhas.empty}"><div class="d-flex justify-content-between align-items-center gap-3"><form method="get" th:action="@{/relatorios/producao}" class="d-flex align-items-center gap-2"><label class="small text-nowrap" for="tamanhoProducao">Por página:</label><select class="form-select form-select-sm" id="tamanhoProducao" name="tamanho" onchange="this.form.submit()"><option value="10" th:selected="${tamanho==10}">10</option><option value="20" th:selected="${tamanho==20}">20</option><option value="50" th:selected="${tamanho==50}">50</option></select><input type="hidden" name="dataInicial" th:value="${dataInicial}"><input type="hidden" name="dataFinal" th:value="${dataFinal}"><input type="hidden" name="produto" th:value="${produto}"><input type="hidden" name="unidadeVenda" th:value="${unidadeSelecionada}"><input type="hidden" name="tipoEntrega" th:value="${tipoEntregaSelecionado}"><input type="hidden" name="formaPagamento" th:value="${formaPagamentoSelecionada}"><input type="hidden" name="ordenarPor" th:value="${ordenarPor}"><input type="hidden" name="direcao" th:value="${direcao}"></form><nav th:if="${linhas.totalPages>1}"><ul class="pagination pagination-sm mb-0"><li class="page-item" th:each="n:${#numbers.sequence(0,linhas.totalPages-1)}" th:classappend="${n==linhas.number}?' active'"><a class="page-link" th:text="${n+1}" th:href="@{/relatorios/producao(dataInicial=${dataInicial},dataFinal=${dataFinal},produto=${produto},unidadeVenda=${unidadeSelecionada},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},pagina=${n},tamanho=${tamanho},ordenarPor=${ordenarPor},direcao=${direcao})}">1</a></li></ul></nav></div></div>
+    </div>
+</section></html>

@@ -6,6 +6,7 @@ import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioPedidoLinhaResponse;
 import br.com.sergio.gestaopedidos.enums.FormaPagamento;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
 import br.com.sergio.gestaopedidos.enums.TipoEntrega;
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -161,6 +162,31 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             @Param("dataFinal") LocalDate dataFinal,
             @Param("cliente") String cliente,
             @Param("status") StatusPedido status,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("statusCancelado") StatusPedido statusCancelado
+    );
+
+    @Query("""
+            SELECT COALESCE(SUM(p.taxaEntrega), 0)
+            FROM Pedido p
+            WHERE p.dataAgendada BETWEEN :dataInicial AND :dataFinal
+            AND p.status <> :statusCancelado
+            AND (:tipoEntrega IS NULL OR p.tipoEntrega = :tipoEntrega)
+            AND (:formaPagamento IS NULL OR p.formaPagamento = :formaPagamento)
+            AND EXISTS (
+                SELECT item.id FROM ItemPedido item
+                JOIN item.produto produto
+                WHERE item.pedido = p
+                AND (:produto = '' OR LOWER(produto.nome) LIKE LOWER(CONCAT('%', :produto, '%')))
+                AND (:unidadeVenda IS NULL OR produto.unidadeVenda = :unidadeVenda)
+            )
+            """)
+    BigDecimal somarTaxasRelatorioProducao(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("produto") String produto,
+            @Param("unidadeVenda") UnidadeVenda unidadeVenda,
             @Param("tipoEntrega") TipoEntrega tipoEntrega,
             @Param("formaPagamento") FormaPagamento formaPagamento,
             @Param("statusCancelado") StatusPedido statusCancelado
