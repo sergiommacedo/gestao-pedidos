@@ -11,6 +11,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.*;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,12 @@ public class InsumoService {
     @Transactional(readOnly = true)
     public InsumoResponse buscarPorId(Long id) {
         return insumoMapper.toResponse(buscarEntidade(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<InsumoResponse> buscarAtivosPorNome(String termo) {
+        return insumoRepository.findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(normalizarFiltro(termo))
+                .stream().map(insumoMapper::toResponse).toList();
     }
 
     public InsumoResponse salvar(InsumoRequest request) {

@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarAtalhosPeriodoRelatorio();
     inicializarPreviewProducao();
     inicializarFormularioInsumo();
+    inicializarFormularioCompraInsumo();
 
 });
 
@@ -35,6 +36,77 @@ function inicializarFormularioInsumo() {
     };
     unidade.addEventListener("change", atualizarUnidade);
     atualizarUnidade();
+}
+
+function inicializarFormularioCompraInsumo() {
+    const formulario = document.querySelector("[data-form-compra-insumo]");
+    if (!formulario) return;
+    const busca = formulario.querySelector("[data-busca-insumo-compra]");
+    const resultados = formulario.querySelector("[data-resultados-insumo-compra]");
+    const adicionar = formulario.querySelector("[data-adicionar-insumo-compra]");
+    const container = formulario.querySelector("[data-itens-compra]");
+    const vazio = formulario.querySelector("[data-itens-compra-vazio]");
+    const erro = formulario.querySelector("[data-erro-itens-compra]");
+    const totalSaida = formulario.querySelector("[data-total-compra]");
+    const quantidadeSaida = formulario.querySelector("[data-quantidade-itens-compra]");
+    let selecionado = null, temporizador, numeroRequisicao = 0;
+    const moeda = valor => new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(valor || 0);
+    const decimal = valor => Number.parseFloat(String(valor ?? "0").replace(",", ".")) || 0;
+    const fechar = () => { clearTimeout(temporizador); numeroRequisicao++; resultados.replaceChildren(); resultados.classList.add("d-none"); };
+    const avisar = mensagem => { erro.textContent = mensagem; erro.classList.remove("d-none"); };
+    const limparAviso = () => erro.classList.add("d-none");
+
+    function reindexar() {
+        const linhas = [...container.querySelectorAll("[data-item-compra]")];
+        linhas.forEach((linha, indice) => {
+            linha.querySelector("[data-item-id]").name = `itens[${indice}].id`;
+            linha.querySelector("[data-insumo-id]").name = `itens[${indice}].insumoId`;
+            linha.querySelector("[data-quantidade-decimal]").name = `itens[${indice}].quantidade`;
+            linha.querySelector("[data-valor-decimal]").name = `itens[${indice}].valorTotalItem`;
+        });
+        vazio.classList.toggle("d-none", linhas.length > 0);
+        quantidadeSaida.textContent = String(linhas.length);
+        const total = linhas.reduce((soma, linha) => soma + decimal(linha.querySelector("[data-valor-decimal]").value), 0);
+        totalSaida.textContent = moeda(total);
+    }
+
+    function criarCampo(rotulo, tipo) {
+        const grupo = document.createElement("div"); grupo.className = tipo === "quantidade" ? "col-sm-6 col-lg-2" : "col-sm-6 col-lg-2";
+        const label = document.createElement("label"); label.className = "form-label small"; label.textContent = rotulo;
+        const input = document.createElement("input"); input.type = "text"; input.className = "form-control"; input.inputMode = "decimal";
+        grupo.append(label, input); return {grupo, input};
+    }
+
+    function adicionarLinha(item) {
+        if ([...container.querySelectorAll("[data-item-compra]")].some(l => l.dataset.insumoId === String(item.insumoId))) { avisar("Este insumo já foi adicionado à compra."); return; }
+        limparAviso();
+        const linha = document.createElement("div"); linha.className = "row g-2 align-items-end border rounded p-3 mb-3"; linha.dataset.itemCompra = ""; linha.dataset.insumoId = item.insumoId;
+        const id = document.createElement("input"); id.type = "hidden"; id.value = item.id || ""; id.dataset.itemId = "";
+        const insumoId = document.createElement("input"); insumoId.type = "hidden"; insumoId.value = item.insumoId; insumoId.dataset.insumoId = "";
+        const nomeGrupo = document.createElement("div"); nomeGrupo.className = "col-lg-3";
+        const nomeLabel = document.createElement("div"); nomeLabel.className = "form-label small"; nomeLabel.textContent = "Insumo";
+        const nome = document.createElement("div"); nome.className = "form-control bg-body-tertiary"; nome.textContent = item.nome; nomeGrupo.append(nomeLabel, nome);
+        const quantidade = criarCampo("Quantidade", "quantidade"); quantidade.input.value = new Intl.NumberFormat("pt-BR", {minimumFractionDigits: item.unidade === "UNIDADE" ? 0 : 3, maximumFractionDigits: 3}).format(decimal(item.quantidade));
+        const quantidadeDecimal = document.createElement("input"); quantidadeDecimal.type = "hidden"; quantidadeDecimal.dataset.quantidadeDecimal = ""; quantidadeDecimal.value = decimal(item.quantidade).toFixed(3); quantidade.grupo.appendChild(quantidadeDecimal);
+        const unidade = document.createElement("div"); unidade.className = "col-sm-6 col-lg-1"; const ul = document.createElement("div"); ul.className = "form-label small"; ul.textContent = "Unidade"; const uv = document.createElement("div"); uv.className = "form-control bg-body-tertiary"; uv.textContent = item.simbolo; unidade.append(ul, uv);
+        const valor = criarCampo("Valor pago", "valor"); valor.input.value = new Intl.NumberFormat("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2}).format(decimal(item.valor));
+        const valorDecimal = document.createElement("input"); valorDecimal.type = "hidden"; valorDecimal.dataset.valorDecimal = ""; valorDecimal.value = decimal(item.valor).toFixed(2); valor.grupo.appendChild(valorDecimal);
+        const custoGrupo = document.createElement("div"); custoGrupo.className = "col-sm-8 col-lg-3"; const cl = document.createElement("div"); cl.className = "form-label small"; cl.textContent = "Custo unitário"; const custo = document.createElement("div"); custo.className = "form-control bg-body-tertiary"; custoGrupo.append(cl, custo);
+        const removerGrupo = document.createElement("div"); removerGrupo.className = "col-sm-4 col-lg-1"; const remover = document.createElement("button"); remover.type = "button"; remover.className = "btn btn-outline-danger w-100"; remover.title = "Remover item"; remover.innerHTML = '<i class="bi bi-trash"></i>'; removerGrupo.appendChild(remover);
+        linha.append(id, insumoId, nomeGrupo, quantidade.grupo, unidade, valor.grupo, custoGrupo, removerGrupo); container.appendChild(linha);
+        const atualizar = () => { const q = decimal(converterMoedaBrasileiraParaDecimal(quantidade.input.value)); const v = decimal(converterMoedaBrasileiraParaDecimal(valor.input.value)); quantidadeDecimal.value = q.toFixed(3); valorDecimal.value = v.toFixed(2); custo.textContent = `${moeda(q > 0 ? v / q : 0)}/${item.simbolo}`; reindexar(); };
+        quantidade.input.addEventListener("input", atualizar); valor.input.addEventListener("input", atualizar); remover.addEventListener("click", () => { linha.remove(); reindexar(); }); atualizar();
+    }
+
+    function escolher(insumo) { selecionado = insumo; busca.value = insumo.nome; adicionar.disabled = false; fechar(); }
+    async function pesquisar() { const termo = busca.value.trim(); const requisicao = ++numeroRequisicao; if (termo.length < 2) { fechar(); return; } const resposta = await fetch(`/compras-insumos/insumos/buscar?termo=${encodeURIComponent(termo)}`); const dados = resposta.ok ? await resposta.json() : []; if (requisicao !== numeroRequisicao || busca.value.trim() !== termo) return; resultados.replaceChildren(); dados.forEach(insumo => { const botao = document.createElement("button"); botao.type = "button"; botao.className = "list-group-item list-group-item-action"; botao.textContent = `${insumo.nome} — ${insumo.unidadeDescricao} (${insumo.simbolo})`; botao.addEventListener("click", () => escolher(insumo)); resultados.appendChild(botao); }); if (!dados.length) { const item = document.createElement("div"); item.className = "list-group-item text-body-secondary"; item.textContent = "Nenhum insumo ativo encontrado."; resultados.appendChild(item); } resultados.classList.remove("d-none"); }
+    busca.addEventListener("input", () => { selecionado = null; adicionar.disabled = true; clearTimeout(temporizador); temporizador = setTimeout(pesquisar, 250); });
+    busca.addEventListener("keydown", evento => { if (evento.key === "Escape") fechar(); });
+    document.addEventListener("click", evento => { if (!busca.contains(evento.target) && !resultados.contains(evento.target)) fechar(); });
+    adicionar.addEventListener("click", () => { if (!selecionado) return; adicionarLinha({insumoId: selecionado.id, nome: selecionado.nome, unidade: selecionado.unidade, simbolo: selecionado.simbolo, quantidade: 0, valor: 0}); selecionado = null; busca.value = ""; adicionar.disabled = true; busca.focus(); });
+    formulario.querySelectorAll("[data-item-compra-inicial]").forEach(item => adicionarLinha({id:item.dataset.id,insumoId:item.dataset.insumoId,nome:item.dataset.nome,unidade:item.dataset.unidade,simbolo:item.dataset.simbolo,quantidade:item.dataset.quantidade,valor:item.dataset.valor}));
+    formulario.addEventListener("submit", evento => { reindexar(); if (!container.querySelector("[data-item-compra]")) { evento.preventDefault(); avisar("Adicione ao menos um item à compra."); } });
+    reindexar();
 }
 
 function inicializarPreviewProducao() {

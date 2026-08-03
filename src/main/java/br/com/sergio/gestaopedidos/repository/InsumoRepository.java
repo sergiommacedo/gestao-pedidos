@@ -4,6 +4,7 @@ import br.com.sergio.gestaopedidos.entity.Insumo;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
+import java.util.List;
 
 public interface InsumoRepository extends JpaRepository<Insumo, Long> {
     boolean existsByNomeIgnoreCase(String nome);
@@ -16,4 +17,5 @@ public interface InsumoRepository extends JpaRepository<Insumo, Long> {
               AND (:ativo IS NULL OR i.ativo = :ativo)
             """)
     Page<Insumo> buscar(@Param("filtro") String filtro, @Param("ativo") Boolean ativo, Pageable pageable);
+    List<Insumo> findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(String nome);
 }
