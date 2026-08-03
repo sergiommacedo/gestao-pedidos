@@ -1,6 +1,7 @@
 package br.com.sergio.gestaopedidos.entity;
 
 import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
+import br.com.sergio.gestaopedidos.enums.TipoProduto;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -41,4 +42,19 @@ public class Produto {
     @Column(name = "permite_acompanhamento", nullable = false)
     @Builder.Default
     private Boolean permiteAcompanhamento = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_produto", length = 30)
+    @Builder.Default
+    private TipoProduto tipoProduto = TipoProduto.PRODUZIDO;
+
+    @Column
+    @Builder.Default
+    private Boolean vendavel = true;
+
+    @PrePersist
+    public void aplicarDefaults() {
+        if (tipoProduto == null) tipoProduto = TipoProduto.PRODUZIDO;
+        if (vendavel == null) vendavel = true;
+    }
 }

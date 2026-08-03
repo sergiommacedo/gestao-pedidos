@@ -1,0 +1,16 @@
+package br.com.sergio.gestaopedidos.service;
+
+import br.com.sergio.gestaopedidos.dto.pedido.*;import br.com.sergio.gestaopedidos.entity.*;import br.com.sergio.gestaopedidos.enums.*;import br.com.sergio.gestaopedidos.exception.BusinessException;import br.com.sergio.gestaopedidos.mapper.PedidoMapper;import br.com.sergio.gestaopedidos.repository.*;import org.junit.jupiter.api.Test;
+import java.lang.reflect.*;import java.math.BigDecimal;import java.time.LocalDate;import java.util.*;import static org.assertj.core.api.Assertions.*;
+
+class PedidoServiceProdutoVendaTest {
+    @Test void deveRejeitarProdutoAtivoNaoVendavel(){assertIndisponivel(produto(true,false));}
+    @Test void deveRejeitarProdutoInativoMesmoVendavel(){assertIndisponivel(produto(false,true));}
+    @Test void pedidoHistoricoContinuaConsultavelComProdutoIndisponivel(){Fake f=new Fake(produto(false,false));f.historico=Pedido.builder().id(9L).cliente(cliente()).itens(new ArrayList<>()).build();assertThatCode(()->f.service().buscarPorId(9L)).doesNotThrowAnyException();}
+    private void assertIndisponivel(Produto p){Fake f=new Fake(p);assertThatThrownBy(()->f.service().salvar(request())).isInstanceOf(BusinessException.class).hasMessage("Este produto não está disponível para venda.");assertThat(f.salvou).isFalse();}
+    private Cliente cliente(){return Cliente.builder().id(1L).nome("Cliente").telefone("1").build();}
+    private Produto produto(boolean ativo,boolean vendavel){return Produto.builder().id(2L).nome("Produto").preco(BigDecimal.TEN).ativo(ativo).vendavel(vendavel).tipoProduto(TipoProduto.PRODUZIDO).unidadeVenda(UnidadeVenda.UNIDADE).permiteAcompanhamento(false).build();}
+    private PedidoRequest request(){return PedidoRequest.builder().clienteId(1L).dataAgendada(LocalDate.now()).formaPagamento(FormaPagamento.PIX).tipoEntrega(TipoEntrega.RETIRADA).taxaEntrega(BigDecimal.ZERO).itens(List.of(ItemPedidoRequest.builder().produtoId(2L).quantidade(BigDecimal.ONE).build())).build();}
+    private class Fake implements InvocationHandler {Produto produto;Pedido historico;boolean salvou;ClienteRepository clientesProxy;ProdutoRepository produtosProxy;PedidoRepository pedidosProxy;Fake(Produto p){produto=p;}PedidoService service(){ClassLoader c=getClass().getClassLoader();pedidosProxy=(PedidoRepository)Proxy.newProxyInstance(c,new Class[]{PedidoRepository.class},this);clientesProxy=(ClienteRepository)Proxy.newProxyInstance(c,new Class[]{ClienteRepository.class},this);produtosProxy=(ProdutoRepository)Proxy.newProxyInstance(c,new Class[]{ProdutoRepository.class},this);return new PedidoService(pedidosProxy,clientesProxy,produtosProxy,(PedidoMapper)Proxy.newProxyInstance(c,new Class[]{PedidoMapper.class},this));}
+        public Object invoke(Object p,Method m,Object[] a){return switch(m.getName()){case"findById"->p==clientesProxy?Optional.of(cliente()):p==produtosProxy?Optional.of(produto):Optional.ofNullable(historico);case"save"->{salvou=true;yield a[0];}case"toResponse"->null;default->null;};}}
+}

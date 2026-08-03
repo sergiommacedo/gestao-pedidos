@@ -1,6 +1,7 @@
 package br.com.sergio.gestaopedidos.dto.produto;
 
 import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
+import br.com.sergio.gestaopedidos.enums.TipoProduto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -29,7 +30,13 @@ public record ProdutoResponse(
         UnidadeVenda unidadeVenda,
 
         @Schema(description = "Informa se permite acompanhamento", example = "true")
-        Boolean permiteAcompanhamento
+        Boolean permiteAcompanhamento,
+
+        @Schema(description = "Classificação do produto", example = "PRODUZIDO")
+        TipoProduto tipoProduto,
+
+        @Schema(description = "Indica se pode ser incluído em novos pedidos", example = "true")
+        Boolean vendavel
 
 ) {
 }

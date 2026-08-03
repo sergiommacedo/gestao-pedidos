@@ -15,8 +15,22 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarModalRedefinirSenhaUsuario();
     inicializarPreviewConfiguracaoEmpresa();
     inicializarAtalhosPeriodoRelatorio();
+    inicializarPreviewProducao();
 
 });
+
+function inicializarPreviewProducao() {
+    const formulario = document.querySelector("[data-form-producao]");
+    if (!formulario) return;
+    const saida = formulario.querySelector("[data-total-gasto-producao]");
+    const campos = formulario.querySelectorAll("[data-despesa-producao]");
+    const atualizar = () => {
+        const total = Array.from(campos).reduce((soma, campo) => soma + (Number.parseFloat(campo.value) || 0), 0);
+        saida.textContent = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(total);
+    };
+    campos.forEach(campo => campo.addEventListener("input", atualizar));
+    atualizar();
+}
 
 
 function inicializarAtalhosPeriodoRelatorio() {

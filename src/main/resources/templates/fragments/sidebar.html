@@ -106,6 +106,14 @@
 
             </a>
 
+            <a th:href="@{/producoes}"
+               sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3"
+               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/producoes')} ? ' active'">
+                <i class="bi bi-clipboard-data"></i>
+                <span>Produções</span>
+            </a>
+
             <a th:href="@{/configuracoes}"
                sec:authorize="hasRole('ADMIN')"
                class="nav-link d-flex align-items-center gap-3">

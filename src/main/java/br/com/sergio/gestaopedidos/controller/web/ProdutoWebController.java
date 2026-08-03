@@ -3,6 +3,7 @@ package br.com.sergio.gestaopedidos.controller.web;
 import br.com.sergio.gestaopedidos.dto.produto.ProdutoRequest;
 import br.com.sergio.gestaopedidos.dto.produto.ProdutoResponse;
 import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
+import br.com.sergio.gestaopedidos.enums.TipoProduto;
 import br.com.sergio.gestaopedidos.service.ProdutoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,13 +29,18 @@ import java.util.Set;
 public class ProdutoWebController {
 
     private static final Set<String> CAMPOS_ORDENACAO =
-            Set.of("id", "nome", "preco", "unidadeVenda", "ativo");
+            Set.of("id", "nome", "preco", "unidadeVenda", "tipoProduto", "vendavel", "ativo");
 
     private final ProdutoService produtoService;
 
     @ModelAttribute("unidadesVenda")
     public UnidadeVenda[] unidadesVenda() {
         return UnidadeVenda.values();
+    }
+
+    @ModelAttribute("tiposProduto")
+    public TipoProduto[] tiposProduto() {
+        return TipoProduto.values();
     }
 
     @GetMapping
@@ -75,6 +81,8 @@ public class ProdutoWebController {
     public String novo(Model model) {
         model.addAttribute("produto", ProdutoRequest.builder()
                 .ativo(true)
+                .tipoProduto(TipoProduto.PRODUZIDO)
+                .vendavel(true)
                 .permiteAcompanhamento(false)
                 .build());
         prepararFormulario(model, "Novo Produto", false, null);
@@ -90,6 +98,8 @@ public class ProdutoWebController {
                 .preco(produto.preco())
                 .unidadeVenda(produto.unidadeVenda())
                 .permiteAcompanhamento(produto.permiteAcompanhamento())
+                .tipoProduto(produto.tipoProduto())
+                .vendavel(produto.vendavel())
                 .ativo(produto.ativo())
                 .build();
 

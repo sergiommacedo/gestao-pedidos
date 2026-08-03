@@ -61,6 +61,19 @@
 
                     <div class="col-md-6">
                         <div class="form-floating">
+                            <select id="tipoProduto" class="form-select"
+                                    th:classappend="${#fields.hasErrors('tipoProduto')} ? 'is-invalid' : ''"
+                                    th:field="*{tipoProduto}">
+                                <option value="">Selecione</option>
+                                <option th:each="tipo : ${tiposProduto}" th:value="${tipo}" th:text="${tipo.descricao}"></option>
+                            </select>
+                            <label for="tipoProduto">Tipo do produto *</label>
+                            <div class="invalid-feedback" th:errors="*{tipoProduto}"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-floating">
                             <select id="unidadeVenda" class="form-select"
                                     th:classappend="${#fields.hasErrors('unidadeVenda')} ? 'is-invalid' : ''"
                                     th:field="*{unidadeVenda}">
@@ -91,8 +104,18 @@
                             <input class="form-check-input" type="checkbox" role="switch"
                                    id="ativo" th:field="*{ativo}">
                             <label class="form-check-label" for="ativo">Produto ativo</label>
+                            <div class="form-text">Cadastro disponível para uso e manutenção no sistema.</div>
                             <div class="text-danger small" th:if="${#fields.hasErrors('ativo')}"
                                  th:errors="*{ativo}"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-check form-switch border rounded p-3 ps-5 h-100">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="vendavel" th:field="*{vendavel}">
+                            <label class="form-check-label" for="vendavel">Disponível para venda</label>
+                            <div class="form-text">Produtos disponíveis para venda aparecem no lançamento de pedidos.</div>
                         </div>
                     </div>
                 </div>

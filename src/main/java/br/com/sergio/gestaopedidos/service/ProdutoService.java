@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import br.com.sergio.gestaopedidos.enums.TipoProduto;
 
 @Service
 @RequiredArgsConstructor
@@ -61,11 +62,11 @@ public class ProdutoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProdutoResponse> buscarAtivosPorNome(String termo) {
+    public List<ProdutoResponse> buscarAtivosEVendaveisPorNome(String termo) {
         String termoTratado = termo == null ? "" : termo.trim();
 
         return produtoRepository
-                .findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
+                .findTop20ByAtivoTrueAndVendavelTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
                         termoTratado
                 )
                 .stream()
@@ -81,6 +82,9 @@ public class ProdutoService {
         if (produto.getAtivo() == null) {
             produto.setAtivo(true);
         }
+
+        produto.setTipoProduto(request.tipoProduto() == null ? TipoProduto.PRODUZIDO : request.tipoProduto());
+        produto.setVendavel(request.vendavel() == null ? true : request.vendavel());
 
         Produto produtoSalvo = produtoRepository.save(produto);
 
@@ -102,6 +106,8 @@ public class ProdutoService {
 
         produto.setUnidadeVenda(request.unidadeVenda());
         produto.setPermiteAcompanhamento(request.permiteAcompanhamento());
+        produto.setTipoProduto(request.tipoProduto() == null ? TipoProduto.PRODUZIDO : request.tipoProduto());
+        produto.setVendavel(request.vendavel() == null ? true : request.vendavel());
 
         Produto produtoAtualizado = produtoRepository.save(produto);
 
@@ -131,6 +137,21 @@ public class ProdutoService {
                                 "Produto não encontrado."
                         )
                 );
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> listarAtivos() {
+        return produtoRepository.findByAtivoTrueOrderByNomeAsc().stream().map(produtoMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> listarProduzidos() {
+        return produtoRepository.findByTipoProdutoOrderByNomeAsc(TipoProduto.PRODUZIDO).stream().map(produtoMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> listarProduzidosAtivos() {
+        return produtoRepository.findByTipoProdutoAndAtivoTrueOrderByNomeAsc(TipoProduto.PRODUZIDO).stream().map(produtoMapper::toResponse).toList();
     }
 
     private void validarNomeDuplicado(String nome) {

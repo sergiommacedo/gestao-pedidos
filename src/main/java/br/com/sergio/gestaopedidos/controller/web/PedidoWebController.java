@@ -516,7 +516,7 @@ public class PedidoWebController {
     public List<ProdutoResponse> buscarProdutos(
             @RequestParam(defaultValue = "") String termo
     ) {
-        return produtoService.buscarAtivosPorNome(termo);
+        return produtoService.buscarAtivosEVendaveisPorNome(termo);
     }
 
     @GetMapping("/{id}/comanda")
@@ -635,6 +635,8 @@ public class PedidoWebController {
                                             .unidadeVenda(UnidadeVenda.UNIDADE)
                                             .permiteAcompanhamento(false)
                                             .ativo(false)
+                                            .tipoProduto(br.com.sergio.gestaopedidos.enums.TipoProduto.PRODUZIDO)
+                                            .vendavel(false)
                                             .build()
                             );
                         }
