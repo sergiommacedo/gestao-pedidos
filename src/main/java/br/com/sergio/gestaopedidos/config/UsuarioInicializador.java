@@ -32,11 +32,11 @@ public class UsuarioInicializador implements ApplicationRunner {
                 .senha(passwordEncoder.encode("admin"))
                 .perfil(PerfilUsuario.ADMIN)
                 .ativo(true)
-                .trocarSenhaPrimeiroAcesso(true)
+                .trocarSenhaPrimeiroAcesso(false)
                 .build();
 
         usuarioRepository.save(administrador);
 
-        log.info("Usuário administrador padrão criado. Altere a senha no primeiro acesso.");
+        log.info("Usuário administrador inicial criado.");
     }
 }
