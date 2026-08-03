@@ -112,7 +112,7 @@ class FichaTecnicaServiceTest {
                         case "buscarSaldosInsumos" -> ((Collection<Long>) a[0]).stream().map(saldos::get).filter(Objects::nonNull).toList();
                         default -> zero(m.getReturnType());
                     });
-            ProdutoService ps = new ProdutoService(null, null) {
+            ProdutoService ps = new ProdutoService(null, null, null) {
                 @Override public Produto buscarEntidadePorId(Long id) { return Optional.ofNullable(produtos.get(id)).orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado.")); }
             };
             InsumoService is = new InsumoService(null, null) {

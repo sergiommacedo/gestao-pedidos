@@ -19,15 +19,13 @@ import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import java.math.BigDecimal;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class ProdutoService {
 
     private final ProdutoRepository produtoRepository;
     private final ProdutoMapper produtoMapper;
     private final jakarta.persistence.EntityManager entityManager;
-
-    public ProdutoService(ProdutoRepository produtoRepository,ProdutoMapper produtoMapper,jakarta.persistence.EntityManager entityManager){this.produtoRepository=produtoRepository;this.produtoMapper=produtoMapper;this.entityManager=entityManager;}
-    ProdutoService(ProdutoRepository produtoRepository,ProdutoMapper produtoMapper){this(produtoRepository,produtoMapper,null);}
 
     @Transactional(readOnly = true)
     public List<ProdutoResponse> listarTodos() {
