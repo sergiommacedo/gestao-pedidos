@@ -154,6 +154,12 @@ public class ProdutoService {
         return produtoRepository.findByTipoProdutoAndAtivoTrueOrderByNomeAsc(TipoProduto.PRODUZIDO).stream().map(produtoMapper::toResponse).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> buscarRevendaAtivosPorNome(String termo) {
+        return produtoRepository.findTop20ByTipoProdutoAndAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
+                TipoProduto.REVENDA, termo == null ? "" : termo.trim()).stream().map(produtoMapper::toResponse).toList();
+    }
+
     private void validarNomeDuplicado(String nome) {
         if (produtoRepository.existsByNomeIgnoreCase(nome)) {
             throw new BusinessException(

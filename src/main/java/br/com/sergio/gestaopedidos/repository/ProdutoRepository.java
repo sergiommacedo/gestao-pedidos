@@ -27,4 +27,6 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
     List<Produto> findByTipoProdutoOrderByNomeAsc(TipoProduto tipoProduto);
 
     List<Produto> findByTipoProdutoAndAtivoTrueOrderByNomeAsc(TipoProduto tipoProduto);
+
+    List<Produto> findTop20ByTipoProdutoAndAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(TipoProduto tipoProduto, String nome);
 }

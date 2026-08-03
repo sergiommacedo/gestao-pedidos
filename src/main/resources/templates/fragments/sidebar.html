@@ -122,12 +122,12 @@
                 <span>Insumos</span>
             </a>
 
-            <a th:href="@{/compras-insumos}"
+            <a th:href="@{/compras}"
                sec:authorize="hasRole('ADMIN')"
                class="nav-link d-flex align-items-center gap-3"
-               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/compras-insumos')} ? ' active'">
+               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/compras')} ? ' active'">
                 <i class="bi bi-cart-plus"></i>
-                <span>Compras de Insumos</span>
+                <span>Compras</span>
             </a>
 
             <a th:href="@{/estoque}" sec:authorize="hasRole('ADMIN')" class="nav-link d-flex align-items-center gap-3" th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/estoque')} ? ' active'">

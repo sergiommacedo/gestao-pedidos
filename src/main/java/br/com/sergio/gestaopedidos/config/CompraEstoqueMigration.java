@@ -1,3 +1,0 @@
-package br.com.sergio.gestaopedidos.config;
-import br.com.sergio.gestaopedidos.service.EstoqueService;import lombok.RequiredArgsConstructor;import org.springframework.boot.*;import org.springframework.jdbc.core.JdbcTemplate;import org.springframework.stereotype.Component;import org.springframework.transaction.annotation.Transactional;
-@Component@RequiredArgsConstructor public class CompraEstoqueMigration implements ApplicationRunner{private final JdbcTemplate jdbc;private final EstoqueService estoqueService;@Override@Transactional public void run(ApplicationArguments args){jdbc.update("UPDATE compras_insumos SET status='ATIVA' WHERE status IS NULL");estoqueService.migrarComprasAntigas();}}
