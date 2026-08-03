@@ -17,6 +17,8 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
@@ -27,6 +29,15 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"cliente", "itens", "itens.produto"})
+    @Query("SELECT p FROM Pedido p WHERE p.id = :id")
+    Optional<Pedido> bloquearDetalhado(@Param("id") Long id);
+
+    @EntityGraph(attributePaths = {"cliente", "itens", "itens.produto"})
+    @Query("SELECT p FROM Pedido p WHERE p.id = :id")
+    Optional<Pedido> buscarDetalhado(@Param("id") Long id);
 
     interface ResumoFinanceiroProducao {
         LocalDate getDataProducao();

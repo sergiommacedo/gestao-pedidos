@@ -8,7 +8,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name="movimentacoes_estoque",uniqueConstraints=@UniqueConstraint(name="uk_movimento_item_tipo",columnNames={"item_compra_id","tipo"}))
+@Table(name="movimentacoes_estoque",uniqueConstraints={
+        @UniqueConstraint(name="uk_movimento_item_tipo",columnNames={"item_compra_id","tipo"}),
+        @UniqueConstraint(name="uk_movimento_pedido_produto_tipo",columnNames={"pedido_id","produto_id","tipo"})})
 @Check(constraints="(insumo_id is not null and produto_id is null and tipo_item='INSUMO') or (insumo_id is null and produto_id is not null and tipo_item in ('PRODUTO_REVENDA','PRODUTO_PRODUZIDO'))")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @EqualsAndHashCode(onlyExplicitlyIncluded=true)
 public class MovimentacaoEstoque {
@@ -29,6 +31,7 @@ public class MovimentacaoEstoque {
     @Column(length=500) private String observacao;
     @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="item_compra_id") private ItemCompra itemCompra;
     @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="producao_id") private Producao producao;
+    @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="pedido_id") private Pedido pedido;
     @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="movimentacao_origem_id") private MovimentacaoEstoque movimentacaoOrigem;
     @Column(name="criado_em",nullable=false,updatable=false) private LocalDateTime criadoEm;
     @PrePersist void criar(){if(dataMovimentacao==null)dataMovimentacao=LocalDateTime.now();criadoEm=LocalDateTime.now();}

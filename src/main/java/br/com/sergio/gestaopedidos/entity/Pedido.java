@@ -60,6 +60,13 @@ public class Pedido {
     @Column(name = "motivo_cancelamento", length = 500)
     private String motivoCancelamento;
 
+    @Column(name = "estoque_movimentado")
+    @Builder.Default
+    private Boolean estoqueMovimentado = false;
+
+    @Column(name = "estoque_movimentado_em")
+    private LocalDateTime estoqueMovimentadoEm;
+
     @ManyToOne
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
@@ -89,6 +96,7 @@ public class Pedido {
         if (taxaEntrega == null) {
             taxaEntrega = BigDecimal.ZERO;
         }
+        if (estoqueMovimentado == null) estoqueMovimentado = false;
 
         calcularValorTotal();
     }

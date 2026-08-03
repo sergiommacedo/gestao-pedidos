@@ -57,6 +57,10 @@ public record PedidoResponse(
         @Schema(description = "Data e hora de criação", example = "2026-07-30T11:30:00")
         LocalDateTime criadoEm,
 
+        Boolean estoqueMovimentado,
+
+        LocalDateTime estoqueMovimentadoEm,
+
         @Schema(description = "Itens do pedido")
         List<ItemPedidoResponse> itens
 

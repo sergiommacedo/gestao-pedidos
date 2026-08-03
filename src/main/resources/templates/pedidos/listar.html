@@ -354,6 +354,7 @@
 
                         <th>Entrega</th>
                         <th>Pagamento</th>
+                        <th class="text-center">Movimentou estoque</th>
 
                         <th class="text-end">
                             <a class="text-decoration-none text-dark"
@@ -458,6 +459,7 @@
                                   th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></span>
                         </td>
                         <td th:text="${pedido.formaPagamento.descricao}"></td>
+                        <td class="text-center"><span class="badge" th:classappend="${pedido.estoqueMovimentado}?' text-bg-success':' text-bg-secondary'" th:text="${pedido.estoqueMovimentado}?'Sim':'Não'"></span></td>
                         <td class="text-end fw-semibold text-nowrap"
                             th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></td>
                         <td class="text-center">
@@ -492,7 +494,7 @@
                     </tr>
 
                     <tr th:if="${paginaPedidos.empty}">
-                        <td colspan="10" class="text-center text-muted py-5">
+                        <td colspan="11" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-1 d-block mb-3"></i>
                             <span th:if="${(filtro == null or filtro.isBlank())
                                           and statusSelecionado == null and dataAgendada == null}">
