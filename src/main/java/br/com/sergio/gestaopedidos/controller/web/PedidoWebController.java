@@ -13,6 +13,7 @@ import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import br.com.sergio.gestaopedidos.exception.BusinessException;
 import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
 import br.com.sergio.gestaopedidos.service.ClienteService;
+import br.com.sergio.gestaopedidos.service.DashboardService;
 import br.com.sergio.gestaopedidos.service.PedidoService;
 import br.com.sergio.gestaopedidos.service.ProdutoService;
 import jakarta.validation.Valid;
@@ -57,6 +58,7 @@ public class PedidoWebController {
     );
 
     private final PedidoService pedidoService;
+    private final DashboardService dashboardService;
     private final ClienteService clienteService;
     private final ProdutoService produtoService;
 
@@ -113,6 +115,10 @@ public class PedidoWebController {
         model.addAttribute(
                 "dashboardOperacional",
                 pedidoService.buscarDashboardOperacional(dataDashboard)
+        );
+        model.addAttribute(
+                "resumoVendasDia",
+                dashboardService.buscarResumoVendasDia(dataDashboard)
         );
         model.addAttribute("dataDashboardIso", dataDashboard.toString());
         model.addAttribute("filtro", filtroTratado);

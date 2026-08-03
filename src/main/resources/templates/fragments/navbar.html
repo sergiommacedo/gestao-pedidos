@@ -39,21 +39,22 @@
         <!-- Usuário autenticado -->
         <div class="dropdown ms-auto">
 
-            <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center gap-2"
+            <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center gap-2 user-menu-toggle"
                     type="button"
                     data-bs-toggle="dropdown"
+                    aria-label="Abrir menu do usuário"
                     aria-expanded="false">
 
                 <i class="bi bi-person-circle fs-5"></i>
 
                 <span class="d-none d-sm-inline"
-                      sec:authentication="name">
-                    Usuário
+                      aria-hidden="true">
+                    Conta
                 </span>
 
             </button>
 
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm user-menu">
 
                 <li>
 
@@ -65,14 +66,45 @@
 
                 <li>
 
-                    <span class="dropdown-item-text text-body-secondary small"
-                          sec:authentication="authorities">
-                        Perfil
+                    <span class="dropdown-item-text user-menu-login"
+                          sec:authentication="name">
+                        usuario@email.com
                     </span>
 
                 </li>
 
                 <li>
+
+                    <span class="dropdown-item-text user-menu-profile"
+                          sec:authorize="hasRole('ADMIN')">
+                        Administrador
+                    </span>
+
+                    <span class="dropdown-item-text user-menu-profile"
+                          sec:authorize="hasRole('ATENDENTE') and !hasRole('ADMIN')">
+                        Atendente
+                    </span>
+
+                </li>
+
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+
+                <li>
+
+                    <a th:href="@{/configuracoes}"
+                       sec:authorize="hasRole('ADMIN')"
+                       class="dropdown-item">
+
+                        <i class="bi bi-gear me-2"></i>
+                        Configurações
+
+                    </a>
+
+                </li>
+
+                <li sec:authorize="hasRole('ADMIN')">
                     <hr class="dropdown-divider">
                 </li>
 

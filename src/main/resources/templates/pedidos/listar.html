@@ -104,6 +104,133 @@
         </div>
     </div>
 
+    <div class="card shadow-sm mb-4 resumo-produtos-card">
+        <button type="button"
+                class="card-header resumo-produtos-controle collapsed w-100 border-0 p-3 text-start"
+                data-bs-toggle="collapse"
+                data-bs-target="#resumoProdutosConteudo"
+                aria-expanded="false"
+                aria-controls="resumoProdutosConteudo">
+            <span class="d-flex align-items-start gap-3">
+                <i class="bi bi-box-seam fs-5 text-primary mt-1" aria-hidden="true"></i>
+
+                <span class="flex-grow-1 min-w-0">
+                    <span class="h5 d-block mb-1">Resumo dos produtos</span>
+
+                    <span class="text-body-secondary small d-flex flex-wrap column-gap-2 row-gap-1"
+                          th:if="${!#lists.isEmpty(resumoVendasDia.produtos)}">
+                        <span th:text="${#lists.size(resumoVendasDia.produtos)
+                            + (#lists.size(resumoVendasDia.produtos) == 1 ? ' produto' : ' produtos')}">
+                            4 produtos
+                        </span>
+                        <span aria-hidden="true">•</span>
+                        <span>Produtos
+                            <strong th:text="${@formatacao.formatarMoeda(resumoVendasDia.totalProdutos)}">R$ 0,00</strong>
+                        </span>
+                        <span aria-hidden="true">•</span>
+                        <span>Taxas
+                            <strong th:text="${@formatacao.formatarMoeda(resumoVendasDia.totalTaxasEntrega)}">R$ 0,00</strong>
+                        </span>
+                        <span aria-hidden="true">•</span>
+                        <span>Total
+                            <strong th:text="${@formatacao.formatarMoeda(resumoVendasDia.totalGeral)}">R$ 0,00</strong>
+                        </span>
+                    </span>
+
+                    <span class="text-body-secondary small d-flex flex-wrap column-gap-2 row-gap-1"
+                          th:if="${#lists.isEmpty(resumoVendasDia.produtos)}">
+                        <span>Nenhum produto vendido</span>
+                        <span aria-hidden="true">•</span>
+                        <span>Total
+                            <strong th:text="${@formatacao.formatarMoeda(resumoVendasDia.totalGeral)}">R$ 0,00</strong>
+                        </span>
+                    </span>
+                </span>
+
+                <span class="resumo-produtos-chevron flex-shrink-0 mt-1" aria-hidden="true">
+                    <i class="bi bi-chevron-down resumo-produtos-chevron-fechado"></i>
+                    <i class="bi bi-chevron-up resumo-produtos-chevron-aberto"></i>
+                </span>
+            </span>
+        </button>
+
+        <div id="resumoProdutosConteudo" class="collapse">
+            <div class="card-body border-top">
+                <p class="text-body-secondary small mb-3">
+                    Todos os pedidos não cancelados da data selecionada:
+                    <span th:text="${#temporals.format(resumoVendasDia.dataReferencia, 'dd/MM/yyyy')}">03/08/2026</span>.
+                </p>
+
+                <p class="text-body-secondary mb-3"
+                   th:if="${#lists.isEmpty(resumoVendasDia.produtos)}">
+                    Nenhum produto vendido nesta data.
+                </p>
+
+                <div class="d-flex justify-content-between align-items-start gap-3 py-2 border-bottom"
+                     th:each="produto : ${resumoVendasDia.produtos}">
+                    <span th:text="${@formatacao.formatarQuantidade(produto.quantidadeTotal, produto.unidadeVenda)
+                        + (produto.unidadeVenda.name() == 'QUILOGRAMA' ? ' de ' : ' ')
+                        + produto.produtoNome}">
+                        3 Frangos Assados
+                    </span>
+                    <span class="text-nowrap fw-medium"
+                          th:text="${@formatacao.formatarMoeda(produto.valorTotal)}">R$ 150,00</span>
+                </div>
+
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between gap-3 py-1">
+                        <span>Total dos produtos</span>
+                        <strong class="text-nowrap"
+                                th:text="${@formatacao.formatarMoeda(resumoVendasDia.totalProdutos)}">R$ 0,00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between gap-3 py-1">
+                        <span>Taxas de entrega</span>
+                        <strong class="text-nowrap"
+                                th:text="${@formatacao.formatarMoeda(resumoVendasDia.totalTaxasEntrega)}">R$ 0,00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between gap-3 mt-2 pt-3 border-top fs-5">
+                        <strong>Total do dia</strong>
+                        <strong class="text-nowrap text-primary"
+                                th:text="${@formatacao.formatarMoeda(resumoVendasDia.totalGeral)}">R$ 0,00</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .resumo-produtos-controle {
+            color: var(--color-text);
+            background-color: var(--color-surface);
+            cursor: pointer;
+            transition: background-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .resumo-produtos-controle:hover {
+            background-color: var(--app-primary-soft);
+        }
+
+        .resumo-produtos-controle:focus-visible {
+            position: relative;
+            z-index: 1;
+            outline: 0;
+            box-shadow: inset 0 0 0 0.2rem var(--app-focus-ring);
+        }
+
+        .resumo-produtos-chevron-aberto {
+            display: inline-block;
+        }
+
+        .resumo-produtos-chevron-fechado,
+        .resumo-produtos-controle.collapsed .resumo-produtos-chevron-aberto {
+            display: none;
+        }
+
+        .resumo-produtos-controle.collapsed .resumo-produtos-chevron-fechado {
+            display: inline-block;
+        }
+    </style>
+
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3">
             <form th:action="@{/pedidos}" method="get" class="row g-3 align-items-end">

@@ -67,6 +67,17 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     );
 
     @Query("""
+            SELECT COALESCE(SUM(p.taxaEntrega), 0)
+            FROM Pedido p
+            WHERE p.dataAgendada = :dataAgendada
+            AND p.status <> :statusExcluido
+            """)
+    BigDecimal somarTaxasEntregaPorDataExcetoStatus(
+            @Param("dataAgendada") LocalDate dataAgendada,
+            @Param("statusExcluido") StatusPedido statusExcluido
+    );
+
+    @Query("""
             SELECT new br.com.sergio.gestaopedidos.dto.dashboard.DashboardPedidoAtencaoResponse(
                 p.id,
                 c.nome,

@@ -3,7 +3,10 @@ package br.com.sergio.gestaopedidos.service;
 import br.com.sergio.gestaopedidos.dto.dashboard.DashboardIndicadoresResponse;
 import br.com.sergio.gestaopedidos.dto.dashboard.DashboardPedidoAtencaoResponse;
 import br.com.sergio.gestaopedidos.dto.dashboard.DashboardStatusResponse;
+import br.com.sergio.gestaopedidos.dto.resumo.ResumoProdutoVendidoResponse;
+import br.com.sergio.gestaopedidos.dto.resumo.ResumoVendasDiaResponse;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
+import br.com.sergio.gestaopedidos.repository.ItemPedidoRepository;
 import br.com.sergio.gestaopedidos.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,6 +43,7 @@ public class DashboardService {
     );
 
     private final PedidoRepository pedidoRepository;
+    private final ItemPedidoRepository itemPedidoRepository;
 
     @Transactional(readOnly = true)
     public DashboardIndicadoresResponse buscarIndicadores(LocalDate dataReferencia) {
@@ -97,6 +101,37 @@ public class DashboardService {
                         total
                 ))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ResumoVendasDiaResponse buscarResumoVendasDia(LocalDate dataReferencia) {
+        List<ResumoProdutoVendidoResponse> produtos =
+                itemPedidoRepository.resumirProdutosVendidosPorDataExcetoStatus(
+                        dataReferencia,
+                        StatusPedido.CANCELADO
+                );
+
+        BigDecimal totalProdutos = produtos.stream()
+                .map(ResumoProdutoVendidoResponse::valorTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalTaxasEntrega = valorOuZero(
+                pedidoRepository.somarTaxasEntregaPorDataExcetoStatus(
+                        dataReferencia,
+                        StatusPedido.CANCELADO
+                )
+        );
+
+        return new ResumoVendasDiaResponse(
+                dataReferencia,
+                List.copyOf(produtos),
+                totalProdutos,
+                totalTaxasEntrega,
+                totalProdutos.add(totalTaxasEntrega)
+        );
+    }
+
+    private BigDecimal valorOuZero(BigDecimal valor) {
+        return valor == null ? BigDecimal.ZERO : valor;
     }
 
     private DashboardStatusResponse criarResumoStatus(

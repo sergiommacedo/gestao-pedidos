@@ -46,7 +46,8 @@
             </span>
 
             <a th:href="@{/}"
-               class="nav-link active d-flex align-items-center gap-3">
+               class="nav-link d-flex align-items-center gap-3"
+               th:classappend="${currentRequestPath == '/'} ? ' active'">
 
                 <i class="bi bi-speedometer2"></i>
                 <span>Dashboard</span>
@@ -95,7 +96,10 @@
             </a>
 
             <a th:href="@{/relatorios}"
-               class="nav-link d-flex align-items-center gap-3">
+               sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3"
+               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/relatorios')}
+                    ? ' active'">
 
                 <i class="bi bi-bar-chart"></i>
                 <span>Relatórios</span>

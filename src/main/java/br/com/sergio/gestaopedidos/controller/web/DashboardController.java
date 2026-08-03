@@ -36,6 +36,10 @@ public class DashboardController {
                 "resumoStatus",
                 dashboardService.buscarResumoStatus(dataReferencia)
         );
+        model.addAttribute(
+                "resumoVendasDia",
+                dashboardService.buscarResumoVendasDia(dataReferencia)
+        );
 
         return "dashboard/dashboard";
     }
