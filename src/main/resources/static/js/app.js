@@ -14,8 +14,54 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarAlternanciaSenha();
     inicializarModalRedefinirSenhaUsuario();
     inicializarPreviewConfiguracaoEmpresa();
+    inicializarAtalhosPeriodoRelatorio();
 
 });
+
+
+function inicializarAtalhosPeriodoRelatorio() {
+    const formulario = document.querySelector("[data-relatorio-pedidos-form]");
+
+    if (!formulario) {
+        return;
+    }
+
+    const dataInicial = formulario.querySelector("#dataInicial");
+    const dataFinal = formulario.querySelector("#dataFinal");
+    const formatarData = data => {
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, "0");
+        const dia = String(data.getDate()).padStart(2, "0");
+        return `${ano}-${mes}-${dia}`;
+    };
+
+    formulario.querySelectorAll("[data-periodo-relatorio]").forEach(botao => {
+        botao.addEventListener("click", () => {
+            const hoje = new Date();
+            let inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+            let fim = new Date(inicio);
+
+            switch (botao.dataset.periodoRelatorio) {
+                case "ultimos-7-dias":
+                    inicio.setDate(inicio.getDate() - 6);
+                    break;
+                case "este-mes":
+                    inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                    break;
+                case "mes-anterior":
+                    inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+                    fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+                    break;
+                default:
+                    break;
+            }
+
+            dataInicial.value = formatarData(inicio);
+            dataFinal.value = formatarData(fim);
+            dataInicial.focus();
+        });
+    });
+}
 
 
 function inicializarPreviewConfiguracaoEmpresa() {

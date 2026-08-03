@@ -2,7 +2,10 @@ package br.com.sergio.gestaopedidos.repository;
 
 import br.com.sergio.gestaopedidos.entity.Pedido;
 import br.com.sergio.gestaopedidos.dto.dashboard.DashboardPedidoAtencaoResponse;
+import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioPedidoLinhaResponse;
+import br.com.sergio.gestaopedidos.enums.FormaPagamento;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
+import br.com.sergio.gestaopedidos.enums.TipoEntrega;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -22,6 +25,19 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
         StatusPedido getStatus();
 
         long getQuantidade();
+    }
+
+    interface IndicadoresRelatorioPedidos {
+
+        Long getTotalPedidos();
+
+        Long getPedidosValidos();
+
+        Long getCancelados();
+
+        BigDecimal getFaturamento();
+
+        BigDecimal getTaxasEntrega();
     }
 
     boolean existsByClienteId(Long clienteId);
@@ -46,6 +62,71 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             @Param("status") StatusPedido status,
             @Param("dataAgendada") LocalDate dataAgendada,
             Pageable pageable
+    );
+
+    @Query("""
+            SELECT new br.com.sergio.gestaopedidos.dto.relatorio.RelatorioPedidoLinhaResponse(
+                p.id,
+                p.dataAgendada,
+                p.dataPedido,
+                c.nome,
+                c.telefone,
+                p.status,
+                p.tipoEntrega,
+                p.formaPagamento,
+                p.subtotal,
+                p.taxaEntrega,
+                p.valorTotal
+            )
+            FROM Pedido p
+            JOIN p.cliente c
+            WHERE p.dataAgendada BETWEEN :dataInicial AND :dataFinal
+            AND (
+                :cliente = ''
+                OR LOWER(c.nome) LIKE LOWER(CONCAT('%', :cliente, '%'))
+                OR c.telefone LIKE CONCAT('%', :cliente, '%')
+            )
+            AND (:status IS NULL OR p.status = :status)
+            AND (:tipoEntrega IS NULL OR p.tipoEntrega = :tipoEntrega)
+            AND (:formaPagamento IS NULL OR p.formaPagamento = :formaPagamento)
+            """)
+    Page<RelatorioPedidoLinhaResponse> buscarRelatorioPedidos(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("cliente") String cliente,
+            @Param("status") StatusPedido status,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT
+                COUNT(p) AS totalPedidos,
+                COALESCE(SUM(CASE WHEN p.status <> :statusCancelado THEN 1 ELSE 0 END), 0) AS pedidosValidos,
+                COALESCE(SUM(CASE WHEN p.status = :statusCancelado THEN 1 ELSE 0 END), 0) AS cancelados,
+                COALESCE(SUM(CASE WHEN p.status <> :statusCancelado THEN p.valorTotal ELSE 0 END), 0) AS faturamento,
+                COALESCE(SUM(CASE WHEN p.status <> :statusCancelado THEN p.taxaEntrega ELSE 0 END), 0) AS taxasEntrega
+            FROM Pedido p
+            JOIN p.cliente c
+            WHERE p.dataAgendada BETWEEN :dataInicial AND :dataFinal
+            AND (
+                :cliente = ''
+                OR LOWER(c.nome) LIKE LOWER(CONCAT('%', :cliente, '%'))
+                OR c.telefone LIKE CONCAT('%', :cliente, '%')
+            )
+            AND (:status IS NULL OR p.status = :status)
+            AND (:tipoEntrega IS NULL OR p.tipoEntrega = :tipoEntrega)
+            AND (:formaPagamento IS NULL OR p.formaPagamento = :formaPagamento)
+            """)
+    IndicadoresRelatorioPedidos buscarIndicadoresRelatorioPedidos(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("cliente") String cliente,
+            @Param("status") StatusPedido status,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("statusCancelado") StatusPedido statusCancelado
     );
 
     long countByDataAgendada(LocalDate dataAgendada);

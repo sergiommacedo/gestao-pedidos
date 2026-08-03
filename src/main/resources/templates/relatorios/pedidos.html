@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/layout}">
+
+<section layout:fragment="content">
+
+    <header class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-semibold mb-1">Relatório de Pedidos</h1>
+            <p class="text-body-secondary mb-0">
+                Consulte pedidos, valores, entregas e cancelamentos por período.
+            </p>
+        </div>
+        <a th:href="@{/relatorios}" class="btn btn-outline-secondary flex-shrink-0">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+            Voltar para Relatórios
+        </a>
+    </header>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+            <h2 class="h5 mb-0"><i class="bi bi-funnel me-1" aria-hidden="true"></i> Filtros</h2>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/relatorios/pedidos}" method="get" data-relatorio-pedidos-form>
+                <div class="d-flex flex-wrap gap-2 mb-3" aria-label="Atalhos de período">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="hoje">
+                        Hoje
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="ultimos-7-dias">
+                        Últimos 7 dias
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="este-mes">
+                        Este mês
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="mes-anterior">
+                        Mês anterior
+                    </button>
+                </div>
+
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-sm-6 col-xl-2">
+                        <label for="dataInicial" class="form-label">Data inicial</label>
+                        <input type="date" id="dataInicial" name="dataInicial" class="form-control"
+                               required th:value="${dataInicial}">
+                    </div>
+                    <div class="col-12 col-sm-6 col-xl-2">
+                        <label for="dataFinal" class="form-label">Data final</label>
+                        <input type="date" id="dataFinal" name="dataFinal" class="form-control"
+                               required th:value="${dataFinal}">
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label for="cliente" class="form-label">Cliente</label>
+                        <input type="search" id="cliente" name="cliente" class="form-control"
+                               placeholder="Nome ou telefone" th:value="${cliente}">
+                    </div>
+                    <div class="col-12 col-sm-6 col-xl">
+                        <label for="status" class="form-label">Status</label>
+                        <select id="status" name="status" class="form-select">
+                            <option value="">Todos</option>
+                            <option th:each="opcao : ${statusPedidos}"
+                                    th:value="${opcao}"
+                                    th:text="${opcao.descricao}"
+                                    th:selected="${opcao == statusSelecionado}"></option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-6 col-xl">
+                        <label for="tipoEntrega" class="form-label">Entrega</label>
+                        <select id="tipoEntrega" name="tipoEntrega" class="form-select">
+                            <option value="">Todos</option>
+                            <option th:each="opcao : ${tiposEntrega}"
+                                    th:value="${opcao}"
+                                    th:text="${opcao.name() == 'ENTREGA' ? 'Entrega' : 'Retirada'}"
+                                    th:selected="${opcao == tipoEntregaSelecionado}"></option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-6 col-xl-2">
+                        <label for="formaPagamento" class="form-label">Pagamento</label>
+                        <select id="formaPagamento" name="formaPagamento" class="form-select">
+                            <option value="">Todos</option>
+                            <option th:each="opcao : ${formasPagamento}"
+                                    th:value="${opcao}"
+                                    th:text="${opcao.descricao}"
+                                    th:selected="${opcao == formaPagamentoSelecionada}"></option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-auto d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search me-1" aria-hidden="true"></i> Consultar
+                        </button>
+                    </div>
+                </div>
+
+                <input type="hidden" name="pagina" value="0">
+                <input type="hidden" name="tamanho" th:value="${tamanho}">
+                <input type="hidden" name="ordenarPor" th:value="${ordenarPor}">
+                <input type="hidden" name="direcao" th:value="${direcao}">
+            </form>
+
+            <div class="alert alert-danger mt-3 mb-0" role="alert" th:if="${erroPeriodo != null}">
+                <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                <span th:text="${erroPeriodo}">Período inválido.</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 row-cols-xxl-6 g-3 mb-4">
+        <div class="col">
+            <div class="card relatorio-indicador-card h-100"><div class="card-body p-3">
+                <span class="text-body-secondary small">Pedidos</span>
+                <strong class="d-block fs-4" th:text="${indicadores.totalPedidos}">0</strong>
+            </div></div>
+        </div>
+        <div class="col">
+            <div class="card relatorio-indicador-card h-100"><div class="card-body p-3">
+                <span class="text-body-secondary small">Pedidos válidos</span>
+                <strong class="d-block fs-4" th:text="${indicadores.pedidosValidos}">0</strong>
+            </div></div>
+        </div>
+        <div class="col">
+            <div class="card relatorio-indicador-card h-100"><div class="card-body p-3">
+                <span class="text-body-secondary small">Cancelados</span>
+                <strong class="d-block fs-4" th:text="${indicadores.cancelados}">0</strong>
+            </div></div>
+        </div>
+        <div class="col">
+            <div class="card relatorio-indicador-card h-100"><div class="card-body p-3">
+                <span class="text-body-secondary small">Faturamento</span>
+                <strong class="d-block fs-5 text-nowrap"
+                        th:text="${@formatacao.formatarMoeda(indicadores.faturamento)}">R$ 0,00</strong>
+            </div></div>
+        </div>
+        <div class="col">
+            <div class="card relatorio-indicador-card h-100"><div class="card-body p-3">
+                <span class="text-body-secondary small">Taxas de entrega</span>
+                <strong class="d-block fs-5 text-nowrap"
+                        th:text="${@formatacao.formatarMoeda(indicadores.taxasEntrega)}">R$ 0,00</strong>
+            </div></div>
+        </div>
+        <div class="col">
+            <div class="card relatorio-indicador-card h-100"><div class="card-body p-3">
+                <span class="text-body-secondary small">Ticket médio</span>
+                <strong class="d-block fs-5 text-nowrap"
+                        th:text="${@formatacao.formatarMoeda(indicadores.ticketMedio)}">R$ 0,00</strong>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 relatorio-pedidos-table">
+                    <thead class="table-light">
+                    <tr>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/pedidos(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, tamanho=${tamanho}, ordenarPor='id', direcao=${ordenarPor == 'id' and direcao == 'asc' ? 'desc' : 'asc'})}">ID</a></th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/pedidos(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, tamanho=${tamanho}, ordenarPor='dataAgendada', direcao=${ordenarPor == 'dataAgendada' and direcao == 'asc' ? 'desc' : 'asc'})}">Data agendada</a></th>
+                        <th>Cadastro</th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/pedidos(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, tamanho=${tamanho}, ordenarPor='cliente', direcao=${ordenarPor == 'cliente' and direcao == 'asc' ? 'desc' : 'asc'})}">Cliente</a></th>
+                        <th>Telefone</th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/pedidos(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, tamanho=${tamanho}, ordenarPor='status', direcao=${ordenarPor == 'status' and direcao == 'asc' ? 'desc' : 'asc'})}">Status</a></th>
+                        <th>Entrega</th>
+                        <th>Pagamento</th>
+                        <th class="text-end">Subtotal</th>
+                        <th class="text-end">Taxa</th>
+                        <th class="text-end"><a class="text-decoration-none text-body" th:href="@{/relatorios/pedidos(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, tamanho=${tamanho}, ordenarPor='valorTotal', direcao=${ordenarPor == 'valorTotal' and direcao == 'asc' ? 'desc' : 'asc'})}">Total</a></th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="pedido : ${pedidos.content}">
+                        <td class="fw-semibold" th:text="${'#' + pedido.id}">#1</td>
+                        <td class="text-nowrap" th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}">03/08/2026</td>
+                        <td class="text-nowrap" th:text="${#temporals.format(pedido.dataPedido, 'dd/MM/yyyy HH:mm')}">03/08/2026 10:00</td>
+                        <td th:text="${pedido.clienteNome}">Cliente</td>
+                        <td class="text-nowrap" th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}">(00) 00000-0000</td>
+                        <td><span class="badge" th:classappend="${pedido.status.name() == 'PENDENTE'} ? ' text-bg-warning' : (${pedido.status.name() == 'CANCELADO'} ? ' text-bg-danger' : (${pedido.status.name() == 'SAIU_PARA_ENTREGA'} ? ' text-bg-info' : (${pedido.status.name() == 'EM_PREPARACAO'} ? ' text-bg-primary' : ' text-bg-success')))" th:text="${pedido.status.descricao}">Status</span></td>
+                        <td th:text="${pedido.tipoEntrega.name() == 'ENTREGA' ? 'Entrega' : 'Retirada'}">Entrega</td>
+                        <td th:text="${pedido.formaPagamento.descricao}">Pix</td>
+                        <td class="text-end text-nowrap" th:text="${@formatacao.formatarMoeda(pedido.subtotal)}">R$ 0,00</td>
+                        <td class="text-end text-nowrap" th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}">R$ 0,00</td>
+                        <td class="text-end text-nowrap fw-semibold" th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}">R$ 0,00</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    title="Visualizar" th:aria-label="${'Visualizar pedido ' + pedido.id}"
+                                    data-bs-toggle="modal" data-bs-target="#modalDetalhesPedido"
+                                    th:data-detalhes-url="@{/pedidos/{id}/detalhes(id=${pedido.id}, origem='relatorio')}">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr th:if="${pedidos.empty}">
+                        <td colspan="12" class="text-center text-body-secondary py-5">
+                            <i class="bi bi-inbox fs-3 d-block mb-2" aria-hidden="true"></i>
+                            Nenhum pedido encontrado para os filtros informados.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-footer bg-white" th:if="${!pedidos.empty}">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <form th:action="@{/relatorios/pedidos}" method="get" class="d-flex align-items-center gap-2">
+                    <label for="tamanhoPaginaRelatorio" class="small text-body-secondary text-nowrap">Por página:</label>
+                    <select id="tamanhoPaginaRelatorio" name="tamanho" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="10" th:selected="${tamanho == 10}">10</option>
+                        <option value="20" th:selected="${tamanho == 20}">20</option>
+                        <option value="50" th:selected="${tamanho == 50}">50</option>
+                    </select>
+                    <input type="hidden" name="dataInicial" th:value="${dataInicial}"><input type="hidden" name="dataFinal" th:value="${dataFinal}">
+                    <input type="hidden" name="cliente" th:value="${cliente}"><input type="hidden" name="status" th:value="${statusSelecionado}">
+                    <input type="hidden" name="tipoEntrega" th:value="${tipoEntregaSelecionado}"><input type="hidden" name="formaPagamento" th:value="${formaPagamentoSelecionada}">
+                    <input type="hidden" name="ordenarPor" th:value="${ordenarPor}"><input type="hidden" name="direcao" th:value="${direcao}">
+                </form>
+
+                <nav aria-label="Paginação do relatório de pedidos" th:if="${pedidos.totalPages > 1}">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item" th:classappend="${pedidos.first} ? ' disabled'">
+                            <a class="page-link" th:href="@{/relatorios/pedidos(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, pagina=${pedidos.number - 1}, tamanho=${tamanho}, ordenarPor=${ordenarPor}, direcao=${direcao})}">Anterior</a>
+                        </li>
+                        <li class="page-item" th:each="numero : ${#numbers.sequence(0, pedidos.totalPages - 1)}" th:classappend="${numero == pedidos.number} ? ' active'">
+                            <a class="page-link" th:href="@{/relatorios/pedidos(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, pagina=${numero}, tamanho=${tamanho}, ordenarPor=${ordenarPor}, direcao=${direcao})}" th:text="${numero + 1}">1</a>
+                        </li>
+                        <li class="page-item" th:classappend="${pedidos.last} ? ' disabled'">
+                            <a class="page-link" th:href="@{/relatorios/pedidos(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, pagina=${pedidos.number + 1}, tamanho=${tamanho}, ordenarPor=${ordenarPor}, direcao=${direcao})}">Próxima</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+</section>
+</html>
