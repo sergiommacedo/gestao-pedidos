@@ -11,6 +11,8 @@ public interface ProducaoRepository extends JpaRepository<Producao, Long> {
     boolean existsByDataProducao(LocalDate dataProducao);
     boolean existsByDataProducaoAndIdNot(LocalDate dataProducao, Long id);
     Optional<Producao> findByDataProducao(LocalDate dataProducao);
+    Optional<Producao> findFirstByOrderByDataProducaoDesc();
+    Optional<Producao> findFirstByDataProducaoLessThanOrderByDataProducaoDesc(LocalDate dataProducao);
 
     @Query("""
             SELECT p FROM Producao p

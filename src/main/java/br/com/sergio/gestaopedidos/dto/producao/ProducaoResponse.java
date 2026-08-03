@@ -6,7 +6,9 @@ import java.time.*;
 
 @Builder
 public record ProducaoResponse(
-        Long id, LocalDate dataProducao, BigDecimal valorIngredientes, BigDecimal valorEmbalagens,
-        BigDecimal valorGasEnergia, BigDecimal valorOutros, BigDecimal totalGasto,
+        Long id, LocalDate dataProducao, BigDecimal saldoInicialMateriais, BigDecimal valorComprasMateriais,
+        BigDecimal saldoFinalMateriais, BigDecimal recursosDisponiveis, BigDecimal custoMateriaisConsumidos,
+        BigDecimal valorEmbalagens, BigDecimal valorGasEnergia, BigDecimal valorOutros,
+        BigDecimal outrosCustos, BigDecimal totalGasto,
         String observacao, LocalDateTime criadoEm, LocalDateTime atualizadoEm
 ) {}

@@ -18,8 +18,16 @@ public class Producao {
     @Column(name = "data_producao", nullable = false)
     private LocalDate dataProducao;
 
+    /** Coluna legada mantida temporariamente para compatibilidade com bancos existentes. */
+    @Deprecated
     @Column(name = "valor_ingredientes", nullable = false, precision = 12, scale = 2)
     private BigDecimal valorIngredientes;
+    @Column(name = "saldo_inicial_materiais", precision = 12, scale = 2)
+    private BigDecimal saldoInicialMateriais;
+    @Column(name = "valor_compras_materiais", precision = 12, scale = 2)
+    private BigDecimal valorComprasMateriais;
+    @Column(name = "saldo_final_materiais", precision = 12, scale = 2)
+    private BigDecimal saldoFinalMateriais;
     @Column(name = "valor_embalagens", nullable = false, precision = 12, scale = 2)
     private BigDecimal valorEmbalagens;
     @Column(name = "valor_gas_energia", nullable = false, precision = 12, scale = 2)
@@ -39,7 +47,11 @@ public class Producao {
     void preUpdate() { normalizarValores(); atualizadoEm = LocalDateTime.now(); }
 
     public void normalizarValores() {
-        valorIngredientes = moeda(valorIngredientes); valorEmbalagens = moeda(valorEmbalagens);
+        valorIngredientes = moeda(valorIngredientes);
+        saldoInicialMateriais = moeda(saldoInicialMateriais);
+        valorComprasMateriais = moeda(valorComprasMateriais);
+        saldoFinalMateriais = moeda(saldoFinalMateriais);
+        valorEmbalagens = moeda(valorEmbalagens);
         valorGasEnergia = moeda(valorGasEnergia); valorOutros = moeda(valorOutros);
     }
     private BigDecimal moeda(BigDecimal valor) { return (valor == null ? BigDecimal.ZERO : valor).setScale(2, RoundingMode.HALF_UP); }

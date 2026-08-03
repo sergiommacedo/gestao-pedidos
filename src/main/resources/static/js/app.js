@@ -22,13 +22,33 @@ document.addEventListener("DOMContentLoaded", () => {
 function inicializarPreviewProducao() {
     const formulario = document.querySelector("[data-form-producao]");
     if (!formulario) return;
-    const saida = formulario.querySelector("[data-total-gasto-producao]");
-    const campos = formulario.querySelectorAll("[data-despesa-producao]");
+    const saldoInicial = formulario.querySelector("[data-saldo-inicial-materiais]");
+    const compras = formulario.querySelector("[data-compras-materiais]");
+    const saldoFinal = formulario.querySelector("[data-saldo-final-materiais]");
+    const outrosCustos = formulario.querySelectorAll("[data-outro-custo-producao]");
+    const saidaRecursos = formulario.querySelector("[data-recursos-producao]");
+    const saidasMateriais = formulario.querySelectorAll("[data-materiais-consumidos], [data-resumo-materiais]");
+    const saidaTotal = formulario.querySelector("[data-total-gasto-producao]");
+    const aviso = formulario.querySelector("[data-aviso-saldo-producao]");
+    const salvar = formulario.querySelector("[data-salvar-producao]");
+    const formatar = valor => new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(valor);
+    const numero = campo => Number.parseFloat(campo?.value) || 0;
     const atualizar = () => {
-        const total = Array.from(campos).reduce((soma, campo) => soma + (Number.parseFloat(campo.value) || 0), 0);
-        saida.textContent = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(total);
+        const recursos = numero(saldoInicial) + numero(compras);
+        const inconsistente = numero(saldoFinal) > recursos;
+        const consumidos = Math.max(0, recursos - numero(saldoFinal));
+        const valoresOutros = Array.from(outrosCustos).map(numero);
+        const total = consumidos + valoresOutros.reduce((soma, valor) => soma + valor, 0);
+        saidaRecursos.textContent = formatar(recursos);
+        saidasMateriais.forEach(saida => saida.textContent = formatar(consumidos));
+        saidaTotal.textContent = formatar(total);
+        formulario.querySelector("[data-resumo-embalagens]").textContent = formatar(valoresOutros[0] || 0);
+        formulario.querySelector("[data-resumo-gas]").textContent = formatar(valoresOutros[1] || 0);
+        formulario.querySelector("[data-resumo-outros]").textContent = formatar(valoresOutros[2] || 0);
+        aviso.classList.toggle("d-none", !inconsistente);
+        salvar.disabled = inconsistente;
     };
-    campos.forEach(campo => campo.addEventListener("input", atualizar));
+    [saldoInicial, compras, saldoFinal, ...outrosCustos].forEach(campo => campo.addEventListener("input", atualizar));
     atualizar();
 }
 
