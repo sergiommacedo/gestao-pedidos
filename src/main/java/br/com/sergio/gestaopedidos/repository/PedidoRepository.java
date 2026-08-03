@@ -3,6 +3,7 @@ package br.com.sergio.gestaopedidos.repository;
 import br.com.sergio.gestaopedidos.entity.Pedido;
 import br.com.sergio.gestaopedidos.dto.dashboard.DashboardPedidoAtencaoResponse;
 import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioPedidoLinhaResponse;
+import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioClienteLinhaResponse;
 import br.com.sergio.gestaopedidos.enums.FormaPagamento;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
 import br.com.sergio.gestaopedidos.enums.TipoEntrega;
@@ -41,6 +42,148 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
         BigDecimal getTaxasEntrega();
     }
+
+    interface IndicadoresRelatorioClientes {
+        Long getClientesCompradores();
+        Long getPedidosValidos();
+        BigDecimal getFaturamentoTotal();
+        Long getClientesRecorrentes();
+    }
+
+    interface ClienteLiderRelatorio {
+        String getClienteNome();
+        BigDecimal getFaturamentoTotal();
+    }
+
+    String FILTROS_RELATORIO_CLIENTES = """
+            WHERE pedido.dataAgendada BETWEEN :dataInicial AND :dataFinal
+            AND pedido.status <> :statusCancelado
+            AND (
+                :cliente = ''
+                OR LOWER(cliente.nome) LIKE LOWER(CONCAT('%', :cliente, '%'))
+                OR cliente.telefone LIKE CONCAT('%', :cliente, '%')
+            )
+            AND (:tipoEntrega IS NULL OR pedido.tipoEntrega = :tipoEntrega)
+            AND (:formaPagamento IS NULL OR pedido.formaPagamento = :formaPagamento)
+            """;
+
+    String AGRUPAMENTO_RELATORIO_CLIENTES = """
+            GROUP BY cliente.id, cliente.nome, cliente.telefone
+            HAVING (:minimoPedidos IS NULL OR COUNT(DISTINCT pedido.id) >= :minimoPedidos)
+            AND (:minimoMovimentado IS NULL OR SUM(pedido.valorTotal) >= :minimoMovimentado)
+            """;
+
+    String SELECT_RELATORIO_CLIENTES = """
+            SELECT new br.com.sergio.gestaopedidos.dto.relatorio.RelatorioClienteLinhaResponse(
+                cliente.id,
+                cliente.nome,
+                cliente.telefone,
+                COUNT(DISTINCT pedido.id),
+                SUM(pedido.valorTotal),
+                SUM(pedido.valorTotal) / COUNT(DISTINCT pedido.id),
+                MIN(pedido.dataAgendada),
+                MAX(pedido.dataAgendada),
+                SUM(CASE WHEN pedido.tipoEntrega = :entrega THEN 1 ELSE 0 END),
+                SUM(CASE WHEN pedido.tipoEntrega = :retirada THEN 1 ELSE 0 END),
+                CASE WHEN SUM(SUM(pedido.valorTotal)) OVER () = 0 THEN 0
+                     ELSE SUM(pedido.valorTotal) * 100 / SUM(SUM(pedido.valorTotal)) OVER () END,
+                ROW_NUMBER() OVER (
+                    ORDER BY SUM(pedido.valorTotal) DESC,
+                             COUNT(DISTINCT pedido.id) DESC,
+                             cliente.nome ASC
+                )
+            )
+            FROM Pedido pedido
+            JOIN pedido.cliente cliente
+            """;
+
+    @Query(SELECT_RELATORIO_CLIENTES + FILTROS_RELATORIO_CLIENTES + AGRUPAMENTO_RELATORIO_CLIENTES)
+    Slice<RelatorioClienteLinhaResponse> buscarRelatorioClientes(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("cliente") String cliente,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("minimoPedidos") Long minimoPedidos,
+            @Param("minimoMovimentado") BigDecimal minimoMovimentado,
+            @Param("statusCancelado") StatusPedido statusCancelado,
+            @Param("entrega") TipoEntrega entrega,
+            @Param("retirada") TipoEntrega retirada,
+            Pageable pageable
+    );
+
+    @Query(SELECT_RELATORIO_CLIENTES + FILTROS_RELATORIO_CLIENTES + AGRUPAMENTO_RELATORIO_CLIENTES)
+    Slice<RelatorioClienteLinhaResponse> buscarLoteRelatorioClientes(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("cliente") String cliente,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("minimoPedidos") Long minimoPedidos,
+            @Param("minimoMovimentado") BigDecimal minimoMovimentado,
+            @Param("statusCancelado") StatusPedido statusCancelado,
+            @Param("entrega") TipoEntrega entrega,
+            @Param("retirada") TipoEntrega retirada,
+            Pageable pageable
+    );
+
+    @Query(value = """
+            SELECT
+                COUNT(*) AS clientesCompradores,
+                COALESCE(SUM(agrupado.pedidos_validos), 0) AS pedidosValidos,
+                COALESCE(SUM(agrupado.faturamento_total), 0) AS faturamentoTotal,
+                COALESCE(SUM(CASE WHEN agrupado.pedidos_validos >= 2 THEN 1 ELSE 0 END), 0) AS clientesRecorrentes
+            FROM (
+                SELECT p.cliente_id,
+                       COUNT(DISTINCT p.id) AS pedidos_validos,
+                       SUM(p.valor_total) AS faturamento_total
+                FROM pedidos p
+                JOIN clientes c ON c.id = p.cliente_id
+                WHERE p.data_agendada BETWEEN :dataInicial AND :dataFinal
+                AND p.status <> :statusCancelado
+                AND (
+                    :cliente = ''
+                    OR LOWER(c.nome) LIKE LOWER(CONCAT('%', :cliente, '%'))
+                    OR c.telefone LIKE CONCAT('%', :cliente, '%')
+                )
+                AND (:tipoEntrega IS NULL OR p.tipo_entrega = :tipoEntrega)
+                AND (:formaPagamento IS NULL OR p.forma_pagamento = :formaPagamento)
+                GROUP BY p.cliente_id
+                HAVING (:minimoPedidos IS NULL OR COUNT(DISTINCT p.id) >= :minimoPedidos)
+                AND (:minimoMovimentado IS NULL OR SUM(p.valor_total) >= :minimoMovimentado)
+            ) agrupado
+            """, nativeQuery = true)
+    IndicadoresRelatorioClientes buscarIndicadoresRelatorioClientes(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("cliente") String cliente,
+            @Param("tipoEntrega") String tipoEntrega,
+            @Param("formaPagamento") String formaPagamento,
+            @Param("minimoPedidos") Long minimoPedidos,
+            @Param("minimoMovimentado") BigDecimal minimoMovimentado,
+            @Param("statusCancelado") String statusCancelado
+    );
+
+    @Query("""
+            SELECT cliente.nome AS clienteNome, SUM(pedido.valorTotal) AS faturamentoTotal
+            FROM Pedido pedido
+            JOIN pedido.cliente cliente
+            """ + FILTROS_RELATORIO_CLIENTES + AGRUPAMENTO_RELATORIO_CLIENTES + """
+            ORDER BY SUM(pedido.valorTotal) DESC,
+                     COUNT(DISTINCT pedido.id) DESC,
+                     cliente.nome ASC
+            """)
+    List<ClienteLiderRelatorio> buscarClienteLiderRelatorio(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("cliente") String cliente,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("minimoPedidos") Long minimoPedidos,
+            @Param("minimoMovimentado") BigDecimal minimoMovimentado,
+            @Param("statusCancelado") StatusPedido statusCancelado,
+            Pageable pageable
+    );
 
     boolean existsByClienteId(Long clienteId);
 

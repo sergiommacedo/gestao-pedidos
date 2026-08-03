@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/layout}">
+<section layout:fragment="content">
+    <header class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-semibold mb-1">Relatório de Clientes</h1>
+            <p class="text-body-secondary mb-0">Analise os clientes que mais compram, sua frequência e os valores movimentados.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+            <a th:href="@{/relatorios/clientes/imprimir(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},ordenarPor=${ordenarPor},direcao=${direcao})}"
+               class="btn btn-outline-secondary"><i class="bi bi-printer me-1" aria-hidden="true"></i> Imprimir</a>
+            <a th:href="@{/relatorios/clientes/excel(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},ordenarPor=${ordenarPor},direcao=${direcao})}"
+               class="btn btn-success"><i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i> Exportar Excel</a>
+            <a th:href="@{/relatorios}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Voltar para Relatórios</a>
+        </div>
+    </header>
+
+    <div class="alert alert-danger" role="alert" th:if="${erroPeriodo}" th:text="${erroPeriodo}"></div>
+    <div class="alert alert-warning" role="alert" th:if="${erroExportacao}" th:text="${erroExportacao}"></div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white py-3"><h2 class="h5 mb-0"><i class="bi bi-funnel me-1" aria-hidden="true"></i> Filtros</h2></div>
+        <div class="card-body">
+            <form th:action="@{/relatorios/clientes}" method="get" data-relatorio-pedidos-form>
+                <div class="d-flex flex-wrap gap-2 mb-3" aria-label="Atalhos de período">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="hoje">Hoje</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="ultimos-7-dias">Últimos 7 dias</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="este-mes">Este mês</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-periodo-relatorio="mes-anterior">Mês anterior</button>
+                </div>
+                <div class="row g-3 align-items-end">
+                    <div class="col-sm-6 col-xl-2"><label class="form-label" for="dataInicial">Data inicial</label><input class="form-control" type="date" id="dataInicial" name="dataInicial" required th:value="${dataInicial}"></div>
+                    <div class="col-sm-6 col-xl-2"><label class="form-label" for="dataFinal">Data final</label><input class="form-control" type="date" id="dataFinal" name="dataFinal" required th:value="${dataFinal}"></div>
+                    <div class="col-md-6 col-xl-3"><label class="form-label" for="cliente">Cliente</label><input class="form-control" type="search" id="cliente" name="cliente" placeholder="Nome ou telefone" th:value="${cliente}"></div>
+                    <div class="col-sm-6 col-xl"><label class="form-label" for="tipoEntrega">Entrega</label><select class="form-select" id="tipoEntrega" name="tipoEntrega"><option value="">Todos</option><option th:each="tipo : ${tiposEntrega}" th:value="${tipo}" th:text="${tipo.name() == 'ENTREGA' ? 'Entrega' : 'Retirada'}" th:selected="${tipo == tipoEntregaSelecionado}"></option></select></div>
+                    <div class="col-sm-6 col-xl-2"><label class="form-label" for="formaPagamento">Pagamento</label><select class="form-select" id="formaPagamento" name="formaPagamento"><option value="">Todos</option><option th:each="forma : ${formasPagamento}" th:value="${forma}" th:text="${forma.descricao}" th:selected="${forma == formaPagamentoSelecionada}"></option></select></div>
+                    <div class="col-sm-6 col-xl"><label class="form-label" for="minimoPedidos">Mín. pedidos</label><input class="form-control" type="number" id="minimoPedidos" name="minimoPedidos" min="1" step="1" th:value="${minimoPedidos}"></div>
+                    <div class="col-sm-6 col-xl-2"><label class="form-label" for="minimoMovimentado">Mín. movimentado</label><div class="input-group"><span class="input-group-text">R$</span><input class="form-control" type="number" id="minimoMovimentado" name="minimoMovimentado" min="0" step="0.01" th:value="${minimoMovimentado}"></div></div>
+                    <div class="col-auto"><button class="btn btn-primary" type="submit"><i class="bi bi-search me-1" aria-hidden="true"></i> Filtrar</button></div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 row-cols-xxl-6 g-3 mb-4">
+        <div class="col"><div class="card h-100 shadow-sm"><div class="card-body"><div class="small text-body-secondary">Clientes compradores</div><div class="h4 mb-0" th:text="${indicadores.clientesCompradores}">0</div></div></div></div>
+        <div class="col"><div class="card h-100 shadow-sm"><div class="card-body"><div class="small text-body-secondary">Pedidos válidos</div><div class="h4 mb-0" th:text="${indicadores.pedidosValidos}">0</div></div></div></div>
+        <div class="col"><div class="card h-100 shadow-sm"><div class="card-body"><div class="small text-body-secondary">Faturamento</div><div class="h5 mb-0 text-nowrap" th:text="${'R$ ' + #numbers.formatDecimal(indicadores.faturamentoTotal,1,'POINT',2,'COMMA')}">R$ 0,00</div></div></div></div>
+        <div class="col"><div class="card h-100 shadow-sm"><div class="card-body"><div class="small text-body-secondary">Ticket médio geral</div><div class="h5 mb-0 text-nowrap" th:text="${'R$ ' + #numbers.formatDecimal(indicadores.ticketMedioGeral,1,'POINT',2,'COMMA')}">R$ 0,00</div></div></div></div>
+        <div class="col"><div class="card h-100 shadow-sm"><div class="card-body"><div class="small text-body-secondary">Clientes recorrentes</div><div class="h4 mb-0" th:text="${indicadores.clientesRecorrentes}">0</div></div></div></div>
+        <div class="col"><div class="card h-100 shadow-sm"><div class="card-body"><div class="small text-body-secondary">Cliente líder</div><div class="fw-semibold text-truncate" th:text="${indicadores.clienteLiderNome}">Nenhum</div><div class="small text-body-secondary" th:text="${'R$ ' + #numbers.formatDecimal(indicadores.clienteLiderValor,1,'POINT',2,'COMMA')}">R$ 0,00</div></div></div></div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3"><h2 class="h5 mb-0">Desempenho dos clientes</h2></div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr>
+                        <th>Posição</th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},tamanho=${tamanho},ordenarPor='cliente',direcao=${ordenarPor=='cliente' and direcao=='asc'?'desc':'asc'})}">Cliente</a></th>
+                        <th>Telefone</th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},tamanho=${tamanho},ordenarPor='pedidos',direcao=${ordenarPor=='pedidos' and direcao=='asc'?'desc':'asc'})}">Pedidos</a></th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},tamanho=${tamanho},ordenarPor='faturamento',direcao=${ordenarPor=='faturamento' and direcao=='asc'?'desc':'asc'})}">Faturamento</a></th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},tamanho=${tamanho},ordenarPor='ticketMedio',direcao=${ordenarPor=='ticketMedio' and direcao=='asc'?'desc':'asc'})}">Ticket médio</a></th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},tamanho=${tamanho},ordenarPor='primeiraCompra',direcao=${ordenarPor=='primeiraCompra' and direcao=='asc'?'desc':'asc'})}">Primeira compra</a></th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},tamanho=${tamanho},ordenarPor='ultimaCompra',direcao=${ordenarPor=='ultimaCompra' and direcao=='asc'?'desc':'asc'})}">Última compra</a></th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},tamanho=${tamanho},ordenarPor='entregas',direcao=${ordenarPor=='entregas' and direcao=='asc'?'desc':'asc'})}">Entregas</a></th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},tamanho=${tamanho},ordenarPor='retiradas',direcao=${ordenarPor=='retiradas' and direcao=='asc'?'desc':'asc'})}">Retiradas</a></th>
+                        <th><a class="text-decoration-none text-body" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},tamanho=${tamanho},ordenarPor='participacao',direcao=${ordenarPor=='participacao' and direcao=='asc'?'desc':'asc'})}">Participação</a></th>
+                        <th>Ações</th>
+                    </tr></thead>
+                    <tbody>
+                    <tr th:each="linha : ${linhas}">
+                        <td class="fw-semibold" th:text="${linha.posicao + 'º'}">1º</td>
+                        <td th:text="${linha.clienteNome}">Cliente</td>
+                        <td class="text-nowrap" th:text="${@formatacao.formatarTelefone(linha.clienteTelefone)}">Telefone</td>
+                        <td th:text="${linha.pedidosValidos}">0</td>
+                        <td class="text-nowrap" th:text="${'R$ ' + #numbers.formatDecimal(linha.faturamentoTotal,1,'POINT',2,'COMMA')}">R$ 0,00</td>
+                        <td class="text-nowrap" th:text="${'R$ ' + #numbers.formatDecimal(linha.ticketMedio,1,'POINT',2,'COMMA')}">R$ 0,00</td>
+                        <td class="text-nowrap" th:text="${#temporals.format(linha.primeiraCompra,'dd/MM/yyyy')}">01/01/2026</td>
+                        <td class="text-nowrap" th:text="${#temporals.format(linha.ultimaCompra,'dd/MM/yyyy')}">01/01/2026</td>
+                        <td th:text="${linha.entregas}">0</td><td th:text="${linha.retiradas}">0</td>
+                        <td class="text-nowrap" th:text="${#numbers.formatDecimal(linha.participacaoPercentual,1,'POINT',2,'COMMA') + '%'}">0,00%</td>
+                        <td><a class="btn btn-sm btn-outline-primary text-nowrap" th:href="@{/relatorios/pedidos(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${linha.clienteNome})}"><i class="bi bi-receipt me-1" aria-hidden="true"></i> Ver pedidos</a></td>
+                    </tr>
+                    <tr th:if="${linhas.empty}"><td colspan="12" class="text-center text-body-secondary py-5">Nenhum cliente com compras encontrado para os filtros informados.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white" th:if="${!linhas.empty}">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                <form method="get" th:action="@{/relatorios/clientes}" class="d-flex align-items-center gap-2">
+                    <label class="small text-nowrap" for="tamanhoClientes">Por página:</label><select class="form-select form-select-sm" id="tamanhoClientes" name="tamanho" onchange="this.form.submit()"><option value="10" th:selected="${tamanho==10}">10</option><option value="20" th:selected="${tamanho==20}">20</option><option value="50" th:selected="${tamanho==50}">50</option></select>
+                    <input type="hidden" name="dataInicial" th:value="${dataInicial}"><input type="hidden" name="dataFinal" th:value="${dataFinal}"><input type="hidden" name="cliente" th:value="${cliente}"><input type="hidden" name="tipoEntrega" th:value="${tipoEntregaSelecionado}"><input type="hidden" name="formaPagamento" th:value="${formaPagamentoSelecionada}"><input type="hidden" name="minimoPedidos" th:value="${minimoPedidos}"><input type="hidden" name="minimoMovimentado" th:value="${minimoMovimentado}"><input type="hidden" name="ordenarPor" th:value="${ordenarPor}"><input type="hidden" name="direcao" th:value="${direcao}">
+                </form>
+                <nav aria-label="Paginação"><ul class="pagination pagination-sm mb-0">
+                    <li class="page-item" th:classappend="${!linhas.hasPrevious()} ? ' disabled'"><a class="page-link" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},pagina=${linhas.number-1},tamanho=${tamanho},ordenarPor=${ordenarPor},direcao=${direcao})}">Anterior</a></li>
+                    <li class="page-item disabled"><span class="page-link" th:text="${'Página ' + (linhas.number + 1)}">Página 1</span></li>
+                    <li class="page-item" th:classappend="${!linhas.hasNext()} ? ' disabled'"><a class="page-link" th:href="@{/relatorios/clientes(dataInicial=${dataInicial},dataFinal=${dataFinal},cliente=${cliente},tipoEntrega=${tipoEntregaSelecionado},formaPagamento=${formaPagamentoSelecionada},minimoPedidos=${minimoPedidos},minimoMovimentado=${minimoMovimentado},pagina=${linhas.number+1},tamanho=${tamanho},ordenarPor=${ordenarPor},direcao=${direcao})}">Próxima</a></li>
+                </ul></nav>
+            </div>
+        </div>
+    </div>
+</section>
+</html>

@@ -4,6 +4,8 @@ import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioPedidoIndicadoresRespo
 import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioPedidoLinhaResponse;
 import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioProducaoIndicadoresResponse;
 import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioProducaoLinhaResponse;
+import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioClienteIndicadoresResponse;
+import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioClienteLinhaResponse;
 import br.com.sergio.gestaopedidos.enums.FormaPagamento;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
 import br.com.sergio.gestaopedidos.enums.TipoEntrega;
@@ -14,10 +16,14 @@ import br.com.sergio.gestaopedidos.service.RelatorioPedidoExcelService;
 import br.com.sergio.gestaopedidos.service.RelatorioPedidoService;
 import br.com.sergio.gestaopedidos.service.RelatorioProducaoExcelService;
 import br.com.sergio.gestaopedidos.service.RelatorioProducaoService;
+import br.com.sergio.gestaopedidos.service.RelatorioClienteExcelService;
+import br.com.sergio.gestaopedidos.service.RelatorioClienteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
@@ -33,8 +39,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Set;
+import java.util.List;
 
 @Controller
 @RequestMapping("/relatorios")
@@ -57,12 +65,25 @@ public class RelatorioWebController {
             "media", "SUM(item.subtotal) / COUNT(DISTINCT pedido.id)",
             "participacao", "SUM(item.subtotal)"
     );
+    private static final Map<String, String> CAMPOS_ORDENACAO_CLIENTES = Map.of(
+            "cliente", "cliente.nome",
+            "pedidos", "COUNT(DISTINCT pedido.id)",
+            "faturamento", "SUM(pedido.valorTotal)",
+            "ticketMedio", "SUM(pedido.valorTotal) / COUNT(DISTINCT pedido.id)",
+            "primeiraCompra", "MIN(pedido.dataAgendada)",
+            "ultimaCompra", "MAX(pedido.dataAgendada)",
+            "entregas", "SUM(CASE WHEN pedido.tipoEntrega = br.com.sergio.gestaopedidos.enums.TipoEntrega.ENTREGA THEN 1 ELSE 0 END)",
+            "retiradas", "SUM(CASE WHEN pedido.tipoEntrega = br.com.sergio.gestaopedidos.enums.TipoEntrega.RETIRADA THEN 1 ELSE 0 END)",
+            "participacao", "SUM(pedido.valorTotal)"
+    );
 
     private final RelatorioPedidoService relatorioPedidoService;
     private final RelatorioPedidoExcelService relatorioPedidoExcelService;
     private final ConfiguracaoEmpresaService configuracaoEmpresaService;
     private final RelatorioProducaoService relatorioProducaoService;
     private final RelatorioProducaoExcelService relatorioProducaoExcelService;
+    private final RelatorioClienteService relatorioClienteService;
+    private final RelatorioClienteExcelService relatorioClienteExcelService;
 
     @GetMapping
     public String index() {
@@ -316,6 +337,185 @@ public class RelatorioWebController {
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nome + "\"")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(arquivo);
+    }
+
+    @GetMapping("/clientes")
+    public String clientes(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
+            @RequestParam(defaultValue = "") String cliente,
+            @RequestParam(required = false) TipoEntrega tipoEntrega,
+            @RequestParam(required = false) FormaPagamento formaPagamento,
+            @RequestParam(required = false) Long minimoPedidos,
+            @RequestParam(required = false) BigDecimal minimoMovimentado,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "10") int tamanho,
+            @RequestParam(defaultValue = "faturamento") String ordenarPor,
+            @RequestParam(defaultValue = "desc") String direcao,
+            Model model
+    ) {
+        LocalDate hoje = LocalDate.now();
+        if (dataInicial == null && dataFinal == null) {
+            dataInicial = hoje.withDayOfMonth(1);
+            dataFinal = hoje;
+        }
+        int tamanhoSeguro = TAMANHOS_PERMITIDOS.contains(tamanho) ? tamanho : 10;
+        String campo = normalizarCampoClientes(ordenarPor);
+        Sort.Direction sentido = normalizarDirecao(direcao);
+        PageRequest pageable = PageRequest.of(
+                Math.max(0, pagina), tamanhoSeguro, criarOrdenacaoClientes(campo, sentido)
+        );
+        var filtro = criarFiltroClientes(
+                dataInicial, dataFinal, cliente, tipoEntrega, formaPagamento,
+                minimoPedidos, minimoMovimentado
+        );
+        Slice<RelatorioClienteLinhaResponse> linhas;
+        RelatorioClienteIndicadoresResponse indicadores;
+        try {
+            var resultado = relatorioClienteService.buscar(filtro, pageable);
+            linhas = resultado.linhas();
+            indicadores = resultado.indicadores();
+        } catch (BusinessException exception) {
+            linhas = new SliceImpl<>(List.of(), pageable, false);
+            indicadores = RelatorioClienteIndicadoresResponse.vazio();
+            model.addAttribute("erroPeriodo", exception.getMessage());
+        }
+        adicionarModeloClientes(model, filtro, campo, sentido, tamanhoSeguro);
+        model.addAttribute("linhas", linhas);
+        model.addAttribute("indicadores", indicadores);
+        return "relatorios/clientes";
+    }
+
+    @GetMapping("/clientes/imprimir")
+    public String imprimirClientes(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
+            @RequestParam(defaultValue = "") String cliente,
+            @RequestParam(required = false) TipoEntrega tipoEntrega,
+            @RequestParam(required = false) FormaPagamento formaPagamento,
+            @RequestParam(required = false) Long minimoPedidos,
+            @RequestParam(required = false) BigDecimal minimoMovimentado,
+            @RequestParam(defaultValue = "faturamento") String ordenarPor,
+            @RequestParam(defaultValue = "desc") String direcao,
+            Model model,
+            RedirectAttributes redirectAttributes
+    ) {
+        var filtro = criarFiltroClientes(
+                dataInicial, dataFinal, cliente, tipoEntrega, formaPagamento,
+                minimoPedidos, minimoMovimentado
+        );
+        try {
+            var resultado = relatorioClienteService.buscarParaSaida(
+                    filtro, criarOrdenacaoClientes(
+                            normalizarCampoClientes(ordenarPor), normalizarDirecao(direcao)
+                    )
+            );
+            adicionarModeloClientes(
+                    model, filtro, normalizarCampoClientes(ordenarPor),
+                    normalizarDirecao(direcao), 10
+            );
+            model.addAttribute("linhas", resultado.linhas());
+            model.addAttribute("indicadores", resultado.indicadores());
+            model.addAttribute("emitidoEm", LocalDateTime.now());
+            return "relatorios/clientes-impressao";
+        } catch (BusinessException exception) {
+            redirectAttributes.addFlashAttribute("erroExportacao", exception.getMessage());
+            adicionarRedirectClientes(redirectAttributes, filtro, ordenarPor, direcao);
+            return "redirect:/relatorios/clientes";
+        }
+    }
+
+    @GetMapping("/clientes/excel")
+    public ResponseEntity<byte[]> exportarClientesExcel(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
+            @RequestParam(defaultValue = "") String cliente,
+            @RequestParam(required = false) TipoEntrega tipoEntrega,
+            @RequestParam(required = false) FormaPagamento formaPagamento,
+            @RequestParam(required = false) Long minimoPedidos,
+            @RequestParam(required = false) BigDecimal minimoMovimentado,
+            @RequestParam(defaultValue = "faturamento") String ordenarPor,
+            @RequestParam(defaultValue = "desc") String direcao
+    ) {
+        var filtro = criarFiltroClientes(
+                dataInicial, dataFinal, cliente, tipoEntrega, formaPagamento,
+                minimoPedidos, minimoMovimentado
+        );
+        var resultado = relatorioClienteService.buscarParaSaida(
+                filtro, criarOrdenacaoClientes(
+                        normalizarCampoClientes(ordenarPor), normalizarDirecao(direcao)
+                )
+        );
+        byte[] arquivo = relatorioClienteExcelService.gerar(
+                configuracaoEmpresaService.getConfiguracaoAtual().nomeEmpresa(),
+                dataInicial, dataFinal, LocalDateTime.now(),
+                resultado.linhas(), resultado.indicadores()
+        );
+        String nome = "relatorio-clientes-" + dataInicial + "-a-" + dataFinal + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nome + "\"")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ))
+                .body(arquivo);
+    }
+
+    private RelatorioClienteService.FiltroRelatorioClientes criarFiltroClientes(
+            LocalDate inicio, LocalDate fim, String cliente, TipoEntrega entrega,
+            FormaPagamento pagamento, Long minimoPedidos, BigDecimal minimoMovimentado
+    ) {
+        return new RelatorioClienteService.FiltroRelatorioClientes(
+                inicio, fim, cliente, entrega, pagamento, minimoPedidos, minimoMovimentado
+        );
+    }
+
+    private String normalizarCampoClientes(String campo) {
+        return CAMPOS_ORDENACAO_CLIENTES.containsKey(campo) ? campo : "faturamento";
+    }
+
+    private Sort criarOrdenacaoClientes(String campo, Sort.Direction direcao) {
+        if ("faturamento".equals(campo) && direcao == Sort.Direction.DESC) {
+            return JpaSort.unsafe(Sort.Direction.DESC, "SUM(pedido.valorTotal)")
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "COUNT(DISTINCT pedido.id)"))
+                    .and(Sort.by(Sort.Direction.ASC, "cliente.nome"));
+        }
+        Sort sort = JpaSort.unsafe(direcao, CAMPOS_ORDENACAO_CLIENTES.get(campo));
+        return "cliente".equals(campo)
+                ? sort
+                : sort.and(Sort.by(Sort.Direction.ASC, "cliente.nome"));
+    }
+
+    private void adicionarModeloClientes(
+            Model model, RelatorioClienteService.FiltroRelatorioClientes filtro,
+            String campo, Sort.Direction direcao, int tamanho
+    ) {
+        model.addAttribute("dataInicial", filtro.dataInicial());
+        model.addAttribute("dataFinal", filtro.dataFinal());
+        model.addAttribute("cliente", filtro.cliente() == null ? "" : filtro.cliente().trim());
+        model.addAttribute("tipoEntregaSelecionado", filtro.tipoEntrega());
+        model.addAttribute("formaPagamentoSelecionada", filtro.formaPagamento());
+        model.addAttribute("minimoPedidos", filtro.minimoPedidos());
+        model.addAttribute("minimoMovimentado", filtro.minimoMovimentado());
+        model.addAttribute("tiposEntrega", TipoEntrega.values());
+        model.addAttribute("formasPagamento", FormaPagamento.values());
+        model.addAttribute("ordenarPor", campo);
+        model.addAttribute("direcao", direcao.name().toLowerCase());
+        model.addAttribute("tamanho", tamanho);
+    }
+
+    private void adicionarRedirectClientes(
+            RedirectAttributes redirect, RelatorioClienteService.FiltroRelatorioClientes filtro,
+            String campo, String direcao
+    ) {
+        redirect.addAttribute("dataInicial", filtro.dataInicial());
+        redirect.addAttribute("dataFinal", filtro.dataFinal());
+        redirect.addAttribute("cliente", filtro.cliente());
+        if (filtro.tipoEntrega() != null) redirect.addAttribute("tipoEntrega", filtro.tipoEntrega());
+        if (filtro.formaPagamento() != null) redirect.addAttribute("formaPagamento", filtro.formaPagamento());
+        if (filtro.minimoPedidos() != null) redirect.addAttribute("minimoPedidos", filtro.minimoPedidos());
+        if (filtro.minimoMovimentado() != null) redirect.addAttribute("minimoMovimentado", filtro.minimoMovimentado());
+        redirect.addAttribute("ordenarPor", normalizarCampoClientes(campo));
+        redirect.addAttribute("direcao", normalizarDirecao(direcao).name().toLowerCase());
     }
 
     private RelatorioProducaoService.FiltroRelatorioProducao criarFiltroProducao(
