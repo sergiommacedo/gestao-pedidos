@@ -122,6 +122,14 @@
                 <span>Insumos</span>
             </a>
 
+            <a th:href="@{/fichas-tecnicas}"
+               sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3"
+               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/fichas-tecnicas')} ? ' active'">
+                <i class="bi bi-journal-text"></i>
+                <span>Fichas Técnicas</span>
+            </a>
+
             <a th:href="@{/compras}"
                sec:authorize="hasRole('ADMIN')"
                class="nav-link d-flex align-items-center gap-3"

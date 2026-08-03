@@ -1,6 +1,7 @@
 package br.com.sergio.gestaopedidos.repository;
 import br.com.sergio.gestaopedidos.entity.*;import br.com.sergio.gestaopedidos.enums.TipoItemEstoque;import jakarta.persistence.LockModeType;import org.springframework.data.domain.*;import org.springframework.data.jpa.repository.*;import org.springframework.data.repository.query.Param;import java.math.*;import java.time.LocalDateTime;import java.util.*;
 public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>{
+ interface InsumoCusto{Long getId();String getNome();String getUnidade();BigDecimal getCustoMedio();BigDecimal getEstoqueAtual();}
  interface Visao{String getTipoItem();Long getReferenciaId();String getItemNome();String getUnidade();Boolean getAtivo();BigDecimal getQuantidadeAtual();BigDecimal getEstoqueMinimo();BigDecimal getCustoMedioAtual();BigDecimal getValorTotalEstoque();LocalDateTime getAtualizadoEm();}
  @Lock(LockModeType.PESSIMISTIC_WRITE)@Query("SELECT i FROM Insumo i WHERE i.id=:id")Optional<Insumo> bloquearInsumo(@Param("id")Long id);
  @Lock(LockModeType.PESSIMISTIC_WRITE)@Query("SELECT p FROM Produto p WHERE p.id=:id")Optional<Produto> bloquearProduto(@Param("id")Long id);
@@ -32,4 +33,10 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>
  """,nativeQuery=true)Page<Visao> listar(@Param("nome")String nome,@Param("categoria")String categoria,@Param("situacao")String situacao,@Param("ativo")Boolean ativo,Pageable pageable);
  @Query("SELECT COUNT(s) FROM SaldoEstoque s WHERE s.quantidadeAtual>0")long contarComSaldo();
  @Query("SELECT COALESCE(SUM(s.valorTotalEstoque),0) FROM SaldoEstoque s WHERE s.tipoItem=:tipo")BigDecimal somarValor(@Param("tipo")TipoItemEstoque tipo);
+ @Query("SELECT s FROM SaldoEstoque s JOIN FETCH s.insumo WHERE s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.INSUMO AND s.insumo.id IN :ids")List<SaldoEstoque> buscarSaldosInsumos(@Param("ids")Collection<Long> ids);
+ @Query(value="""
+ SELECT i.id id,i.nome nome,i.unidade_medida unidade,COALESCE(s.custo_medio_atual,0) custo_medio,COALESCE(s.quantidade_atual,0) estoque_atual
+ FROM insumos i LEFT JOIN saldos_estoque s ON s.insumo_id=i.id
+ WHERE i.ativo=true AND LOWER(i.nome) LIKE LOWER(CONCAT('%',:termo,'%')) ORDER BY i.nome LIMIT 20
+ """,nativeQuery=true)List<InsumoCusto> buscarInsumosAtivosComCusto(@Param("termo")String termo);
 }
