@@ -1,0 +1,1 @@
+package br.com.sergio.gestaopedidos.dto.estoque;import lombok.Builder;import java.math.BigDecimal;@Builder public record EstoqueIndicadoresResponse(long insumosComSaldo,long abaixoDoMinimo,BigDecimal valorEstimado,long movimentacoesHoje){}

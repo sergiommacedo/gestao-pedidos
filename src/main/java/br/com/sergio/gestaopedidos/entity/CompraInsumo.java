@@ -5,6 +5,7 @@ import lombok.*;
 import java.math.*;
 import java.time.*;
 import java.util.*;
+import br.com.sergio.gestaopedidos.enums.StatusCompraInsumo;
 
 @Entity @Table(name="compras_insumos")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -19,10 +20,11 @@ public class CompraInsumo {
     @Column(name="atualizado_em",nullable=false) private LocalDateTime atualizadoEm;
     @OneToMany(mappedBy="compra",cascade=CascadeType.ALL,orphanRemoval=true) @Builder.Default
     private List<ItemCompraInsumo> itens=new ArrayList<>();
+    @Enumerated(EnumType.STRING) @Column(length=20) @Builder.Default private StatusCompraInsumo status=StatusCompraInsumo.ATIVA;
 
     public void adicionarItem(ItemCompraInsumo item){item.setCompra(this);itens.add(item);}
     public void removerItem(ItemCompraInsumo item){itens.remove(item);item.setCompra(null);}
     public void recalcularTotal(){valorTotal=itens.stream().map(ItemCompraInsumo::getValorTotalItem).filter(Objects::nonNull).reduce(BigDecimal.ZERO,BigDecimal::add).setScale(2,RoundingMode.HALF_UP);}
-    @PrePersist void prePersist(){recalcularTotal();criadoEm=LocalDateTime.now();atualizadoEm=criadoEm;}
+    @PrePersist void prePersist(){if(status==null)status=StatusCompraInsumo.ATIVA;recalcularTotal();criadoEm=LocalDateTime.now();atualizadoEm=criadoEm;}
     @PreUpdate void preUpdate(){recalcularTotal();atualizadoEm=LocalDateTime.now();}
 }
