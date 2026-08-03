@@ -91,9 +91,9 @@ function inicializarFormularioCompraInsumo() {
         const unidade = document.createElement("div"); unidade.className = "col-sm-6 col-lg-1"; const ul = document.createElement("div"); ul.className = "form-label small"; ul.textContent = "Unidade"; const uv = document.createElement("div"); uv.className = "form-control bg-body-tertiary"; uv.textContent = item.simbolo; unidade.append(ul, uv);
         const valor = criarCampo("Valor total pago", "valor");
         valor.input.dataset.compraValorItem = "";
+        valor.input.placeholder = "Ex.: 120,00";
         valor.input.value = String(item.valor ?? "").trim() === "" ? "" : new Intl.NumberFormat("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2}).format(decimal(item.valor));
         const valorDecimal = document.createElement("input"); valorDecimal.type = "hidden"; valorDecimal.dataset.valorDecimal = ""; valorDecimal.value = decimal(item.valor).toFixed(2); valor.grupo.appendChild(valorDecimal);
-        const ajudaValor = document.createElement("div"); ajudaValor.className = "form-text small"; ajudaValor.textContent = "Informe o valor pago por toda a quantidade comprada."; valor.grupo.appendChild(ajudaValor);
         const custoGrupo = document.createElement("div"); custoGrupo.className = "col-sm-8 col-lg-3"; const cl = document.createElement("div"); cl.className = "form-label small"; cl.textContent = "Custo unitário"; const custo = document.createElement("div"); custo.className = "form-control bg-body-tertiary"; custoGrupo.append(cl, custo);
         const removerGrupo = document.createElement("div"); removerGrupo.className = "col-sm-4 col-lg-1"; const remover = document.createElement("button"); remover.type = "button"; remover.className = "btn btn-outline-danger w-100"; remover.title = "Remover item"; remover.innerHTML = '<i class="bi bi-trash"></i>'; removerGrupo.appendChild(remover);
         linha.append(id, insumoId, nomeGrupo, quantidade.grupo, unidade, valor.grupo, custoGrupo, removerGrupo); container.appendChild(linha);
