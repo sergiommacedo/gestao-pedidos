@@ -1,0 +1,6 @@
+package br.com.sergio.gestaopedidos.entity;
+import br.com.sergio.gestaopedidos.enums.UnidadeMedida;
+import jakarta.persistence.*;import lombok.*;import java.math.BigDecimal;
+@Entity @Table(name="itens_producao",uniqueConstraints=@UniqueConstraint(name="uk_item_producao_produto",columnNames={"producao_id","produto_id"}))
+@Getter@Setter@NoArgsConstructor@AllArgsConstructor@Builder@EqualsAndHashCode(onlyExplicitlyIncluded=true)
+public class ItemProducao{@Id@GeneratedValue(strategy=GenerationType.IDENTITY)@EqualsAndHashCode.Include private Long id;@ManyToOne(fetch=FetchType.LAZY,optional=false)@JoinColumn(name="producao_id",nullable=false)private Producao producao;@ManyToOne(fetch=FetchType.LAZY,optional=false)@JoinColumn(name="produto_id",nullable=false)private Produto produto;@Column(name="nome_historico",nullable=false,length=100)private String nomeHistorico;@Enumerated(EnumType.STRING)@Column(name="unidade_historica",nullable=false,length=20)private UnidadeMedida unidadeHistorica;@Column(nullable=false,precision=15,scale=3)private BigDecimal quantidade;}

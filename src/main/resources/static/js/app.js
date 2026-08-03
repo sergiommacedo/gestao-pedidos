@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarFormularioProduto();
     inicializarFormularioEstoque();
     inicializarFormularioFichaTecnica();
+    inicializarItensProducao();
 
 });
 
@@ -119,6 +120,45 @@ function inicializarFormularioFichaTecnica() {
     produto?.addEventListener("change", atualizarBase); atualizarBase();
     formulario.querySelectorAll("[data-ficha-item-inicial]").forEach(i => adicionarLinha({itemId:i.dataset.id,id:i.dataset.insumoId,nome:i.dataset.nome,unidade:i.dataset.unidade,simbolo:i.dataset.simbolo,quantidade:i.dataset.quantidade,custoMedio:i.dataset.custo,estoqueAtual:i.dataset.estoque,possuiCusto:i.dataset.possuiCusto === "true"}));
     reindexar();
+}
+
+function inicializarItensProducao() {
+    const area = document.querySelector("[data-itens-producao]");
+    if (!area) return;
+    const lista = area.querySelector("[data-lista-produtos-producao]");
+    const template = area.querySelector("[data-template-produto-producao]");
+    const reindexar = () => {
+        lista.querySelectorAll("[data-item-producao]").forEach((linha, indice) => {
+            linha.querySelectorAll("[data-campo]").forEach(campo => {
+                campo.name = `itens[${indice}].${campo.dataset.campo}`;
+                campo.id = `itens${indice}.${campo.dataset.campo}`;
+            });
+        });
+    };
+    const atualizarUnidade = linha => {
+        const select = linha.querySelector("[data-produto-producao]");
+        const unidade = select?.selectedOptions[0]?.dataset.unidade;
+        const alvo = linha.querySelector("[data-unidade-producao]");
+        if (alvo) alvo.textContent = unidade === "QUILOGRAMA" ? "kg" : unidade === "UNIDADE" ? "un" : "—";
+    };
+    area.addEventListener("click", event => {
+        if (event.target.closest("[data-adicionar-produto-producao]")) {
+            lista.append(template.content.cloneNode(true)); reindexar();
+        }
+        const remover = event.target.closest("[data-remover-produto-producao]");
+        if (remover && lista.querySelectorAll("[data-item-producao]").length > 1) {
+            remover.closest("[data-item-producao]").remove(); reindexar();
+        }
+    });
+    area.addEventListener("change", event => {
+        if (!event.target.matches("[data-produto-producao]")) return;
+        const atual = event.target.value;
+        const duplicado = [...lista.querySelectorAll("[data-produto-producao]")]
+            .some(outro => outro !== event.target && atual && outro.value === atual);
+        if (duplicado) { event.target.value = ""; alert("Este produto já foi adicionado à produção."); }
+        atualizarUnidade(event.target.closest("[data-item-producao]"));
+    });
+    lista.querySelectorAll("[data-item-producao]").forEach(atualizarUnidade);
 }
 
 function inicializarFormularioEstoque() {

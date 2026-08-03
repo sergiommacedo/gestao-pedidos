@@ -6,6 +6,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import br.com.sergio.gestaopedidos.enums.StatusProducao;
 
 @Entity
 @Table(name = "producoes", uniqueConstraints = @UniqueConstraint(name = "uk_producao_data", columnNames = "data_producao"))
@@ -17,6 +20,10 @@ public class Producao {
 
     @Column(name = "data_producao", nullable = false)
     private LocalDate dataProducao;
+    @Enumerated(EnumType.STRING) @Column(length=20) @Builder.Default private StatusProducao status=StatusProducao.RASCUNHO;
+    @Column(name="confirmada_em") private LocalDateTime confirmadaEm;
+    @OneToMany(mappedBy="producao",cascade=CascadeType.ALL,orphanRemoval=true) @OrderBy("id") @Builder.Default
+    private List<ItemProducao> itens=new ArrayList<>();
 
     /** Coluna legada mantida temporariamente para compatibilidade com bancos existentes. */
     @Deprecated
@@ -42,7 +49,7 @@ public class Producao {
     private LocalDateTime atualizadoEm;
 
     @PrePersist
-    void prePersist() { normalizarValores(); criadoEm = LocalDateTime.now(); atualizadoEm = criadoEm; }
+    void prePersist() { normalizarValores(); if(status==null)status=StatusProducao.RASCUNHO; criadoEm = LocalDateTime.now(); atualizadoEm = criadoEm; }
     @PreUpdate
     void preUpdate() { normalizarValores(); atualizadoEm = LocalDateTime.now(); }
 
@@ -55,4 +62,7 @@ public class Producao {
         valorGasEnergia = moeda(valorGasEnergia); valorOutros = moeda(valorOutros);
     }
     private BigDecimal moeda(BigDecimal valor) { return (valor == null ? BigDecimal.ZERO : valor).setScale(2, RoundingMode.HALF_UP); }
+    public void adicionarItem(ItemProducao item){itens.add(item);item.setProducao(this);}
+    public void limparItens(){itens.forEach(i->i.setProducao(null));itens.clear();}
+    public StatusProducao statusEfetivo(){return status==null?StatusProducao.RASCUNHO:status;}
 }

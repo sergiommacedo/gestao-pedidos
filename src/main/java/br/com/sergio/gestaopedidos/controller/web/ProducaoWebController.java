@@ -45,7 +45,8 @@ public class ProducaoWebController {
         model.addAttribute("producao",ProducaoRequest.builder().dataProducao(data)
             .saldoInicialMateriais(saldoSugerido).valorComprasMateriais(BigDecimal.ZERO)
             .saldoFinalMateriais(BigDecimal.ZERO).valorEmbalagens(BigDecimal.ZERO)
-            .valorGasEnergia(BigDecimal.ZERO).valorOutros(BigDecimal.ZERO).build());
+            .valorGasEnergia(BigDecimal.ZERO).valorOutros(BigDecimal.ZERO)
+            .itens(new java.util.ArrayList<>(java.util.List.of(ItemProducaoRequest.builder().build()))).build());
         model.addAttribute("saldoInicialSugerido", saldoSugerido);
         prepararFormulario(model,false,null);return "producoes/formulario";}
 
@@ -56,14 +57,15 @@ public class ProducaoWebController {
         catch(BusinessException e){result.reject("producao.invalida",e.getMessage());prepararFormulario(model,false,null);return "producoes/formulario";}}
 
     @GetMapping("/{id}")
-    public String detalhes(@PathVariable Long id,Model model){model.addAttribute("resumo",producaoService.buscarResumoPorId(id));return "producoes/detalhes";}
+    public String detalhes(@PathVariable Long id,Model model){var detalhes=producaoService.buscarDetalhes(id);model.addAttribute("detalhes",detalhes);model.addAttribute("resumo",detalhes.resumo());return "producoes/detalhes";}
 
     @GetMapping("/{id}/editar")
-    public String editar(@PathVariable Long id,Model model){var p=producaoService.buscarPorId(id);model.addAttribute("producao",ProducaoRequest.builder()
+    public String editar(@PathVariable Long id,Model model,RedirectAttributes redirect){var p=producaoService.buscarPorId(id);if(p.status()==br.com.sergio.gestaopedidos.enums.StatusProducao.CONFIRMADA){redirect.addFlashAttribute("mensagemErro","Produção confirmada não pode ser alterada.");return "redirect:/producoes/"+id;}model.addAttribute("producao",ProducaoRequest.builder()
             .dataProducao(p.dataProducao()).saldoInicialMateriais(p.saldoInicialMateriais())
             .valorComprasMateriais(p.valorComprasMateriais()).saldoFinalMateriais(p.saldoFinalMateriais())
             .valorEmbalagens(p.valorEmbalagens())
-            .valorGasEnergia(p.valorGasEnergia()).valorOutros(p.valorOutros()).observacao(p.observacao()).build());
+            .valorGasEnergia(p.valorGasEnergia()).valorOutros(p.valorOutros()).observacao(p.observacao())
+            .itens(new java.util.ArrayList<>(p.itens().stream().map(i->ItemProducaoRequest.builder().id(i.id()).produtoId(i.produtoId()).quantidade(i.quantidade()).build()).toList())).build());
         prepararFormulario(model,true,id);return "producoes/formulario";}
 
     @PostMapping("/{id}")
@@ -73,8 +75,11 @@ public class ProducaoWebController {
         catch(BusinessException e){result.reject("producao.invalida",e.getMessage());prepararFormulario(model,true,id);return "producoes/formulario";}}
 
     @PostMapping("/{id}/excluir")
-    public String excluir(@PathVariable Long id,RedirectAttributes redirect){producaoService.excluir(id);redirect.addFlashAttribute("mensagemSucesso","Produção excluída com sucesso.");return "redirect:/producoes";}
+    public String excluir(@PathVariable Long id,RedirectAttributes redirect){try{producaoService.excluir(id);redirect.addFlashAttribute("mensagemSucesso","Produção excluída com sucesso.");}catch(BusinessException e){redirect.addFlashAttribute("mensagemErro",e.getMessage());}return "redirect:/producoes";}
+
+    @PostMapping("/{id}/confirmar")
+    public String confirmar(@PathVariable Long id,RedirectAttributes redirect){try{producaoService.confirmar(id);redirect.addFlashAttribute("mensagemSucesso","Produção confirmada e estoque atualizado com sucesso.");}catch(BusinessException e){redirect.addFlashAttribute("mensagemErro",e.getMessage());}return "redirect:/producoes/"+id;}
 
     private void prepararFormulario(Model model,boolean edicao,Long id){model.addAttribute("modoEdicao",edicao);model.addAttribute("producaoId",id);
-        model.addAttribute("titulo",edicao?"Editar produção":"Nova produção");}
+        model.addAttribute("titulo",edicao?"Editar produção":"Nova produção");model.addAttribute("produtosProduzidos",producaoService.produtosDisponiveis());}
 }

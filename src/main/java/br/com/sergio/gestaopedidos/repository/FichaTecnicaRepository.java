@@ -19,6 +19,10 @@ public interface FichaTecnicaRepository extends JpaRepository<FichaTecnica, Long
     @Query("SELECT DISTINCT f FROM FichaTecnica f WHERE f.id IN :ids")
     List<FichaTecnica> buscarDetalhadas(@Param("ids") Collection<Long> ids);
 
+    @EntityGraph(attributePaths = {"produto", "itens", "itens.insumo"})
+    @Query("SELECT DISTINCT f FROM FichaTecnica f WHERE f.produto.id IN :produtoIds AND f.ativa = true")
+    List<FichaTecnica> buscarAtivasPorProdutos(@Param("produtoIds") Collection<Long> produtoIds);
+
     @Query(value = """
             SELECT f.* FROM fichas_tecnicas f
             JOIN produtos p ON p.id = f.produto_id
