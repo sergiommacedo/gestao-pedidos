@@ -1,13 +1,10 @@
 package br.com.sergio.gestaopedidos.service;
 
-import br.com.sergio.gestaopedidos.dto.dashboard.DashboardIndicadoresResponse;
-import br.com.sergio.gestaopedidos.dto.dashboard.DashboardPedidoAtencaoResponse;
-import br.com.sergio.gestaopedidos.dto.dashboard.DashboardStatusResponse;
+import br.com.sergio.gestaopedidos.dto.dashboard.*;
 import br.com.sergio.gestaopedidos.dto.resumo.ResumoProdutoVendidoResponse;
 import br.com.sergio.gestaopedidos.dto.resumo.ResumoVendasDiaResponse;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
-import br.com.sergio.gestaopedidos.repository.ItemPedidoRepository;
-import br.com.sergio.gestaopedidos.repository.PedidoRepository;
+import br.com.sergio.gestaopedidos.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
@@ -26,7 +23,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class DashboardService {
 
-    private static final int LIMITE_PEDIDOS_ATENCAO = 8;
+    private static final int LIMITE_PEDIDOS_ATENCAO = 10;
+    private static final int LIMITE_LISTAS = 5;
     private static final Set<StatusPedido> STATUS_ATENCAO = EnumSet.of(
             StatusPedido.PENDENTE,
             StatusPedido.EM_PREPARACAO,
@@ -44,26 +42,33 @@ public class DashboardService {
 
     private final PedidoRepository pedidoRepository;
     private final ItemPedidoRepository itemPedidoRepository;
+    private final ProducaoRepository producaoRepository;
+    private final SaldoEstoqueRepository saldoEstoqueRepository;
+    private final CompraRepository compraRepository;
+    private final FichaTecnicaRepository fichaTecnicaRepository;
+
+    @Transactional(readOnly = true)
+    public DashboardOperacionalResponse buscarDashboard(LocalDate data) {
+        DashboardIndicadoresResponse pedidos = buscarIndicadores(data);
+        var producao = montarProducao(producaoRepository.resumirDashboard(data).orElse(null));
+        var estoque = montarEstoque();
+        var compras = montarCompras(compraRepository.resumirDashboard(data));
+        long fichasPendentes = fichaTecnicaRepository.contarAtivasComCustoPendente();
+        long produtosSemFicha = fichaTecnicaRepository.contarProdutosProduzidosAtivosSemFicha();
+        return new DashboardOperacionalResponse(data, pedidos, buscarPedidosQuePrecisamAtencao(data),
+                buscarResumoStatus(data), producao, estoque, compras,
+                itemPedidoRepository.resumirProdutosMaisVendidosDashboard(data, StatusPedido.CANCELADO,
+                        PageRequest.of(0, LIMITE_LISTAS)),
+                montarAlertas(producao, estoque, fichasPendentes, produtosSemFicha));
+    }
 
     @Transactional(readOnly = true)
     public DashboardIndicadoresResponse buscarIndicadores(LocalDate dataReferencia) {
-        BigDecimal faturamento = pedidoRepository.somarValorTotalPorDataExcetoStatus(
-                dataReferencia,
-                StatusPedido.CANCELADO
-        );
-
-        return new DashboardIndicadoresResponse(
-                pedidoRepository.countByDataAgendada(dataReferencia),
-                pedidoRepository.countByDataAgendadaAndStatus(
-                        dataReferencia,
-                        StatusPedido.EM_PREPARACAO
-                ),
-                pedidoRepository.countByDataAgendadaAndStatus(
-                        dataReferencia,
-                        StatusPedido.SAIU_PARA_ENTREGA
-                ),
-                faturamento == null ? BigDecimal.ZERO : faturamento
-        );
+        PedidoRepository.ResumoDashboard r = pedidoRepository.resumirDashboard(dataReferencia,
+                StatusPedido.CANCELADO, StatusPedido.EM_PREPARACAO, StatusPedido.SAIU_PARA_ENTREGA);
+        return new DashboardIndicadoresResponse(numero(r.getTotal()), numero(r.getValidos()), numero(r.getCancelados()),
+                numero(r.getEmPreparacao()), numero(r.getSaiuParaEntrega()), valorOuZero(r.getProdutos()),
+                valorOuZero(r.getTaxas()), valorOuZero(r.getFaturamento()));
     }
 
     @Transactional(readOnly = true)
@@ -132,6 +137,53 @@ public class DashboardService {
 
     private BigDecimal valorOuZero(BigDecimal valor) {
         return valor == null ? BigDecimal.ZERO : valor;
+    }
+
+    private long numero(Long valor) { return valor == null ? 0 : valor; }
+
+    private DashboardOperacionalResponse.ProducaoDia montarProducao(ProducaoRepository.ResumoDashboard r) {
+        return r == null
+                ? new DashboardOperacionalResponse.ProducaoDia(null, null, 0, BigDecimal.ZERO, BigDecimal.ZERO, null)
+                : new DashboardOperacionalResponse.ProducaoDia(r.getId(), r.getStatus(), (int) numero(r.getProdutos()),
+                    valorOuZero(r.getQuantidade()), valorOuZero(r.getCusto()), r.getConfirmadaEm());
+    }
+
+    private DashboardOperacionalResponse.EstoqueResumo montarEstoque() {
+        SaldoEstoqueRepository.ResumoDashboard r = saldoEstoqueRepository.resumirDashboard();
+        List<DashboardOperacionalResponse.ItemEstoque> alertas = saldoEstoqueRepository
+                .listarAlertasDashboard(PageRequest.of(0, LIMITE_LISTAS)).stream().map(this::mapearEstoque).toList();
+        List<DashboardOperacionalResponse.ItemEstoque> produzidos = saldoEstoqueRepository
+                .listarProduzidosDisponiveisDashboard(PageRequest.of(0, LIMITE_LISTAS)).stream().map(this::mapearEstoque).toList();
+        return new DashboardOperacionalResponse.EstoqueResumo(numero(r.getItensComSaldo()), numero(r.getAbaixoDoMinimo()),
+                numero(r.getSemEstoque()), numero(r.getProduzidosDisponiveis()), numero(r.getRevendaDisponiveis()),
+                valorOuZero(r.getValorInsumos()), valorOuZero(r.getValorRevenda()), valorOuZero(r.getValorProduzidos()),
+                valorOuZero(r.getValorTotal()), alertas, produzidos);
+    }
+
+    private DashboardOperacionalResponse.ItemEstoque mapearEstoque(SaldoEstoqueRepository.Visao v) {
+        BigDecimal saldo = valorOuZero(v.getQuantidadeAtual()), minimo = valorOuZero(v.getEstoqueMinimo());
+        String situacao = saldo.signum() == 0 ? "Sem estoque" : minimo.signum() > 0 && saldo.compareTo(minimo) <= 0
+                ? "Estoque baixo" : "Normal";
+        return new DashboardOperacionalResponse.ItemEstoque(br.com.sergio.gestaopedidos.enums.TipoItemEstoque.valueOf(v.getTipoItem()),
+                v.getReferenciaId(), v.getItemNome(), br.com.sergio.gestaopedidos.enums.UnidadeMedida.valueOf(v.getUnidade()),
+                saldo, minimo, situacao);
+    }
+
+    private DashboardOperacionalResponse.ComprasDia montarCompras(CompraRepository.ResumoDashboard r) {
+        return new DashboardOperacionalResponse.ComprasDia(numero(r.getQuantidade()), valorOuZero(r.getValorTotal()),
+                numero(r.getComprasInsumos()), valorOuZero(r.getValorInsumos()), numero(r.getComprasRevenda()),
+                valorOuZero(r.getValorRevenda()));
+    }
+
+    private List<DashboardOperacionalResponse.Alerta> montarAlertas(DashboardOperacionalResponse.ProducaoDia producao,
+            DashboardOperacionalResponse.EstoqueResumo estoque, long fichasPendentes, long produtosSemFicha) {
+        List<DashboardOperacionalResponse.Alerta> alertas = new java.util.ArrayList<>();
+        if (estoque.semEstoque() > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-x-circle", "danger", "Itens sem estoque", estoque.semEstoque()+" item(ns) estão sem estoque.", "/estoque?situacao=SEM_ESTOQUE", true));
+        if (estoque.abaixoDoMinimo() > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-exclamation-triangle", "warning", "Estoque abaixo do mínimo", estoque.abaixoDoMinimo()+" item(ns) precisam de atenção.", "/estoque?situacao=BAIXO", true));
+        if (fichasPendentes > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-calculator", "warning", "Custo de ficha pendente", fichasPendentes+" Ficha(s) Técnica(s) possuem custo incompleto.", "/fichas-tecnicas?custo=PENDENTE", true));
+        if (produtosSemFicha > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-journal-x", "warning", "Produtos sem Ficha Técnica", produtosSemFicha+" Produto(s) Produzido(s) ativo(s) ainda não possuem ficha.", "/fichas-tecnicas/nova", true));
+        if (producao.existe() && producao.status() == br.com.sergio.gestaopedidos.enums.StatusProducao.RASCUNHO) alertas.add(new DashboardOperacionalResponse.Alerta("bi-hourglass-split", "info", "Produção em rascunho", "A Produção de hoje ainda não foi confirmada.", "/producoes/"+producao.id(), true));
+        return List.copyOf(alertas);
     }
 
     private DashboardStatusResponse criarResumoStatus(

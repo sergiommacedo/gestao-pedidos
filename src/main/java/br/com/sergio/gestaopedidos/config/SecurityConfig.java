@@ -129,6 +129,9 @@ public class SecurityConfig {
                         .requestMatchers("/insumos/**")
                         .hasRole("ADMIN")
 
+                        .requestMatchers("/fichas-tecnicas/**")
+                        .hasRole("ADMIN")
+
                         .requestMatchers("/compras/**")
                         .hasRole("ADMIN")
 

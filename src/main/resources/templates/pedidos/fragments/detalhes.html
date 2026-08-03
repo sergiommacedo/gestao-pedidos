@@ -111,6 +111,21 @@
             </h3>
             <span th:text="${pedido.motivoCancelamento != null and !pedido.motivoCancelamento.isBlank()
                 ? pedido.motivoCancelamento : 'Motivo não informado.'}"></span>
+            <div class="mt-2" th:if="${pedido.estoqueMovimentado}"><i class="bi bi-box-seam me-1"></i>O estoque deste pedido ainda não é devolvido automaticamente.</div>
+        </section>
+
+        <section class="mb-4" aria-label="Movimentações do Estoque">
+            <h3 class="h6 text-uppercase text-muted mb-2"><i class="bi bi-box-arrow-down me-1"></i> Movimentações do Estoque</h3>
+            <div class="border rounded overflow-hidden" th:if="${movimentacoesEstoque != null and !movimentacoesEstoque.empty}">
+                <div class="row g-2 p-3 border-bottom" th:each="m:${movimentacoesEstoque}">
+                    <div class="col-sm-4"><small class="text-muted d-block">Produto</small><strong th:text="${m.produtoNome}"></strong></div>
+                    <div class="col-4 col-sm-2"><small class="text-muted d-block">Quantidade</small><span th:text="${@formatacao.formatarDecimalBrasileiro(m.quantidade,m.unidade.name()=='UNIDADE'?0:3)+' '+m.unidade.simbolo}"></span></div>
+                    <div class="col-4 col-sm-2"><small class="text-muted d-block">Saldo anterior</small><span th:text="${@formatacao.formatarDecimalBrasileiro(m.saldoAnterior,m.unidade.name()=='UNIDADE'?0:3)}"></span></div>
+                    <div class="col-4 col-sm-2"><small class="text-muted d-block">Saldo posterior</small><strong th:text="${@formatacao.formatarDecimalBrasileiro(m.saldoPosterior,m.unidade.name()=='UNIDADE'?0:3)}"></strong></div>
+                    <div class="col-sm-2"><small class="text-muted d-block">Data</small><span class="text-nowrap" th:text="${#temporals.format(m.dataMovimentacao,'dd/MM/yyyy HH:mm')}"></span></div>
+                </div>
+            </div>
+            <div class="border rounded p-3 text-muted" th:if="${movimentacoesEstoque == null or movimentacoesEstoque.empty}">Este pedido ainda não movimentou estoque.</div>
         </section>
 
         <section class="border rounded p-3 ms-auto" style="max-width: 420px;" aria-label="Totais">

@@ -120,7 +120,7 @@ public class EstoqueWebController {
     }
 
     private void prepararFormulario(Model model) {
-        model.addAttribute("categorias", TipoItemEstoque.values());
+        model.addAttribute("categorias", categoriasManuais());
         model.addAttribute("insumos", insumoService.buscarAtivosPorNome(""));
         model.addAttribute("produtosRevenda", produtoService.buscarRevendaAtivosPorNome(""));
         model.addAttribute("tiposSaida", new TipoMovimentacaoEstoque[]{TipoMovimentacaoEstoque.SAIDA_CONSUMO_MANUAL,
@@ -128,5 +128,6 @@ public class EstoqueWebController {
     }
 
     private int tamanhoValido(int tamanho, int padrao) { return TAMANHOS.contains(tamanho) ? tamanho : padrao; }
+    private TipoItemEstoque[] categoriasManuais(){return new TipoItemEstoque[]{TipoItemEstoque.INSUMO,TipoItemEstoque.PRODUTO_REVENDA};}
     private LocalDateTime agora() { return LocalDateTime.now().withSecond(0).withNano(0); }
 }

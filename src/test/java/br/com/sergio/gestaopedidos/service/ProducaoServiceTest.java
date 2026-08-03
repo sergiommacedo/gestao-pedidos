@@ -2,6 +2,8 @@ package br.com.sergio.gestaopedidos.service;
 
 import br.com.sergio.gestaopedidos.dto.producao.*;
 import br.com.sergio.gestaopedidos.entity.Producao;
+import br.com.sergio.gestaopedidos.entity.*;
+import br.com.sergio.gestaopedidos.enums.*;
 import br.com.sergio.gestaopedidos.exception.BusinessException;
 import br.com.sergio.gestaopedidos.repository.*;
 import org.junit.jupiter.api.Test;
@@ -136,7 +138,8 @@ class ProducaoServiceTest {
         return ProducaoRequest.builder().dataProducao(data).saldoInicialMateriais(bdOuNulo(inicial))
                 .valorComprasMateriais(bdOuNulo(compras)).saldoFinalMateriais(bdOuNulo(saldoFinal))
                 .valorEmbalagens(bdOuNulo(embalagens)).valorGasEnergia(bdOuNulo(gas))
-                .valorOutros(bdOuNulo(outros)).observacao(" teste ").build();
+                .valorOutros(bdOuNulo(outros)).observacao(" teste ")
+                .itens(List.of(ItemProducaoRequest.builder().produtoId(10L).quantidade(BigDecimal.ONE).build())).build();
     }
 
     private Producao entidade(Long id, LocalDate data, String inicial, String compras, String saldoFinal,
@@ -174,7 +177,10 @@ class ProducaoServiceTest {
             ClassLoader loader = getClass().getClassLoader();
             producoes = (ProducaoRepository) Proxy.newProxyInstance(loader, new Class[]{ProducaoRepository.class}, this);
             PedidoRepository pedidos = (PedidoRepository) Proxy.newProxyInstance(loader, new Class[]{PedidoRepository.class}, this);
-            return new ProducaoService(producoes, pedidos);
+            ProdutoRepository produtos = (ProdutoRepository) Proxy.newProxyInstance(loader, new Class[]{ProdutoRepository.class}, this);
+            FichaTecnicaRepository fichas = (FichaTecnicaRepository) Proxy.newProxyInstance(loader, new Class[]{FichaTecnicaRepository.class}, this);
+            MovimentacaoEstoqueRepository movimentos = (MovimentacaoEstoqueRepository) Proxy.newProxyInstance(loader, new Class[]{MovimentacaoEstoqueRepository.class}, this);
+            return new ProducaoService(producoes, pedidos, produtos, fichas, movimentos, null);
         }
 
         public Object invoke(Object proxy, Method method, Object[] args) {
@@ -182,7 +188,9 @@ class ProducaoServiceTest {
                 case "existsByDataProducao" -> duplicada;
                 case "existsByDataProducaoAndIdNot" -> duplicadaAtualizacao;
                 case "saveAndFlush" -> { entidade = (Producao) args[0]; if (entidade.getId() == null) entidade.setId(1L); yield entidade; }
-                case "findById" -> Optional.ofNullable(entidade);
+                case "findById" -> proxy == producoes ? Optional.ofNullable(entidade) : Optional.of(Produto.builder().id(10L).nome("Feijoada").ativo(true).tipoProduto(TipoProduto.PRODUZIDO).unidadeVenda(UnidadeVenda.UNIDADE).build());
+                case "buscarDetalhada" -> Optional.ofNullable(entidade);
+                case "findByProdutoId" -> Optional.of(FichaTecnica.builder().id(20L).produto(Produto.builder().id(10L).nome("Feijoada").ativo(true).tipoProduto(TipoProduto.PRODUZIDO).unidadeVenda(UnidadeVenda.UNIDADE).build()).ativa(true).build());
                 case "findFirstByOrderByDataProducaoDesc" -> Optional.ofNullable(maisRecente);
                 case "findFirstByDataProducaoLessThanOrderByDataProducaoDesc" -> { consultouAnterior = true; dataConsultadaAnterior = (LocalDate) args[0]; yield Optional.ofNullable(anterior); }
                 case "delete" -> { if (proxy == producoes) excluiuProducao = true; else alterouPedido = true; yield null; }

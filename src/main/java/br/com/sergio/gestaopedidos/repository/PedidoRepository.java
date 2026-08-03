@@ -17,6 +17,8 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
@@ -27,6 +29,19 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
+    interface ResumoDashboard {
+        Long getTotal(); Long getValidos(); Long getCancelados(); Long getEmPreparacao();
+        Long getSaiuParaEntrega(); BigDecimal getProdutos(); BigDecimal getTaxas(); BigDecimal getFaturamento();
+    }
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"cliente", "itens", "itens.produto"})
+    @Query("SELECT p FROM Pedido p WHERE p.id = :id")
+    Optional<Pedido> bloquearDetalhado(@Param("id") Long id);
+
+    @EntityGraph(attributePaths = {"cliente", "itens", "itens.produto"})
+    @Query("SELECT p FROM Pedido p WHERE p.id = :id")
+    Optional<Pedido> buscarDetalhado(@Param("id") Long id);
 
     interface ResumoFinanceiroProducao {
         LocalDate getDataProducao();
@@ -556,6 +571,22 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     );
 
     @Query("""
+            SELECT COUNT(p) AS total,
+                   SUM(CASE WHEN p.status <> :cancelado THEN 1 ELSE 0 END) AS validos,
+                   SUM(CASE WHEN p.status = :cancelado THEN 1 ELSE 0 END) AS cancelados,
+                   SUM(CASE WHEN p.status = :preparacao THEN 1 ELSE 0 END) AS emPreparacao,
+                   SUM(CASE WHEN p.status = :saiuEntrega THEN 1 ELSE 0 END) AS saiuParaEntrega,
+                   COALESCE(SUM(CASE WHEN p.status <> :cancelado THEN p.subtotal ELSE 0 END), 0) AS produtos,
+                   COALESCE(SUM(CASE WHEN p.status <> :cancelado THEN p.taxaEntrega ELSE 0 END), 0) AS taxas,
+                   COALESCE(SUM(CASE WHEN p.status <> :cancelado THEN p.valorTotal ELSE 0 END), 0) AS faturamento
+            FROM Pedido p WHERE p.dataAgendada = :data
+            """)
+    ResumoDashboard resumirDashboard(@Param("data") LocalDate data,
+                                      @Param("cancelado") StatusPedido cancelado,
+                                      @Param("preparacao") StatusPedido preparacao,
+                                      @Param("saiuEntrega") StatusPedido saiuEntrega);
+
+    @Query("""
             SELECT COALESCE(SUM(p.valorTotal), 0)
             FROM Pedido p
             WHERE p.dataAgendada = :dataAgendada
@@ -583,15 +614,16 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
                 c.nome,
                 p.tipoEntrega,
                 p.status,
-                p.valorTotal
+                p.valorTotal,
+                p.estoqueMovimentado
             )
             FROM Pedido p
             JOIN p.cliente c
             WHERE p.dataAgendada = :dataAgendada
             AND p.status IN :statusAtencao
             ORDER BY CASE
-                WHEN p.status = :statusPronto THEN 1
-                WHEN p.status = :statusSaiuEntrega THEN 2
+                WHEN p.status = :statusSaiuEntrega THEN 1
+                WHEN p.status = :statusPronto THEN 2
                 WHEN p.status = :statusEmPreparacao THEN 3
                 WHEN p.status = :statusPendente THEN 4
                 ELSE 5

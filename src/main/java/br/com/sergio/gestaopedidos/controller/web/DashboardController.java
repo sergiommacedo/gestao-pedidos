@@ -1,7 +1,6 @@
 package br.com.sergio.gestaopedidos.controller.web;
 
 import br.com.sergio.gestaopedidos.service.DashboardService;
-import br.com.sergio.gestaopedidos.service.PedidoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,31 +13,29 @@ import java.time.LocalDate;
 public class DashboardController {
 
     private final DashboardService dashboardService;
-    private final PedidoService pedidoService;
 
     @GetMapping("/")
     public String home(Model model) {
         LocalDate dataReferencia = LocalDate.now();
 
-        model.addAttribute(
-                "indicadores",
-                dashboardService.buscarIndicadores(dataReferencia)
-        );
+        var dashboard = dashboardService.buscarDashboard(dataReferencia);
+        model.addAttribute("dashboard", dashboard);
+        model.addAttribute("indicadores", dashboard.pedidos());
         model.addAttribute("dataReferencia", dataReferencia);
         model.addAttribute("dataReferenciaIso", dataReferencia.toString());
         model.addAttribute(
                 "pedidosAtencao",
-                dashboardService.buscarPedidosQuePrecisamAtencao(dataReferencia)
+                dashboard.pedidosAtencao()
         );
-        model.addAttribute("statusEditaveis", pedidoService.statusEditaveis());
-        model.addAttribute("statusImprimiveis", pedidoService.statusEditaveis());
         model.addAttribute(
                 "resumoStatus",
-                dashboardService.buscarResumoStatus(dataReferencia)
+                dashboard.resumoStatus()
         );
         model.addAttribute(
                 "resumoVendasDia",
-                dashboardService.buscarResumoVendasDia(dataReferencia)
+                new br.com.sergio.gestaopedidos.dto.resumo.ResumoVendasDiaResponse(dataReferencia,
+                        dashboard.produtosVendidos(), dashboard.pedidos().faturamentoProdutos(),
+                        dashboard.pedidos().taxasEntrega(), dashboard.pedidos().faturamentoDoDia())
         );
 
         return "dashboard/dashboard";

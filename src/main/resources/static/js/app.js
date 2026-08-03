@@ -20,8 +20,146 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarFormularioCompra();
     inicializarFormularioProduto();
     inicializarFormularioEstoque();
+    inicializarFormularioFichaTecnica();
+    inicializarItensProducao();
 
 });
+
+function inicializarFormularioFichaTecnica() {
+    const formulario = document.querySelector("[data-form-ficha-tecnica]");
+    if (!formulario) return;
+    const busca = formulario.querySelector("[data-ficha-busca]");
+    const resultados = formulario.querySelector("[data-ficha-resultados]");
+    const adicionar = formulario.querySelector("[data-ficha-adicionar]");
+    const container = formulario.querySelector("[data-ficha-itens]");
+    const vazio = formulario.querySelector("[data-ficha-vazio]");
+    const erro = formulario.querySelector("[data-ficha-erro]");
+    const produto = formulario.querySelector("[data-ficha-produto]");
+    const base = formulario.querySelector("[data-ficha-base]");
+    let selecionado = null, temporizador, requisicao = 0;
+    const moeda = valor => new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(valor || 0);
+    const numero = valor => Number.parseFloat(String(valor ?? "0").replace(",", ".")) || 0;
+    const escapar = valor => String(valor ?? "").replace(/[&<>'"]/g, caractere => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[caractere]);
+    const fechar = () => { clearTimeout(temporizador); requisicao++; resultados.replaceChildren(); resultados.classList.add("d-none"); };
+    const avisar = mensagem => { erro.textContent = mensagem; erro.classList.remove("d-none"); };
+
+    function atualizarBase() {
+        const opcao = produto?.options[produto.selectedIndex];
+        base.textContent = !opcao?.value ? "Selecione o produto"
+            : opcao.dataset.unidade === "QUILOGRAMA" ? "1 kg do produto" : "1 unidade do produto";
+    }
+
+    function reindexar() {
+        const linhas = [...container.querySelectorAll("[data-ficha-item]")];
+        linhas.forEach((linha, indice) => {
+            linha.querySelector("[data-ficha-item-id]").name = `itens[${indice}].id`;
+            linha.querySelector("[data-ficha-insumo-id]").name = `itens[${indice}].insumoId`;
+            linha.querySelector("[data-ficha-quantidade-item]").name = `itens[${indice}].quantidade`;
+        });
+        vazio.classList.toggle("d-none", linhas.length > 0);
+        formulario.querySelector("[data-ficha-quantidade]").textContent = String(linhas.length);
+        let total = 0, pendentes = 0;
+        linhas.forEach(linha => {
+            const quantidade = numero(linha.querySelector("[data-ficha-quantidade-item]").value);
+            const custo = numero(linha.dataset.custo);
+            const possui = linha.dataset.possuiCusto === "true";
+            if (!possui) pendentes++;
+            const estimado = possui ? quantidade * custo : 0;
+            linha.querySelector("[data-ficha-custo-estimado]").textContent = moeda(estimado);
+            total += estimado;
+        });
+        formulario.querySelector("[data-ficha-total]").textContent = moeda(total);
+        const situacao = formulario.querySelector("[data-ficha-situacao]");
+        situacao.textContent = pendentes ? "Custo pendente" : "Custo completo";
+        situacao.className = `badge ms-2 ${pendentes ? "text-bg-warning" : "text-bg-success"}`;
+        formulario.querySelector("[data-ficha-aviso]").classList.toggle("d-none", pendentes === 0);
+    }
+
+    function adicionarLinha(item) {
+        if ([...container.querySelectorAll("[data-ficha-item]")].some(l => l.dataset.insumoId === String(item.id))) {
+            avisar("Este insumo já foi adicionado à ficha técnica."); return;
+        }
+        const unidade = item.unidade;
+        const linha = document.createElement("div");
+        linha.className = "border rounded p-3 mb-3";
+        linha.dataset.fichaItem = ""; linha.dataset.insumoId = item.id;
+        linha.dataset.custo = item.custoMedio ?? 0; linha.dataset.possuiCusto = String(item.possuiCusto);
+        linha.innerHTML = `<input type="hidden" data-ficha-item-id value="${escapar(item.itemId || "")}"><input type="hidden" data-ficha-insumo-id value="${escapar(item.id)}"><div class="row g-3 align-items-end"><div class="col-md-3"><label class="form-label">Insumo</label><div class="form-control bg-body-tertiary">${escapar(item.nome)}</div></div><div class="col-sm-6 col-md-2"><label class="form-label">Quantidade utilizada</label><input class="form-control" type="number" min="${unidade === "UNIDADE" ? "1" : "0.001"}" step="${unidade === "UNIDADE" ? "1" : "0.001"}" value="${escapar(item.quantidade ?? (unidade === "UNIDADE" ? "1" : "0.001"))}" data-ficha-quantidade-item required></div><div class="col-sm-6 col-md-1"><label class="form-label">Unidade</label><div class="form-control bg-body-tertiary">${escapar(item.simbolo)}</div></div><div class="col-md-2"><label class="form-label">Custo médio</label><div class="form-control bg-body-tertiary">${item.possuiCusto ? escapar(moeda(item.custoMedio)) : "Não disponível"}</div></div><div class="col-md-2"><label class="form-label">Custo estimado</label><div class="form-control bg-body-tertiary" data-ficha-custo-estimado>R$ 0,00</div></div><div class="col-md-2"><button type="button" class="btn btn-outline-danger w-100" data-ficha-remover><i class="bi bi-trash me-1"></i> Remover</button></div></div>`;
+        container.append(linha); erro.classList.add("d-none"); reindexar();
+    }
+
+    busca.addEventListener("input", () => {
+        selecionado = null; adicionar.disabled = true; fechar();
+        const termo = busca.value.trim(); if (termo.length < 1) return;
+        const atual = ++requisicao;
+        temporizador = setTimeout(async () => {
+            try {
+                const resposta = await fetch(`/fichas-tecnicas/insumos/buscar?termo=${encodeURIComponent(termo)}`);
+                if (!resposta.ok) throw new Error();
+                const itens = await resposta.json(); if (atual !== requisicao) return;
+                resultados.replaceChildren();
+                itens.forEach(item => {
+                    const botao = document.createElement("button"); botao.type = "button";
+                    botao.className = "list-group-item list-group-item-action";
+                    botao.textContent = `${item.nome} · ${item.unidade.descricao || item.unidade}`;
+                    botao.addEventListener("click", () => {
+                        selecionado = {...item, simbolo: ({UNIDADE:"un",QUILOGRAMA:"kg",GRAMA:"g",LITRO:"L",MILILITRO:"ml"})[item.unidade] || ""};
+                        busca.value = item.nome; adicionar.disabled = false; fechar(); adicionar.focus();
+                    });
+                    resultados.append(botao);
+                });
+                resultados.classList.toggle("d-none", itens.length === 0);
+            } catch { if (atual === requisicao) avisar("Não foi possível pesquisar os insumos."); }
+        }, 250);
+    });
+    adicionar.addEventListener("click", () => { if (selecionado) { adicionarLinha(selecionado); selecionado = null; busca.value = ""; adicionar.disabled = true; busca.focus(); } });
+    container.addEventListener("input", event => { if (event.target.matches("[data-ficha-quantidade-item]")) reindexar(); });
+    container.addEventListener("click", event => { const botao = event.target.closest("[data-ficha-remover]"); if (botao) { botao.closest("[data-ficha-item]").remove(); reindexar(); } });
+    busca.addEventListener("keydown", event => { if (event.key === "Escape") fechar(); });
+    document.addEventListener("click", event => { if (!resultados.contains(event.target) && event.target !== busca) fechar(); });
+    produto?.addEventListener("change", atualizarBase); atualizarBase();
+    formulario.querySelectorAll("[data-ficha-item-inicial]").forEach(i => adicionarLinha({itemId:i.dataset.id,id:i.dataset.insumoId,nome:i.dataset.nome,unidade:i.dataset.unidade,simbolo:i.dataset.simbolo,quantidade:i.dataset.quantidade,custoMedio:i.dataset.custo,estoqueAtual:i.dataset.estoque,possuiCusto:i.dataset.possuiCusto === "true"}));
+    reindexar();
+}
+
+function inicializarItensProducao() {
+    const area = document.querySelector("[data-itens-producao]");
+    if (!area) return;
+    const lista = area.querySelector("[data-lista-produtos-producao]");
+    const template = area.querySelector("[data-template-produto-producao]");
+    const reindexar = () => {
+        lista.querySelectorAll("[data-item-producao]").forEach((linha, indice) => {
+            linha.querySelectorAll("[data-campo]").forEach(campo => {
+                campo.name = `itens[${indice}].${campo.dataset.campo}`;
+                campo.id = `itens${indice}.${campo.dataset.campo}`;
+            });
+        });
+    };
+    const atualizarUnidade = linha => {
+        const select = linha.querySelector("[data-produto-producao]");
+        const unidade = select?.selectedOptions[0]?.dataset.unidade;
+        const alvo = linha.querySelector("[data-unidade-producao]");
+        if (alvo) alvo.textContent = unidade === "QUILOGRAMA" ? "kg" : unidade === "UNIDADE" ? "un" : "—";
+    };
+    area.addEventListener("click", event => {
+        if (event.target.closest("[data-adicionar-produto-producao]")) {
+            lista.append(template.content.cloneNode(true)); reindexar();
+        }
+        const remover = event.target.closest("[data-remover-produto-producao]");
+        if (remover && lista.querySelectorAll("[data-item-producao]").length > 1) {
+            remover.closest("[data-item-producao]").remove(); reindexar();
+        }
+    });
+    area.addEventListener("change", event => {
+        if (!event.target.matches("[data-produto-producao]")) return;
+        const atual = event.target.value;
+        const duplicado = [...lista.querySelectorAll("[data-produto-producao]")]
+            .some(outro => outro !== event.target && atual && outro.value === atual);
+        if (duplicado) { event.target.value = ""; alert("Este produto já foi adicionado à produção."); }
+        atualizarUnidade(event.target.closest("[data-item-producao]"));
+    });
+    lista.querySelectorAll("[data-item-producao]").forEach(atualizarUnidade);
+}
 
 function inicializarFormularioEstoque() {
     const formulario = document.querySelector("[data-form-estoque]");

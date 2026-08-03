@@ -10,6 +10,8 @@ public record DashboardPedidoAtencaoResponse(
         String clienteNome,
         TipoEntrega tipoEntrega,
         StatusPedido status,
-        BigDecimal valorTotal
+        BigDecimal valorTotal,
+        Boolean estoqueMovimentado
 ) {
+    public String situacaoEstoque() { return Boolean.TRUE.equals(estoqueMovimentado) ? "Movimentado" : "Pendente"; }
 }

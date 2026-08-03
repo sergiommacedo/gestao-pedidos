@@ -49,6 +49,7 @@ public class PedidoService {
     private final ClienteRepository clienteRepository;
     private final ProdutoRepository produtoRepository;
     private final PedidoMapper pedidoMapper;
+    private final EstoqueService estoqueService;
 
     @Transactional(readOnly = true)
     public List<PedidoResponse> listarTodos() {
@@ -195,6 +196,8 @@ public class PedidoService {
     ) {
         Pedido pedido = buscarEntidadePorId(id);
         validarEditavel(pedido);
+        boolean estoqueMovimentado = Boolean.TRUE.equals(pedido.getEstoqueMovimentado());
+        if (estoqueMovimentado) validarItensInalterados(pedido, request, itemIds);
         Cliente cliente = buscarClientePorId(request.clienteId());
 
         pedido.setCliente(cliente);
@@ -204,7 +207,7 @@ public class PedidoService {
         pedido.setTaxaEntrega(normalizarTaxaEntrega(request.taxaEntrega()));
         pedido.setObservacao(request.observacao());
 
-        atualizarItensERecalcular(pedido, request, itemIds);
+        if (!estoqueMovimentado) atualizarItensERecalcular(pedido, request, itemIds);
 
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
     }
@@ -228,7 +231,7 @@ public class PedidoService {
             StatusPedido novoStatus,
             String motivoCancelamento
     ) {
-        Pedido pedido = buscarEntidadePorId(id);
+        Pedido pedido = pedidoRepository.bloquearDetalhado(id).orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
         Set<StatusPedido> permitidos = transicoesPermitidas(
                 pedido.getStatus(),
                 pedido.getTipoEntrega()
@@ -268,6 +271,9 @@ public class PedidoService {
             );
         }
 
+        if (pedido.getStatus() == StatusPedido.PENDENTE && novoStatus == StatusPedido.EM_PREPARACAO) {
+            estoqueService.processarPedido(pedido);
+        }
         pedido.setStatus(novoStatus);
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
     }
@@ -351,6 +357,9 @@ public class PedidoService {
         pedido.setSubtotal(subtotalPedido);
         pedido.calcularValorTotal();
     }
+
+    private void validarItensInalterados(Pedido pedido,PedidoRequest request,List<Long> itemIds){if(itemIds==null||request.itens()==null||itemIds.size()!=pedido.getItens().size()||request.itens().size()!=pedido.getItens().size())bloquearItensMovimentados();Map<Long,ItemPedido> atuais=pedido.getItens().stream().collect(java.util.stream.Collectors.toMap(ItemPedido::getId,java.util.function.Function.identity()));Set<Long> vistos=new HashSet<>();for(int i=0;i<itemIds.size();i++){Long id=itemIds.get(i);ItemPedido atual=id==null?null:atuais.get(id);ItemPedidoRequest recebido=request.itens().get(i);if(atual==null||!vistos.add(id)||!atual.getProduto().getId().equals(recebido.produtoId())||atual.getQuantidade().compareTo(recebido.quantidade())!=0)bloquearItensMovimentados();}}
+    private void bloquearItensMovimentados(){throw new BusinessException("O pedido já movimentou estoque e não pode ter seus itens alterados.");}
 
     private void atualizarItemExistente(
             ItemPedido itemPedido,
@@ -447,7 +456,7 @@ public class PedidoService {
     }
 
     private Pedido buscarEntidadePorId(Long id) {
-        return pedidoRepository.findById(id)
+        return pedidoRepository.buscarDetalhado(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Pedido não encontrado."

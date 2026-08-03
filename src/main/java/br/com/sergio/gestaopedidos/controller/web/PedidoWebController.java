@@ -15,6 +15,7 @@ import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
 import br.com.sergio.gestaopedidos.service.ClienteService;
 import br.com.sergio.gestaopedidos.service.DashboardService;
 import br.com.sergio.gestaopedidos.service.PedidoService;
+import br.com.sergio.gestaopedidos.service.EstoqueService;
 import br.com.sergio.gestaopedidos.service.ProdutoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +59,7 @@ public class PedidoWebController {
     );
 
     private final PedidoService pedidoService;
+    private final EstoqueService estoqueService;
     private final DashboardService dashboardService;
     private final ClienteService clienteService;
     private final ProdutoService produtoService;
@@ -391,6 +393,7 @@ public class PedidoWebController {
     ) {
         PedidoResponse pedido = pedidoService.buscarPorId(id);
         model.addAttribute("pedido", pedido);
+        model.addAttribute("movimentacoesEstoque", estoqueService.movimentacoesPedido(id));
         String origemNormalizada = normalizarOrigem(origem);
         boolean origemRelatorio = "relatorio".equals(origemNormalizada);
         model.addAttribute(
@@ -438,6 +441,10 @@ public class PedidoWebController {
                     "Pedido " + pedido.id() + " alterado para "
                             + pedido.status().getDescricao() + "."
             );
+            if (pedido.status() == StatusPedido.CANCELADO && Boolean.TRUE.equals(pedido.estoqueMovimentado())) {
+                redirectAttributes.addFlashAttribute("mensagemSucesso", "Pedido " + pedido.id()
+                        + " cancelado. O estoque deste pedido ainda não é devolvido automaticamente.");
+            }
         } catch (BusinessException | ResourceNotFoundException exception) {
             redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
         }

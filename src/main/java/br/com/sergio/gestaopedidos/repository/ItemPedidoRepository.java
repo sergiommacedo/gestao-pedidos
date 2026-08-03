@@ -52,6 +52,20 @@ public interface ItemPedidoRepository extends JpaRepository<ItemPedido, Long> {
             @Param("statusExcluido") StatusPedido statusExcluido
     );
 
+    @Query("""
+            SELECT new br.com.sergio.gestaopedidos.dto.resumo.ResumoProdutoVendidoResponse(
+                produto.id, produto.nome, produto.unidadeVenda, SUM(item.quantidade), SUM(item.subtotal))
+            FROM ItemPedido item JOIN item.pedido pedido JOIN item.produto produto
+            WHERE pedido.dataAgendada = :dataAgendada AND pedido.status <> :statusExcluido
+            GROUP BY produto.id, produto.nome, produto.unidadeVenda
+            ORDER BY SUM(item.subtotal) DESC, produto.nome ASC
+            """)
+    List<ResumoProdutoVendidoResponse> resumirProdutosMaisVendidosDashboard(
+            @Param("dataAgendada") LocalDate dataAgendada,
+            @Param("statusExcluido") StatusPedido statusExcluido,
+            Pageable pageable
+    );
+
     String FILTROS_RELATORIO_PRODUCAO = """
             WHERE pedido.dataAgendada BETWEEN :dataInicial AND :dataFinal
             AND pedido.status <> :statusCancelado
