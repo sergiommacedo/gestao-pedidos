@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Pedidos</title>
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/font/bootstrap-icons.css}">
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 12mm 10mm 14mm;
+            @bottom-right {
+                content: "Página " counter(page);
+                font-size: 8pt;
+            }
+        }
+
+        body {
+            color: #111;
+            background: #f5f5f5;
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+        }
+
+        .print-document {
+            max-width: 1400px;
+            margin: 1.5rem auto;
+            padding: 1.5rem;
+            background: #fff;
+            box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.12);
+        }
+
+        .print-logo {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+        }
+
+        .print-indicators {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 0.5rem;
+        }
+
+        .print-indicator {
+            padding: 0.55rem 0.65rem;
+            border: 1px solid #bbb;
+            border-radius: 0.25rem;
+        }
+
+        table {
+            font-size: 8.5pt;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .print-footer {
+            border-top: 1px solid #777;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .print-controls {
+                display: none !important;
+            }
+
+            .print-document {
+                max-width: none;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+            }
+
+            a {
+                color: inherit;
+                text-decoration: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="print-controls container-fluid py-3 bg-white border-bottom sticky-top">
+    <div class="d-flex justify-content-end gap-2">
+        <a class="btn btn-outline-secondary"
+           th:href="@{/relatorios/pedidos(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, ordenarPor=${ordenarPor}, direcao=${direcao})}">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Voltar para o Relatório
+        </a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+            <i class="bi bi-printer me-1" aria-hidden="true"></i> Imprimir
+        </button>
+    </div>
+</div>
+
+<main class="print-document">
+    <header class="d-flex align-items-center gap-3 border-bottom pb-3 mb-3">
+        <img class="print-logo" th:src="${configuracaoEmpresa.logoUrl}"
+             th:alt="${'Logo ' + configuracaoEmpresa.nomeEmpresa}">
+        <div>
+            <p class="fw-semibold mb-1" th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</p>
+            <h1 class="h4 fw-bold mb-1">Relatório de Pedidos</h1>
+            <p class="mb-0">
+                Período:
+                <strong th:text="${#temporals.format(dataInicial, 'dd/MM/yyyy')}">01/08/2026</strong>
+                a
+                <strong th:text="${#temporals.format(dataFinal, 'dd/MM/yyyy')}">31/08/2026</strong>
+            </p>
+            <small>
+                Emitido em <span th:text="${#temporals.format(emitidoEm, 'dd/MM/yyyy HH:mm')}">03/08/2026 10:00</span>
+            </small>
+        </div>
+    </header>
+
+    <section class="print-indicators mb-3" aria-label="Indicadores">
+        <div class="print-indicator"><small>Pedidos</small><strong class="d-block" th:text="${indicadores.totalPedidos}">0</strong></div>
+        <div class="print-indicator"><small>Pedidos válidos</small><strong class="d-block" th:text="${indicadores.pedidosValidos}">0</strong></div>
+        <div class="print-indicator"><small>Cancelados</small><strong class="d-block" th:text="${indicadores.cancelados}">0</strong></div>
+        <div class="print-indicator"><small>Faturamento</small><strong class="d-block" th:text="${@formatacao.formatarMoeda(indicadores.faturamento)}">R$ 0,00</strong></div>
+        <div class="print-indicator"><small>Taxas de entrega</small><strong class="d-block" th:text="${@formatacao.formatarMoeda(indicadores.taxasEntrega)}">R$ 0,00</strong></div>
+        <div class="print-indicator"><small>Ticket médio</small><strong class="d-block" th:text="${@formatacao.formatarMoeda(indicadores.ticketMedio)}">R$ 0,00</strong></div>
+    </section>
+
+    <table class="table table-bordered table-sm align-middle">
+        <thead class="table-light">
+        <tr>
+            <th>ID</th><th>Data agendada</th><th>Cadastro</th><th>Cliente</th><th>Telefone</th>
+            <th>Status</th><th>Entrega</th><th>Pagamento</th>
+            <th class="text-end">Subtotal</th><th class="text-end">Taxa</th><th class="text-end">Total</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="pedido : ${pedidos}" th:classappend="${pedido.status.name() == 'CANCELADO'} ? ' table-secondary'">
+            <td th:text="${'#' + pedido.id}">#1</td>
+            <td class="text-nowrap" th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}">03/08/2026</td>
+            <td class="text-nowrap" th:text="${#temporals.format(pedido.dataPedido, 'dd/MM/yyyy HH:mm')}">03/08/2026 10:00</td>
+            <td th:text="${pedido.clienteNome}">Cliente</td>
+            <td class="text-nowrap" th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}">Telefone</td>
+            <td th:text="${pedido.status.descricao}">Status</td>
+            <td th:text="${pedido.tipoEntrega.name() == 'ENTREGA' ? 'Entrega' : 'Retirada'}">Entrega</td>
+            <td th:text="${pedido.formaPagamento.descricao}">Pix</td>
+            <td class="text-end text-nowrap" th:text="${@formatacao.formatarMoeda(pedido.subtotal)}">R$ 0,00</td>
+            <td class="text-end text-nowrap" th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}">R$ 0,00</td>
+            <td class="text-end text-nowrap" th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}">R$ 0,00</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(pedidos)}">
+            <td colspan="11" class="text-center py-4">Nenhum pedido encontrado.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <footer class="print-footer d-flex justify-content-between gap-3 mt-3 pt-2 small">
+        <span><strong th:text="${#lists.size(pedidos)}">0</strong> registros</span>
+        <span>Faturamento: <strong th:text="${@formatacao.formatarMoeda(indicadores.faturamento)}">R$ 0,00</strong></span>
+        <span th:text="${configuracaoEmpresa.nomeEmpresa}">Empresa</span>
+    </footer>
+</main>
+
+</body>
+</html>

@@ -8,6 +8,7 @@ import br.com.sergio.gestaopedidos.enums.StatusPedido;
 import br.com.sergio.gestaopedidos.enums.TipoEntrega;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -91,6 +92,42 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             AND (:formaPagamento IS NULL OR p.formaPagamento = :formaPagamento)
             """)
     Page<RelatorioPedidoLinhaResponse> buscarRelatorioPedidos(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("cliente") String cliente,
+            @Param("status") StatusPedido status,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT new br.com.sergio.gestaopedidos.dto.relatorio.RelatorioPedidoLinhaResponse(
+                p.id,
+                p.dataAgendada,
+                p.dataPedido,
+                c.nome,
+                c.telefone,
+                p.status,
+                p.tipoEntrega,
+                p.formaPagamento,
+                p.subtotal,
+                p.taxaEntrega,
+                p.valorTotal
+            )
+            FROM Pedido p
+            JOIN p.cliente c
+            WHERE p.dataAgendada BETWEEN :dataInicial AND :dataFinal
+            AND (
+                :cliente = ''
+                OR LOWER(c.nome) LIKE LOWER(CONCAT('%', :cliente, '%'))
+                OR c.telefone LIKE CONCAT('%', :cliente, '%')
+            )
+            AND (:status IS NULL OR p.status = :status)
+            AND (:tipoEntrega IS NULL OR p.tipoEntrega = :tipoEntrega)
+            AND (:formaPagamento IS NULL OR p.formaPagamento = :formaPagamento)
+            """)
+    Slice<RelatorioPedidoLinhaResponse> buscarLoteRelatorioPedidos(
             @Param("dataInicial") LocalDate dataInicial,
             @Param("dataFinal") LocalDate dataFinal,
             @Param("cliente") String cliente,

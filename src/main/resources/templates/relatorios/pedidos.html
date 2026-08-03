@@ -13,10 +13,19 @@
                 Consulte pedidos, valores, entregas e cancelamentos por período.
             </p>
         </div>
-        <a th:href="@{/relatorios}" class="btn btn-outline-secondary flex-shrink-0">
-            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
-            Voltar para Relatórios
-        </a>
+        <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+            <a th:href="@{/relatorios/pedidos/imprimir(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, ordenarPor=${ordenarPor}, direcao=${direcao})}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-printer me-1" aria-hidden="true"></i> Imprimir
+            </a>
+            <a th:href="@{/relatorios/pedidos/excel(dataInicial=${dataInicial}, dataFinal=${dataFinal}, cliente=${cliente}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, ordenarPor=${ordenarPor}, direcao=${direcao})}"
+               class="btn btn-success">
+                <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i> Exportar Excel
+            </a>
+            <a th:href="@{/relatorios}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Voltar para Relatórios
+            </a>
+        </div>
     </header>
 
     <div class="card shadow-sm mb-4">
@@ -102,6 +111,10 @@
             <div class="alert alert-danger mt-3 mb-0" role="alert" th:if="${erroPeriodo != null}">
                 <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
                 <span th:text="${erroPeriodo}">Período inválido.</span>
+            </div>
+            <div class="alert alert-warning mt-3 mb-0" role="alert" th:if="${erroExportacao != null}">
+                <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                <span th:text="${erroExportacao}">Não foi possível gerar a saída.</span>
             </div>
         </div>
     </div>

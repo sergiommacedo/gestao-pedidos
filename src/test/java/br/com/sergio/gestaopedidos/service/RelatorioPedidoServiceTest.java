@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.domain.Sort;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -17,6 +19,7 @@ import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -155,6 +158,59 @@ class RelatorioPedidoServiceTest {
         assertThat(fake.argumentosPagina[6]).isSameAs(pageable);
     }
 
+    @Test
+    void deveCarregarImpressaoEExcelEmLotesComTodosOsFiltrosEOrdenacao() {
+        AtomicReference<Object[]> argumentosLote = new AtomicReference<>();
+        PedidoRepository repository = repository((proxy, metodo, argumentos) -> {
+            if ("buscarLoteRelatorioPedidos".equals(metodo.getName())) {
+                argumentosLote.set(argumentos);
+                return new SliceImpl<>(List.of(), (PageRequest) argumentos[6], false);
+            }
+            if ("buscarIndicadoresRelatorioPedidos".equals(metodo.getName())) {
+                return indicadores(0L, 0L, 0L, "0", "0");
+            }
+            return null;
+        });
+        var filtro = new RelatorioPedidoService.FiltroRelatorioPedidos(
+                INICIO,
+                FIM,
+                " Maria ",
+                StatusPedido.ENTREGUE,
+                TipoEntrega.ENTREGA,
+                FormaPagamento.PIX
+        );
+        Sort ordenacao = Sort.by(Sort.Direction.DESC, "dataAgendada");
+
+        var resultado = new RelatorioPedidoService(repository).buscarParaSaida(filtro, ordenacao);
+
+        assertThat(resultado.pedidos()).isEmpty();
+        assertThat(argumentosLote.get()[0]).isEqualTo(INICIO);
+        assertThat(argumentosLote.get()[1]).isEqualTo(FIM);
+        assertThat(argumentosLote.get()[2]).isEqualTo("Maria");
+        assertThat(argumentosLote.get()[3]).isEqualTo(StatusPedido.ENTREGUE);
+        assertThat(argumentosLote.get()[4]).isEqualTo(TipoEntrega.ENTREGA);
+        assertThat(argumentosLote.get()[5]).isEqualTo(FormaPagamento.PIX);
+        assertThat(((PageRequest) argumentosLote.get()[6]).getSort()).isEqualTo(ordenacao);
+    }
+
+    @Test
+    void deveRejeitarSaidaAcimaDeDezMilRegistros() {
+        List<RelatorioPedidoLinhaResponse> loteCheio = java.util.Collections.nCopies(500, null);
+        PedidoRepository repository = repository((proxy, metodo, argumentos) -> {
+            if ("buscarLoteRelatorioPedidos".equals(metodo.getName())) {
+                return new SliceImpl<>(loteCheio, (PageRequest) argumentos[6], true);
+            }
+            return indicadores(0L, 0L, 0L, "0", "0");
+        });
+
+        assertThatThrownBy(() -> new RelatorioPedidoService(repository).buscarParaSaida(
+                filtroPadrao(),
+                Sort.by(Sort.Direction.DESC, "dataAgendada")
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("10.000 registros");
+    }
+
     private RelatorioPedidoService.FiltroRelatorioPedidos filtroPadrao() {
         return new RelatorioPedidoService.FiltroRelatorioPedidos(
                 INICIO, FIM, "", null, null, null
@@ -183,6 +239,14 @@ class RelatorioPedidoServiceTest {
                     case "getTaxasEntrega" -> new BigDecimal(taxas);
                     default -> null;
                 }
+        );
+    }
+
+    private PedidoRepository repository(InvocationHandler handler) {
+        return (PedidoRepository) Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class<?>[]{PedidoRepository.class},
+                handler
         );
     }
 

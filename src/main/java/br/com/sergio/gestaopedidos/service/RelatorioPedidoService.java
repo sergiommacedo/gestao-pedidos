@@ -9,17 +9,25 @@ import br.com.sergio.gestaopedidos.exception.BusinessException;
 import br.com.sergio.gestaopedidos.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class RelatorioPedidoService {
+
+    public static final int LIMITE_REGISTROS_SAIDA = 10_000;
+    private static final int TAMANHO_LOTE_SAIDA = 500;
 
     private final PedidoRepository pedidoRepository;
 
@@ -37,6 +45,52 @@ public class RelatorioPedidoService {
                 filtro.formaPagamento(),
                 pageable
         );
+        RelatorioPedidoIndicadoresResponse indicadores = buscarIndicadores(filtro, cliente);
+        return new ResultadoRelatorioPedidos(pedidos, indicadores);
+    }
+
+    @Transactional(readOnly = true)
+    public ResultadoCompletoRelatorioPedidos buscarParaSaida(
+            FiltroRelatorioPedidos filtro,
+            Sort ordenacao
+    ) {
+        validarPeriodo(filtro.dataInicial(), filtro.dataFinal());
+        String cliente = filtro.cliente() == null ? "" : filtro.cliente().trim();
+        List<RelatorioPedidoLinhaResponse> pedidos = new ArrayList<>();
+        int numeroLote = 0;
+        Slice<RelatorioPedidoLinhaResponse> lote;
+
+        do {
+            lote = pedidoRepository.buscarLoteRelatorioPedidos(
+                    filtro.dataInicial(),
+                    filtro.dataFinal(),
+                    cliente,
+                    filtro.status(),
+                    filtro.tipoEntrega(),
+                    filtro.formaPagamento(),
+                    PageRequest.of(numeroLote, TAMANHO_LOTE_SAIDA, ordenacao)
+            );
+            pedidos.addAll(lote.getContent());
+
+            if (pedidos.size() > LIMITE_REGISTROS_SAIDA
+                    || (pedidos.size() == LIMITE_REGISTROS_SAIDA && lote.hasNext())) {
+                throw new BusinessException(
+                        "O relatório excede o limite de 10.000 registros. Reduza o período ou aplique mais filtros."
+                );
+            }
+            numeroLote++;
+        } while (lote.hasNext());
+
+        return new ResultadoCompletoRelatorioPedidos(
+                List.copyOf(pedidos),
+                buscarIndicadores(filtro, cliente)
+        );
+    }
+
+    private RelatorioPedidoIndicadoresResponse buscarIndicadores(
+            FiltroRelatorioPedidos filtro,
+            String cliente
+    ) {
         PedidoRepository.IndicadoresRelatorioPedidos agregado =
                 pedidoRepository.buscarIndicadoresRelatorioPedidos(
                         filtro.dataInicial(),
@@ -47,9 +101,7 @@ public class RelatorioPedidoService {
                         filtro.formaPagamento(),
                         StatusPedido.CANCELADO
                 );
-
-        RelatorioPedidoIndicadoresResponse indicadores = montarIndicadores(agregado);
-        return new ResultadoRelatorioPedidos(pedidos, indicadores);
+        return montarIndicadores(agregado);
     }
 
     private void validarPeriodo(LocalDate dataInicial, LocalDate dataFinal) {
@@ -107,6 +159,12 @@ public class RelatorioPedidoService {
 
     public record ResultadoRelatorioPedidos(
             Page<RelatorioPedidoLinhaResponse> pedidos,
+            RelatorioPedidoIndicadoresResponse indicadores
+    ) {
+    }
+
+    public record ResultadoCompletoRelatorioPedidos(
+            List<RelatorioPedidoLinhaResponse> pedidos,
             RelatorioPedidoIndicadoresResponse indicadores
     ) {
     }
