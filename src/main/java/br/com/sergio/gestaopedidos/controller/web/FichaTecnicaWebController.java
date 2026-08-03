@@ -116,7 +116,14 @@ public class FichaTecnicaWebController {
     private void prepararFormulario(Model model, boolean edicao, Long id, List<?> itens) {
         model.addAttribute("titulo", edicao ? "Editar ficha técnica" : "Nova ficha técnica");
         model.addAttribute("modoEdicao", edicao); model.addAttribute("fichaId", id);
-        model.addAttribute("produtos", produtoService.listarProduzidosAtivos());
+        var produtos = new ArrayList<>(produtoService.listarProduzidosAtivos());
+        if (edicao && id != null) {
+            Long produtoId = fichaService.buscarPorId(id).produtoId();
+            if (produtos.stream().noneMatch(p -> p.id().equals(produtoId)))
+                produtos.add(produtoService.buscarPorId(produtoId));
+        }
+        produtos.sort(Comparator.comparing(p -> p.nome().toLowerCase()));
+        model.addAttribute("produtos", produtos);
         model.addAttribute("itensFormulario", itens);
     }
 
