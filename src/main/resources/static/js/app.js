@@ -16,8 +16,26 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarPreviewConfiguracaoEmpresa();
     inicializarAtalhosPeriodoRelatorio();
     inicializarPreviewProducao();
+    inicializarFormularioInsumo();
 
 });
+
+function inicializarFormularioInsumo() {
+    const formulario = document.querySelector("[data-form-insumo]");
+    if (!formulario) return;
+    const unidade = formulario.querySelector("[data-unidade-medida-insumo]");
+    const quantidade = formulario.querySelector("[data-quantidade-insumo]");
+    const simbolo = formulario.querySelector("[data-simbolo-insumo]");
+    const atualizarUnidade = () => {
+        const opcao = unidade.options[unidade.selectedIndex];
+        simbolo.textContent = opcao?.dataset.simbolo || "—";
+        quantidade.setAttribute("inputmode", unidade.value === "UNIDADE" ? "numeric" : "decimal");
+        quantidade.dataset.casasDecimais = unidade.value === "UNIDADE" ? "0" : "3";
+        quantidade.setAttribute("aria-describedby", "ajudaEstoqueMinimo");
+    };
+    unidade.addEventListener("change", atualizarUnidade);
+    atualizarUnidade();
+}
 
 function inicializarPreviewProducao() {
     const formulario = document.querySelector("[data-form-producao]");
@@ -513,9 +531,10 @@ function inicializarMascaraMonetaria() {
         campoVisual.addEventListener("input", sincronizar);
         campoVisual.addEventListener("blur", () => {
             sincronizar();
+            const casasDecimais = Number.parseInt(campoVisual.dataset.casasDecimais || "2", 10);
             campoVisual.value = new Intl.NumberFormat("pt-BR", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+                minimumFractionDigits: casasDecimais,
+                maximumFractionDigits: casasDecimais
             }).format(Number(campoDecimal.value));
         });
         sincronizar();

@@ -114,6 +114,14 @@
                 <span>Produções</span>
             </a>
 
+            <a th:href="@{/insumos}"
+               sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3"
+               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/insumos')} ? ' active'">
+                <i class="bi bi-box-seam"></i>
+                <span>Insumos</span>
+            </a>
+
             <a th:href="@{/configuracoes}"
                sec:authorize="hasRole('ADMIN')"
                class="nav-link d-flex align-items-center gap-3">
