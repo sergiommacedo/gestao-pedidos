@@ -25,18 +25,32 @@
 
                     <div class="mb-3">
                         <label for="novaSenhaUsuario" class="form-label">Nova senha *</label>
-                        <input type="password" id="novaSenhaUsuario" name="novaSenha"
-                               class="form-control" minlength="6" autocomplete="new-password"
-                               required data-nova-senha-usuario>
-                        <div class="invalid-feedback">Informe uma senha com pelo menos 6 caracteres.</div>
+                        <div class="input-group">
+                            <input type="password" id="novaSenhaUsuario" name="novaSenha"
+                                   class="form-control" minlength="6" autocomplete="new-password"
+                                   required data-nova-senha-usuario data-password-input>
+                            <button type="button" class="btn btn-outline-secondary" data-password-toggle
+                                    data-password-target="novaSenhaUsuario" aria-label="Mostrar senha"
+                                    aria-pressed="false" title="Mostrar senha">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </button>
+                            <div class="invalid-feedback">Informe uma senha com pelo menos 6 caracteres.</div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
                         <label for="confirmarSenhaUsuario" class="form-label">Confirmar senha *</label>
-                        <input type="password" id="confirmarSenhaUsuario" name="confirmarSenha"
-                               class="form-control" minlength="6" autocomplete="new-password"
-                               required data-confirmar-senha-usuario>
-                        <div class="invalid-feedback">A confirmação deve coincidir com a nova senha.</div>
+                        <div class="input-group">
+                            <input type="password" id="confirmarSenhaUsuario" name="confirmarSenha"
+                                   class="form-control" minlength="6" autocomplete="new-password"
+                                   required data-confirmar-senha-usuario data-password-input>
+                            <button type="button" class="btn btn-outline-secondary" data-password-toggle
+                                    data-password-target="confirmarSenhaUsuario" aria-label="Mostrar senha"
+                                    aria-pressed="false" title="Mostrar senha">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </button>
+                            <div class="invalid-feedback">A confirmação deve coincidir com a nova senha.</div>
+                        </div>
                     </div>
 
                     <div class="form-check form-switch">

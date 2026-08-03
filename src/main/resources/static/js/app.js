@@ -330,29 +330,34 @@ function inicializarPreviewConfiguracaoEmpresa() {
 
 
 function inicializarAlternanciaSenha() {
+    const atualizarEstado = (botao, campo, mostrar) => {
+        campo.type = mostrar ? "text" : "password";
+        const rotulo = mostrar ? "Ocultar senha" : "Mostrar senha";
+        botao.setAttribute("aria-label", rotulo);
+        botao.setAttribute("title", rotulo);
+        botao.setAttribute("aria-pressed", String(mostrar));
+        const icone = botao.querySelector("i");
+        icone?.classList.toggle("bi-eye", !mostrar);
+        icone?.classList.toggle("bi-eye-slash", mostrar);
+    };
 
-    document.querySelectorAll("[data-password-toggle], [data-alternar-senha]").forEach(botao => {
-        const seletorCampo = botao.dataset.passwordTarget || botao.dataset.campoSenha;
-        const campo = seletorCampo ? document.querySelector(seletorCampo) : null;
+    document.addEventListener("click", event => {
+        const botao = event.target instanceof Element
+            ? event.target.closest("[data-password-toggle]") : null;
+        if (!botao) return;
 
-        if (!campo) {
-            return;
-        }
+        const campoId = botao.dataset.passwordTarget;
+        const campo = campoId ? document.getElementById(campoId) : null;
+        if (!(campo instanceof HTMLInputElement) || !["password", "text"].includes(campo.type)) return;
 
-        botao.addEventListener("click", () => {
-            const senhaVisivel = campo.type === "text";
-            campo.type = senhaVisivel ? "password" : "text";
+        atualizarEstado(botao, campo, campo.type === "password");
+    });
 
-            const novoRotulo = senhaVisivel ? "Mostrar senha" : "Ocultar senha";
-            botao.setAttribute("aria-label", novoRotulo);
-            botao.setAttribute("title", novoRotulo);
-            botao.setAttribute("aria-pressed", String(!senhaVisivel));
-
-            const icone = botao.querySelector("i");
-            icone?.classList.toggle("bi-eye", senhaVisivel);
-            icone?.classList.toggle("bi-eye-slash", !senhaVisivel);
-
-            campo.focus();
+    document.addEventListener("reset", event => {
+        if (!(event.target instanceof HTMLFormElement)) return;
+        event.target.querySelectorAll("[data-password-toggle]").forEach(botao => {
+            const campo = document.getElementById(botao.dataset.passwordTarget || "");
+            if (campo instanceof HTMLInputElement) atualizarEstado(botao, campo, false);
         });
     });
 }

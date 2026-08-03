@@ -76,11 +76,18 @@
                         <label for="senha" class="form-label">
                             <span th:text="${modoEdicao} ? 'Nova senha' : 'Senha *'">Senha</span>
                         </label>
-                        <input type="password" id="senha" class="form-control" th:field="*{senha}"
-                               minlength="6" autocomplete="new-password"
-                               th:attr="required=${!modoEdicao}"
-                               th:classappend="${#fields.hasErrors('senha')} ? 'is-invalid'">
-                        <div class="invalid-feedback" th:errors="*{senha}"></div>
+                        <div class="input-group">
+                            <input type="password" id="senha" class="form-control" th:field="*{senha}"
+                                   minlength="6" autocomplete="new-password" data-password-input
+                                   th:attr="required=${!modoEdicao}"
+                                   th:classappend="${#fields.hasErrors('senha')} ? 'is-invalid'">
+                            <button type="button" class="btn btn-outline-secondary" data-password-toggle
+                                    data-password-target="senha" aria-label="Mostrar senha"
+                                    aria-pressed="false" title="Mostrar senha">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </button>
+                            <div class="invalid-feedback" th:errors="*{senha}"></div>
+                        </div>
                         <div class="form-text" th:if="${modoEdicao}">
                             Deixe em branco para manter a senha atual.
                         </div>
@@ -92,11 +99,18 @@
                                 Confirmar senha
                             </span>
                         </label>
-                        <input type="password" id="confirmarSenha" class="form-control"
-                               th:field="*{confirmarSenha}" minlength="6" autocomplete="new-password"
-                               th:attr="required=${!modoEdicao}"
-                               th:classappend="${#fields.hasErrors('confirmarSenha')} ? 'is-invalid'">
-                        <div class="invalid-feedback" th:errors="*{confirmarSenha}"></div>
+                        <div class="input-group">
+                            <input type="password" id="confirmarSenha" class="form-control"
+                                   th:field="*{confirmarSenha}" minlength="6" autocomplete="new-password"
+                                   data-password-input th:attr="required=${!modoEdicao}"
+                                   th:classappend="${#fields.hasErrors('confirmarSenha')} ? 'is-invalid'">
+                            <button type="button" class="btn btn-outline-secondary" data-password-toggle
+                                    data-password-target="confirmarSenha" aria-label="Mostrar senha"
+                                    aria-pressed="false" title="Mostrar senha">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </button>
+                            <div class="invalid-feedback" th:errors="*{confirmarSenha}"></div>
+                        </div>
                     </div>
                 </div>
 
