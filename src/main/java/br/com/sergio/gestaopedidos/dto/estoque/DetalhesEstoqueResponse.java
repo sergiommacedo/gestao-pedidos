@@ -1,0 +1,1 @@
+package br.com.sergio.gestaopedidos.dto.estoque;import lombok.Builder;import java.util.List;@Builder public record DetalhesEstoqueResponse(SaldoEstoqueResponse estoque,List<MovimentacaoEstoqueResponse> movimentacoes){}

@@ -52,9 +52,14 @@ public class Produto {
     @Builder.Default
     private Boolean vendavel = true;
 
+    @Column(name = "estoque_minimo", nullable = false, precision = 15, scale = 3)
+    @Builder.Default
+    private BigDecimal estoqueMinimo = BigDecimal.ZERO.setScale(3);
+
     @PrePersist
     public void aplicarDefaults() {
         if (tipoProduto == null) tipoProduto = TipoProduto.PRODUZIDO;
         if (vendavel == null) vendavel = true;
+        if (estoqueMinimo == null) estoqueMinimo = BigDecimal.ZERO.setScale(3);
     }
 }

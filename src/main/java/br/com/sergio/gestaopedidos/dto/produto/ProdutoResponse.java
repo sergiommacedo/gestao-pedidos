@@ -36,7 +36,9 @@ public record ProdutoResponse(
         TipoProduto tipoProduto,
 
         @Schema(description = "Indica se pode ser incluído em novos pedidos", example = "true")
-        Boolean vendavel
+        Boolean vendavel,
+
+        BigDecimal estoqueMinimo
 
 ) {
 }

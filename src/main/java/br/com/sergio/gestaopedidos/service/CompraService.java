@@ -33,7 +33,7 @@ public class CompraService {
     @Transactional(readOnly=true) public CompraResponse buscarPorId(Long id){return mapear(buscarEntidade(id));}
 
     public CompraResponse salvar(CompraRequest request){
-        validarCabecalho(request); validarTipoDisponivel(request.getTipoCompra()); validarIdsEDuplicidade(request.getItens(),Set.of());
+        validarCabecalho(request); validarIdsEDuplicidade(request.getItens(),Set.of());
         Compra compra=Compra.builder().tipoCompra(request.getTipoCompra()).build();aplicarCabecalho(compra,request);
         for(ItemCompraRequest recebido:request.getItens())compra.adicionarItem(criarItem(request.getTipoCompra(),recebido));
         compra.recalcularTotal();compra=compraRepository.saveAndFlush(compra);estoqueService.processarCompra(compra);return mapear(compra);
@@ -43,7 +43,7 @@ public class CompraService {
         validarCabecalho(request);Compra compra=buscarEntidade(id);
         if(request.getTipoCompra()!=compra.getTipoCompra())throw new BusinessException("O tipo da compra não pode ser alterado. Estorne e cadastre uma nova compra.");
         if(estoqueService.compraMovimentada(id)){validarFinanceiroImutavel(compra,request);compra.setFornecedor(normalizarOpcional(request.getFornecedor()));compra.setObservacao(normalizarOpcional(request.getObservacao()));return mapear(compraRepository.save(compra));}
-        validarTipoDisponivel(request.getTipoCompra());aplicarCabecalho(compra,request);
+        aplicarCabecalho(compra,request);
         Map<Long,ItemCompra> existentes=compra.getItens().stream().collect(Collectors.toMap(ItemCompra::getId,Function.identity()));
         validarIdsEDuplicidade(request.getItens(),existentes.keySet());Set<Long> mantidos=new HashSet<>();
         for(ItemCompraRequest recebido:request.getItens()){
@@ -68,7 +68,6 @@ public class CompraService {
     }
     private void aplicarValores(ItemCompra item,ItemCompraRequest request){BigDecimal q=quantidade(request.getQuantidade(),item.getUnidadeHistorica()),v=valor(request.getValorTotalItem());item.setQuantidade(q);item.setValorTotalItem(v);item.setCustoUnitario(v.divide(q,6,RoundingMode.HALF_UP));}
     private void validarReferenciaExclusiva(ItemCompra item){if((item.getInsumo()==null)==(item.getProduto()==null))throw new BusinessException("O item deve referenciar somente um Insumo ou Produto de revenda.");}
-    private void validarTipoDisponivel(TipoCompra tipo){if(tipo==TipoCompra.PRODUTO_REVENDA)throw new BusinessException("Compras de produtos de revenda estarão disponíveis com o estoque de revenda.");}
     private void validarFinanceiroImutavel(Compra compra,CompraRequest request){if(!Objects.equals(compra.getDataCompra(),request.getDataCompra())||request.getItens()==null||compra.getItens().size()!=request.getItens().size())imutavel();Map<Long,ItemCompraRequest> enviados=request.getItens().stream().filter(i->i.getId()!=null).collect(Collectors.toMap(ItemCompraRequest::getId,Function.identity(),(a,b)->{imutavel();return a;}));for(ItemCompra atual:compra.getItens()){ItemCompraRequest recebido=enviados.get(atual.getId());if(recebido==null||!Objects.equals(recebido.getReferenciaId(),referenciaId(atual))||atual.getQuantidade().compareTo(recebido.getQuantidade())!=0||atual.getValorTotalItem().compareTo(recebido.getValorTotalItem())!=0)imutavel();}}
     private void imutavel(){throw new BusinessException("Esta compra já movimentou o estoque. Somente fornecedor e observação podem ser alterados.");}
     private void validarCabecalho(CompraRequest r){if(r.getTipoCompra()==null)throw new BusinessException("Escolha o tipo da compra.");if(r.getDataCompra()==null)throw new BusinessException("Data da compra é obrigatória.");if(r.getItens()==null||r.getItens().isEmpty())throw new BusinessException("Adicione ao menos um item à compra.");}

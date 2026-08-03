@@ -62,7 +62,10 @@ public record ProdutoRequest(
 
         TipoProduto tipoProduto,
 
-        Boolean vendavel
+        Boolean vendavel,
+
+        @DecimalMin(value = "0.0", message = "Estoque mínimo não pode ser negativo.")
+        BigDecimal estoqueMinimo
 
 ) {
 }

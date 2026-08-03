@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import br.com.sergio.gestaopedidos.enums.TipoProduto;
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -85,6 +87,7 @@ public class ProdutoService {
 
         produto.setTipoProduto(request.tipoProduto() == null ? TipoProduto.PRODUZIDO : request.tipoProduto());
         produto.setVendavel(request.vendavel() == null ? true : request.vendavel());
+        produto.setEstoqueMinimo(normalizarEstoqueMinimo(request.tipoProduto(), request.unidadeVenda(), request.estoqueMinimo()));
 
         Produto produtoSalvo = produtoRepository.save(produto);
 
@@ -108,6 +111,7 @@ public class ProdutoService {
         produto.setPermiteAcompanhamento(request.permiteAcompanhamento());
         produto.setTipoProduto(request.tipoProduto() == null ? TipoProduto.PRODUZIDO : request.tipoProduto());
         produto.setVendavel(request.vendavel() == null ? true : request.vendavel());
+        produto.setEstoqueMinimo(normalizarEstoqueMinimo(request.tipoProduto(), request.unidadeVenda(), request.estoqueMinimo()));
 
         Produto produtoAtualizado = produtoRepository.save(produto);
 
@@ -166,6 +170,16 @@ public class ProdutoService {
                     "Já existe um produto cadastrado com esse nome."
             );
         }
+    }
+
+    private BigDecimal normalizarEstoqueMinimo(TipoProduto tipo, UnidadeVenda unidade, BigDecimal valor) {
+        if (tipo != TipoProduto.REVENDA) return BigDecimal.ZERO.setScale(3);
+        BigDecimal minimo = valor == null ? BigDecimal.ZERO : valor;
+        if (minimo.signum() < 0 || minimo.stripTrailingZeros().scale() > 3)
+            throw new BusinessException("Estoque mínimo deve ser positivo e ter no máximo três casas decimais.");
+        if (unidade == UnidadeVenda.UNIDADE && minimo.stripTrailingZeros().scale() > 0)
+            throw new BusinessException("Estoque mínimo em unidade deve ser inteiro.");
+        return minimo.setScale(3);
     }
 
     private void validarNomeDuplicadoNaAtualizacao(

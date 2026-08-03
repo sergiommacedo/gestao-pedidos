@@ -12,5 +12,6 @@ public interface ProdutoMapper extends GenericMapper<Produto, ProdutoRequest, Pr
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "tipoProduto", source = "tipoProduto")
     @Mapping(target = "vendavel", source = "vendavel")
+    @Mapping(target = "estoqueMinimo", source = "estoqueMinimo")
     Produto toEntity(ProdutoRequest request);
 }

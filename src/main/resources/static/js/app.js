@@ -18,8 +18,47 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarPreviewProducao();
     inicializarFormularioInsumo();
     inicializarFormularioCompra();
+    inicializarFormularioProduto();
+    inicializarFormularioEstoque();
 
 });
+
+function inicializarFormularioEstoque() {
+    const formulario = document.querySelector("[data-form-estoque]");
+    if (!formulario) return;
+    const tipo = formulario.querySelector("[data-estoque-tipo]");
+    const referencia = formulario.querySelector("[data-estoque-referencia]");
+    const valorInicial = referencia.value;
+    const atualizar = () => {
+        const seletor = tipo.value === "INSUMO" ? "[data-opcoes-insumo]"
+            : tipo.value === "PRODUTO_REVENDA" ? "[data-opcoes-revenda]" : "";
+        const template = seletor ? formulario.querySelector(seletor) : null;
+        referencia.replaceChildren(new Option(tipo.value ? "Selecione" : "Selecione o tipo primeiro", ""));
+        if (template) referencia.append(template.content.cloneNode(true));
+        if (valorInicial && [...referencia.options].some(opcao => opcao.value === valorInicial)) {
+            referencia.value = valorInicial;
+        }
+    };
+    tipo.addEventListener("change", () => { referencia.value = ""; atualizar(); });
+    atualizar();
+}
+
+function inicializarFormularioProduto() {
+    const formulario = document.querySelector("[data-form-produto]");
+    if (!formulario) return;
+    const tipo = formulario.querySelector("#tipoProduto");
+    const unidade = formulario.querySelector("#unidadeVenda");
+    const grupo = formulario.querySelector("[data-estoque-minimo-produto]");
+    const minimo = formulario.querySelector("#estoqueMinimo");
+    const atualizar = () => {
+        const revenda = tipo.value === "REVENDA";
+        grupo.classList.toggle("d-none", !revenda);
+        minimo.disabled = !revenda;
+        minimo.step = unidade.value === "UNIDADE" ? "1" : "0.001";
+        if (!revenda) minimo.value = "0";
+    };
+    tipo.addEventListener("change", atualizar); unidade.addEventListener("change", atualizar); atualizar();
+}
 
 function inicializarFormularioInsumo() {
     const formulario = document.querySelector("[data-form-insumo]");

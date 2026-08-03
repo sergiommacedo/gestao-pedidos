@@ -84,6 +84,7 @@ public class ProdutoWebController {
                 .tipoProduto(TipoProduto.PRODUZIDO)
                 .vendavel(true)
                 .permiteAcompanhamento(false)
+                .estoqueMinimo(java.math.BigDecimal.ZERO)
                 .build());
         prepararFormulario(model, "Novo Produto", false, null);
         return "produtos/formulario";
@@ -101,6 +102,7 @@ public class ProdutoWebController {
                 .tipoProduto(produto.tipoProduto())
                 .vendavel(produto.vendavel())
                 .ativo(produto.ativo())
+                .estoqueMinimo(produto.estoqueMinimo())
                 .build();
 
         model.addAttribute("produto", request);

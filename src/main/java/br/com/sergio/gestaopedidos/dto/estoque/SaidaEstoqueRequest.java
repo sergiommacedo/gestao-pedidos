@@ -1,17 +1,2 @@
-package br.com.sergio.gestaopedidos.dto.estoque;
-
-import br.com.sergio.gestaopedidos.enums.TipoMovimentacaoEstoque;
-import jakarta.validation.constraints.*;
-import lombok.*;
-import org.springframework.format.annotation.DateTimeFormat;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class SaidaEstoqueRequest {
-    @NotNull(message = "Selecione o insumo.") private Long insumoId;
-    @NotNull(message = "Informe a quantidade.") @DecimalMin(value = "0.001", message = "Quantidade deve ser maior que zero.") private BigDecimal quantidade;
-    @NotNull(message = "Informe o tipo da saída.") private TipoMovimentacaoEstoque tipo;
-    @NotNull(message = "Data é obrigatória.") @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") private LocalDateTime dataMovimentacao;
-    @Size(max = 500) private String observacao;
-}
+package br.com.sergio.gestaopedidos.dto.estoque;import br.com.sergio.gestaopedidos.enums.*;import jakarta.validation.constraints.*;import lombok.*;import org.springframework.format.annotation.DateTimeFormat;import java.math.BigDecimal;import java.time.LocalDateTime;
+@Getter@Setter@NoArgsConstructor@AllArgsConstructor@Builder public class SaidaEstoqueRequest{@NotNull(message="Escolha o tipo do item.")private TipoItemEstoque tipoItem;@NotNull(message="Selecione o item.")private Long referenciaId;@NotNull@DecimalMin("0.001")private BigDecimal quantidade;@NotNull private TipoMovimentacaoEstoque tipo;@NotNull@DateTimeFormat(pattern="yyyy-MM-dd'T'HH:mm")private LocalDateTime dataMovimentacao;@Size(max=500)private String observacao;}

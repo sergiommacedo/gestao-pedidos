@@ -1,0 +1,35 @@
+package br.com.sergio.gestaopedidos.repository;
+import br.com.sergio.gestaopedidos.entity.*;import br.com.sergio.gestaopedidos.enums.TipoItemEstoque;import jakarta.persistence.LockModeType;import org.springframework.data.domain.*;import org.springframework.data.jpa.repository.*;import org.springframework.data.repository.query.Param;import java.math.*;import java.time.LocalDateTime;import java.util.*;
+public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>{
+ interface Visao{String getTipoItem();Long getReferenciaId();String getItemNome();String getUnidade();Boolean getAtivo();BigDecimal getQuantidadeAtual();BigDecimal getEstoqueMinimo();BigDecimal getCustoMedioAtual();BigDecimal getValorTotalEstoque();LocalDateTime getAtualizadoEm();}
+ @Lock(LockModeType.PESSIMISTIC_WRITE)@Query("SELECT i FROM Insumo i WHERE i.id=:id")Optional<Insumo> bloquearInsumo(@Param("id")Long id);
+ @Lock(LockModeType.PESSIMISTIC_WRITE)@Query("SELECT p FROM Produto p WHERE p.id=:id")Optional<Produto> bloquearProduto(@Param("id")Long id);
+ @Lock(LockModeType.PESSIMISTIC_WRITE)@Query("SELECT s FROM SaldoEstoque s WHERE s.tipoItem=:tipo AND ((:tipo=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.INSUMO AND s.insumo.id=:id) OR (:tipo=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PRODUTO_REVENDA AND s.produto.id=:id))")Optional<SaldoEstoque> bloquearSaldo(@Param("tipo")TipoItemEstoque tipo,@Param("id")Long id);
+ @Query("SELECT s FROM SaldoEstoque s WHERE s.tipoItem=:tipo AND ((:tipo=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.INSUMO AND s.insumo.id=:id) OR (:tipo=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PRODUTO_REVENDA AND s.produto.id=:id))")Optional<SaldoEstoque> buscarSaldo(@Param("tipo")TipoItemEstoque tipo,@Param("id")Long id);
+ @Query(value="""
+ SELECT * FROM (
+ SELECT 'INSUMO' tipo_item,i.id referencia_id,i.nome item_nome,i.unidade_medida unidade,i.ativo ativo,
+ COALESCE(s.quantidade_atual,0) quantidade_atual,COALESCE(i.estoque_minimo,0) estoque_minimo,
+ COALESCE(s.custo_medio_atual,0) custo_medio_atual,COALESCE(s.valor_total_estoque,0) valor_total_estoque,s.atualizado_em atualizado_em
+ FROM insumos i LEFT JOIN saldos_estoque s ON s.insumo_id=i.id
+ UNION ALL
+ SELECT 'PRODUTO_REVENDA',p.id,p.nome,p.unidade_venda,p.ativo,
+ COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0),COALESCE(s.custo_medio_atual,0),COALESCE(s.valor_total_estoque,0),s.atualizado_em
+ FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='REVENDA'
+ ) x WHERE (:nome='' OR LOWER(x.item_nome) LIKE LOWER(CONCAT('%',:nome,'%')))
+ AND (:categoria='' OR x.tipo_item=:categoria) AND (:ativo IS NULL OR x.ativo=:ativo)
+ AND (:situacao='' OR (:situacao='SEM_ESTOQUE' AND x.quantidade_atual=0)
+ OR (:situacao='BAIXO' AND x.estoque_minimo>0 AND x.quantidade_atual<=x.estoque_minimo)
+ OR (:situacao='SEM_MINIMO' AND x.estoque_minimo=0)
+ OR (:situacao='NORMAL' AND x.quantidade_atual>0 AND (x.estoque_minimo=0 OR x.quantidade_atual>x.estoque_minimo)))
+ ORDER BY x.item_nome
+ """,countQuery="""
+ SELECT COUNT(*) FROM (
+ SELECT 'INSUMO' tipo_item,i.nome item_nome,i.ativo ativo,COALESCE(s.quantidade_atual,0) quantidade_atual,COALESCE(i.estoque_minimo,0) estoque_minimo FROM insumos i LEFT JOIN saldos_estoque s ON s.insumo_id=i.id
+ UNION ALL SELECT 'PRODUTO_REVENDA',p.nome,p.ativo,COALESCE(s.quantidade_atual,0),COALESCE(p.estoque_minimo,0) FROM produtos p LEFT JOIN saldos_estoque s ON s.produto_id=p.id WHERE p.tipo_produto='REVENDA') x
+ WHERE (:nome='' OR LOWER(x.item_nome) LIKE LOWER(CONCAT('%',:nome,'%'))) AND (:categoria='' OR x.tipo_item=:categoria) AND (:ativo IS NULL OR x.ativo=:ativo)
+ AND (:situacao='' OR (:situacao='SEM_ESTOQUE' AND x.quantidade_atual=0) OR (:situacao='BAIXO' AND x.estoque_minimo>0 AND x.quantidade_atual<=x.estoque_minimo) OR (:situacao='SEM_MINIMO' AND x.estoque_minimo=0) OR (:situacao='NORMAL' AND x.quantidade_atual>0 AND (x.estoque_minimo=0 OR x.quantidade_atual>x.estoque_minimo)))
+ """,nativeQuery=true)Page<Visao> listar(@Param("nome")String nome,@Param("categoria")String categoria,@Param("situacao")String situacao,@Param("ativo")Boolean ativo,Pageable pageable);
+ @Query("SELECT COUNT(s) FROM SaldoEstoque s WHERE s.quantidadeAtual>0")long contarComSaldo();
+ @Query("SELECT COALESCE(SUM(s.valorTotalEstoque),0) FROM SaldoEstoque s WHERE s.tipoItem=:tipo")BigDecimal somarValor(@Param("tipo")TipoItemEstoque tipo);
+}
