@@ -709,6 +709,26 @@ body {
     background-color: var(--app-primary-soft);
 }
 
+.relatorio-card-link {
+    cursor: pointer;
+}
+
+.relatorio-indicador-card {
+    border-color: var(--app-primary-soft-border);
+    border-left: 0.25rem solid var(--app-primary);
+    background-color: var(--color-surface);
+}
+
+.relatorio-pedidos-table {
+    font-size: 0.875rem;
+}
+
+.relatorio-pedidos-table th {
+    font-size: 0.75rem;
+    letter-spacing: 0.015em;
+    white-space: nowrap;
+}
+
 .dashboard-atencao-table tbody tr:not(.dashboard-atencao-vazio):hover {
     background-color: color-mix(in srgb, var(--app-primary-soft) 45%, transparent);
 }

@@ -391,9 +391,17 @@ public class PedidoWebController {
     ) {
         PedidoResponse pedido = pedidoService.buscarPorId(id);
         model.addAttribute("pedido", pedido);
-        model.addAttribute("pedidoEditavel", pedidoService.isEditavel(pedido.status()));
-        model.addAttribute("pedidoImprimivel", pedidoService.isImprimivel(pedido.status()));
-        model.addAttribute("origem", normalizarOrigem(origem));
+        String origemNormalizada = normalizarOrigem(origem);
+        boolean origemRelatorio = "relatorio".equals(origemNormalizada);
+        model.addAttribute(
+                "pedidoEditavel",
+                !origemRelatorio && pedidoService.isEditavel(pedido.status())
+        );
+        model.addAttribute(
+                "pedidoImprimivel",
+                !origemRelatorio && pedidoService.isImprimivel(pedido.status())
+        );
+        model.addAttribute("origem", origemNormalizada);
         model.addAttribute("dataRetornoKanbanIso", dataAgendada == null
                 ? null
                 : dataAgendada.toString());
@@ -674,7 +682,10 @@ public class PedidoWebController {
     }
 
     private String normalizarOrigem(String origem) {
-        return "kanban".equals(origem) ? "kanban" : "lista";
+        if ("kanban".equals(origem) || "relatorio".equals(origem)) {
+            return origem;
+        }
+        return "lista";
     }
 
     private List<Long> converterItemIds(
