@@ -89,13 +89,25 @@ function inicializarFormularioCompraInsumo() {
         const quantidade = criarCampo("Quantidade", "quantidade"); quantidade.input.value = new Intl.NumberFormat("pt-BR", {minimumFractionDigits: item.unidade === "UNIDADE" ? 0 : 3, maximumFractionDigits: 3}).format(decimal(item.quantidade));
         const quantidadeDecimal = document.createElement("input"); quantidadeDecimal.type = "hidden"; quantidadeDecimal.dataset.quantidadeDecimal = ""; quantidadeDecimal.value = decimal(item.quantidade).toFixed(3); quantidade.grupo.appendChild(quantidadeDecimal);
         const unidade = document.createElement("div"); unidade.className = "col-sm-6 col-lg-1"; const ul = document.createElement("div"); ul.className = "form-label small"; ul.textContent = "Unidade"; const uv = document.createElement("div"); uv.className = "form-control bg-body-tertiary"; uv.textContent = item.simbolo; unidade.append(ul, uv);
-        const valor = criarCampo("Valor pago", "valor"); valor.input.value = new Intl.NumberFormat("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2}).format(decimal(item.valor));
+        const valor = criarCampo("Valor total pago", "valor");
+        valor.input.dataset.compraValorItem = "";
+        valor.input.value = String(item.valor ?? "").trim() === "" ? "" : new Intl.NumberFormat("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2}).format(decimal(item.valor));
         const valorDecimal = document.createElement("input"); valorDecimal.type = "hidden"; valorDecimal.dataset.valorDecimal = ""; valorDecimal.value = decimal(item.valor).toFixed(2); valor.grupo.appendChild(valorDecimal);
+        const ajudaValor = document.createElement("div"); ajudaValor.className = "form-text small"; ajudaValor.textContent = "Informe o valor pago por toda a quantidade comprada."; valor.grupo.appendChild(ajudaValor);
         const custoGrupo = document.createElement("div"); custoGrupo.className = "col-sm-8 col-lg-3"; const cl = document.createElement("div"); cl.className = "form-label small"; cl.textContent = "Custo unitário"; const custo = document.createElement("div"); custo.className = "form-control bg-body-tertiary"; custoGrupo.append(cl, custo);
         const removerGrupo = document.createElement("div"); removerGrupo.className = "col-sm-4 col-lg-1"; const remover = document.createElement("button"); remover.type = "button"; remover.className = "btn btn-outline-danger w-100"; remover.title = "Remover item"; remover.innerHTML = '<i class="bi bi-trash"></i>'; removerGrupo.appendChild(remover);
         linha.append(id, insumoId, nomeGrupo, quantidade.grupo, unidade, valor.grupo, custoGrupo, removerGrupo); container.appendChild(linha);
-        const atualizar = () => { const q = decimal(converterMoedaBrasileiraParaDecimal(quantidade.input.value)); const v = decimal(converterMoedaBrasileiraParaDecimal(valor.input.value)); quantidadeDecimal.value = q.toFixed(3); valorDecimal.value = v.toFixed(2); custo.textContent = `${moeda(q > 0 ? v / q : 0)}/${item.simbolo}`; reindexar(); };
-        quantidade.input.addEventListener("input", atualizar); valor.input.addEventListener("input", atualizar); remover.addEventListener("click", () => { linha.remove(); reindexar(); }); atualizar();
+        const atualizar = () => { const q = decimal(converterMoedaBrasileiraParaDecimal(quantidade.input.value)); const valorVazio = valor.input.value.trim() === ""; const v = valorVazio ? 0 : decimal(converterMoedaBrasileiraParaDecimal(valor.input.value)); quantidadeDecimal.value = q.toFixed(3); valorDecimal.value = valorVazio ? "" : v.toFixed(2); custo.textContent = `${moeda(q > 0 ? v / q : 0)}/${item.simbolo}`; reindexar(); };
+        quantidade.input.addEventListener("input", atualizar);
+        valor.input.addEventListener("input", () => { valor.input.value = valor.input.value.replace(/[^0-9.,]/g, ""); atualizar(); });
+        valor.input.addEventListener("blur", () => {
+            if (valor.input.value.trim() !== "") {
+                const normalizado = converterMoedaBrasileiraParaDecimal(valor.input.value);
+                valor.input.value = new Intl.NumberFormat("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(Number(normalizado));
+            }
+            atualizar();
+        });
+        remover.addEventListener("click", () => { linha.remove(); reindexar(); }); atualizar();
     }
 
     function escolher(insumo) { selecionado = insumo; busca.value = insumo.nome; adicionar.disabled = false; fechar(); }
@@ -103,7 +115,7 @@ function inicializarFormularioCompraInsumo() {
     busca.addEventListener("input", () => { selecionado = null; adicionar.disabled = true; clearTimeout(temporizador); temporizador = setTimeout(pesquisar, 250); });
     busca.addEventListener("keydown", evento => { if (evento.key === "Escape") fechar(); });
     document.addEventListener("click", evento => { if (!busca.contains(evento.target) && !resultados.contains(evento.target)) fechar(); });
-    adicionar.addEventListener("click", () => { if (!selecionado) return; adicionarLinha({insumoId: selecionado.id, nome: selecionado.nome, unidade: selecionado.unidade, simbolo: selecionado.simbolo, quantidade: 0, valor: 0}); selecionado = null; busca.value = ""; adicionar.disabled = true; busca.focus(); });
+    adicionar.addEventListener("click", () => { if (!selecionado) return; adicionarLinha({insumoId: selecionado.id, nome: selecionado.nome, unidade: selecionado.unidade, simbolo: selecionado.simbolo, quantidade: 0, valor: ""}); selecionado = null; busca.value = ""; adicionar.disabled = true; busca.focus(); });
     formulario.querySelectorAll("[data-item-compra-inicial]").forEach(item => adicionarLinha({id:item.dataset.id,insumoId:item.dataset.insumoId,nome:item.dataset.nome,unidade:item.dataset.unidade,simbolo:item.dataset.simbolo,quantidade:item.dataset.quantidade,valor:item.dataset.valor}));
     formulario.addEventListener("submit", evento => { reindexar(); if (!container.querySelector("[data-item-compra]")) { evento.preventDefault(); avisar("Adicione ao menos um item à compra."); } });
     reindexar();
