@@ -1,6 +1,7 @@
 package br.com.sergio.gestaopedidos.dto.produto;
 
 import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
+import br.com.sergio.gestaopedidos.enums.TipoProduto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -57,7 +58,14 @@ public record ProdutoRequest(
                 example = "true"
         )
         @NotNull(message = "Informe se o produto permite acompanhamento.")
-        Boolean permiteAcompanhamento
+        Boolean permiteAcompanhamento,
+
+        TipoProduto tipoProduto,
+
+        Boolean vendavel,
+
+        @DecimalMin(value = "0.0", message = "Estoque mínimo não pode ser negativo.")
+        BigDecimal estoqueMinimo
 
 ) {
 }

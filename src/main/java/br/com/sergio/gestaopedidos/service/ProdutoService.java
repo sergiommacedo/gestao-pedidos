@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import br.com.sergio.gestaopedidos.enums.TipoProduto;
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -61,11 +64,11 @@ public class ProdutoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProdutoResponse> buscarAtivosPorNome(String termo) {
+    public List<ProdutoResponse> buscarAtivosEVendaveisPorNome(String termo) {
         String termoTratado = termo == null ? "" : termo.trim();
 
         return produtoRepository
-                .findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
+                .findTop20ByAtivoTrueAndVendavelTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
                         termoTratado
                 )
                 .stream()
@@ -81,6 +84,10 @@ public class ProdutoService {
         if (produto.getAtivo() == null) {
             produto.setAtivo(true);
         }
+
+        produto.setTipoProduto(request.tipoProduto() == null ? TipoProduto.PRODUZIDO : request.tipoProduto());
+        produto.setVendavel(request.vendavel() == null ? true : request.vendavel());
+        produto.setEstoqueMinimo(normalizarEstoqueMinimo(request.tipoProduto(), request.unidadeVenda(), request.estoqueMinimo()));
 
         Produto produtoSalvo = produtoRepository.save(produto);
 
@@ -102,6 +109,9 @@ public class ProdutoService {
 
         produto.setUnidadeVenda(request.unidadeVenda());
         produto.setPermiteAcompanhamento(request.permiteAcompanhamento());
+        produto.setTipoProduto(request.tipoProduto() == null ? TipoProduto.PRODUZIDO : request.tipoProduto());
+        produto.setVendavel(request.vendavel() == null ? true : request.vendavel());
+        produto.setEstoqueMinimo(normalizarEstoqueMinimo(request.tipoProduto(), request.unidadeVenda(), request.estoqueMinimo()));
 
         Produto produtoAtualizado = produtoRepository.save(produto);
 
@@ -133,12 +143,43 @@ public class ProdutoService {
                 );
     }
 
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> listarAtivos() {
+        return produtoRepository.findByAtivoTrueOrderByNomeAsc().stream().map(produtoMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> listarProduzidos() {
+        return produtoRepository.findByTipoProdutoOrderByNomeAsc(TipoProduto.PRODUZIDO).stream().map(produtoMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> listarProduzidosAtivos() {
+        return produtoRepository.findByTipoProdutoAndAtivoTrueOrderByNomeAsc(TipoProduto.PRODUZIDO).stream().map(produtoMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoResponse> buscarRevendaAtivosPorNome(String termo) {
+        return produtoRepository.findTop20ByTipoProdutoAndAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
+                TipoProduto.REVENDA, termo == null ? "" : termo.trim()).stream().map(produtoMapper::toResponse).toList();
+    }
+
     private void validarNomeDuplicado(String nome) {
         if (produtoRepository.existsByNomeIgnoreCase(nome)) {
             throw new BusinessException(
                     "Já existe um produto cadastrado com esse nome."
             );
         }
+    }
+
+    private BigDecimal normalizarEstoqueMinimo(TipoProduto tipo, UnidadeVenda unidade, BigDecimal valor) {
+        if (tipo != TipoProduto.REVENDA) return BigDecimal.ZERO.setScale(3);
+        BigDecimal minimo = valor == null ? BigDecimal.ZERO : valor;
+        if (minimo.signum() < 0 || minimo.stripTrailingZeros().scale() > 3)
+            throw new BusinessException("Estoque mínimo deve ser positivo e ter no máximo três casas decimais.");
+        if (unidade == UnidadeVenda.UNIDADE && minimo.stripTrailingZeros().scale() > 0)
+            throw new BusinessException("Estoque mínimo em unidade deve ser inteiro.");
+        return minimo.setScale(3);
     }
 
     private void validarNomeDuplicadoNaAtualizacao(

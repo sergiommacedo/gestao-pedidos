@@ -106,6 +106,34 @@
 
             </a>
 
+            <a th:href="@{/producoes}"
+               sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3"
+               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/producoes')} ? ' active'">
+                <i class="bi bi-clipboard-data"></i>
+                <span>Produções</span>
+            </a>
+
+            <a th:href="@{/insumos}"
+               sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3"
+               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/insumos')} ? ' active'">
+                <i class="bi bi-box-seam"></i>
+                <span>Insumos</span>
+            </a>
+
+            <a th:href="@{/compras}"
+               sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3"
+               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/compras')} ? ' active'">
+                <i class="bi bi-cart-plus"></i>
+                <span>Compras</span>
+            </a>
+
+            <a th:href="@{/estoque}" sec:authorize="hasRole('ADMIN')" class="nav-link d-flex align-items-center gap-3" th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/estoque')} ? ' active'">
+                <i class="bi bi-boxes"></i><span>Estoque</span>
+            </a>
+
             <a th:href="@{/configuracoes}"
                sec:authorize="hasRole('ADMIN')"
                class="nav-link d-flex align-items-center gap-3">

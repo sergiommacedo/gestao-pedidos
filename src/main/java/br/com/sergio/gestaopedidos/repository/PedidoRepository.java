@@ -23,8 +23,48 @@ import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
+import java.util.Collection;
+import java.util.Optional;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
+
+    interface ResumoFinanceiroProducao {
+        LocalDate getDataProducao();
+        Long getPedidosValidos();
+        BigDecimal getFaturamentoProdutos();
+        BigDecimal getTaxasEntrega();
+        BigDecimal getFaturamentoTotal();
+    }
+
+    @Query("""
+            SELECT p.dataAgendada AS dataProducao,
+                   COUNT(p) AS pedidosValidos,
+                   COALESCE(SUM(p.subtotal), 0) AS faturamentoProdutos,
+                   COALESCE(SUM(p.taxaEntrega), 0) AS taxasEntrega,
+                   COALESCE(SUM(p.valorTotal), 0) AS faturamentoTotal
+            FROM Pedido p
+            WHERE p.dataAgendada = :dataProducao
+            AND p.status <> :statusCancelado
+            GROUP BY p.dataAgendada
+            """)
+    Optional<ResumoFinanceiroProducao> resumirFinanceiroProducao(
+            @Param("dataProducao") LocalDate dataProducao,
+            @Param("statusCancelado") StatusPedido statusCancelado);
+
+    @Query("""
+            SELECT p.dataAgendada AS dataProducao,
+                   COUNT(p) AS pedidosValidos,
+                   COALESCE(SUM(p.subtotal), 0) AS faturamentoProdutos,
+                   COALESCE(SUM(p.taxaEntrega), 0) AS taxasEntrega,
+                   COALESCE(SUM(p.valorTotal), 0) AS faturamentoTotal
+            FROM Pedido p
+            WHERE p.dataAgendada IN :datas
+            AND p.status <> :statusCancelado
+            GROUP BY p.dataAgendada
+            """)
+    List<ResumoFinanceiroProducao> resumirFinanceiroProducoes(
+            @Param("datas") Collection<LocalDate> datas,
+            @Param("statusCancelado") StatusPedido statusCancelado);
 
     interface ContagemPedidosPorStatus {
 

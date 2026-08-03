@@ -336,7 +336,7 @@ public class PedidoService {
                 atualizarItemExistente(itemPedido, itemRequest);
             } else {
                 Produto produto = buscarProdutoPorId(itemRequest.produtoId());
-                validarProdutoAtivo(produto);
+                validarProdutoDisponivelParaVenda(produto);
                 validarQuantidade(produto, itemRequest.quantidade());
                 itemPedido = criarItemPedido(pedido, produto, itemRequest);
                 pedido.getItens().add(itemPedido);
@@ -381,7 +381,7 @@ public class PedidoService {
         for (ItemPedidoRequest itemRequest : request.itens()) {
             Produto produto = buscarProdutoPorId(itemRequest.produtoId());
 
-            validarProdutoAtivo(produto);
+            validarProdutoDisponivelParaVenda(produto);
             validarQuantidade(produto, itemRequest.quantidade());
 
             ItemPedido itemPedido = criarItemPedido(
@@ -473,12 +473,9 @@ public class PedidoService {
                 );
     }
 
-    private void validarProdutoAtivo(Produto produto) {
-        if (!Boolean.TRUE.equals(produto.getAtivo())) {
-            throw new BusinessException(
-                    "O produto " + produto.getNome()
-                            + " está inativo e não pode ser adicionado ao pedido."
-            );
+    private void validarProdutoDisponivelParaVenda(Produto produto) {
+        if (!Boolean.TRUE.equals(produto.getAtivo()) || !Boolean.TRUE.equals(produto.getVendavel())) {
+            throw new BusinessException("Este produto não está disponível para venda.");
         }
     }
 

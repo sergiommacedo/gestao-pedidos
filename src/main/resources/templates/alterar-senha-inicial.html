@@ -40,9 +40,10 @@
                         <input type="password" id="senhaAtual" name="senhaAtual" class="form-control"
                                th:value="${alteracaoSenha.senhaAtual}"
                                autocomplete="current-password" required autofocus
+                               data-password-input
                                th:classappend="${#fields.hasErrors('senhaAtual')} ? 'is-invalid'">
                         <button type="button" class="btn btn-outline-secondary"
-                                data-password-toggle data-password-target="#senhaAtual"
+                                data-password-toggle data-password-target="senhaAtual"
                                 aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha">
                             <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
@@ -56,9 +57,10 @@
                         <input type="password" id="novaSenha" name="novaSenha" class="form-control"
                                th:value="${alteracaoSenha.novaSenha}"
                                autocomplete="new-password" minlength="6" required
+                               data-password-input
                                th:classappend="${#fields.hasErrors('novaSenha')} ? 'is-invalid'">
                         <button type="button" class="btn btn-outline-secondary"
-                                data-password-toggle data-password-target="#novaSenha"
+                                data-password-toggle data-password-target="novaSenha"
                                 aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha">
                             <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
@@ -72,9 +74,10 @@
                         <input type="password" id="confirmarNovaSenha" name="confirmarNovaSenha"
                                class="form-control" th:value="${alteracaoSenha.confirmarNovaSenha}"
                                autocomplete="new-password" minlength="6" required
+                               data-password-input
                                th:classappend="${#fields.hasErrors('confirmarNovaSenha')} ? 'is-invalid'">
                         <button type="button" class="btn btn-outline-secondary"
-                                data-password-toggle data-password-target="#confirmarNovaSenha"
+                                data-password-toggle data-password-target="confirmarNovaSenha"
                                 aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha">
                             <i class="bi bi-eye" aria-hidden="true"></i>
                         </button>
@@ -90,5 +93,6 @@
         </div>
     </section>
 </main>
+<script th:src="@{/js/app.js}"></script>
 </body>
 </html>

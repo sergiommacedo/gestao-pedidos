@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import br.com.sergio.gestaopedidos.enums.TipoProduto;
 
 public interface ProdutoRepository extends JpaRepository<Produto, Long> {
 
@@ -17,7 +18,15 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
             Pageable pageable
     );
 
-    List<Produto> findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
+    List<Produto> findTop20ByAtivoTrueAndVendavelTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
             String nome
     );
+
+    List<Produto> findByAtivoTrueOrderByNomeAsc();
+
+    List<Produto> findByTipoProdutoOrderByNomeAsc(TipoProduto tipoProduto);
+
+    List<Produto> findByTipoProdutoAndAtivoTrueOrderByNomeAsc(TipoProduto tipoProduto);
+
+    List<Produto> findTop20ByTipoProdutoAndAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(TipoProduto tipoProduto, String nome);
 }

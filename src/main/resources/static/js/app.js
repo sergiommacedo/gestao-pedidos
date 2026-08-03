@@ -15,8 +15,190 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarModalRedefinirSenhaUsuario();
     inicializarPreviewConfiguracaoEmpresa();
     inicializarAtalhosPeriodoRelatorio();
+    inicializarPreviewProducao();
+    inicializarFormularioInsumo();
+    inicializarFormularioCompra();
+    inicializarFormularioProduto();
+    inicializarFormularioEstoque();
 
 });
+
+function inicializarFormularioEstoque() {
+    const formulario = document.querySelector("[data-form-estoque]");
+    if (!formulario) return;
+    const tipo = formulario.querySelector("[data-estoque-tipo]");
+    const referencia = formulario.querySelector("[data-estoque-referencia]");
+    const valorInicial = referencia.value;
+    const atualizar = () => {
+        const seletor = tipo.value === "INSUMO" ? "[data-opcoes-insumo]"
+            : tipo.value === "PRODUTO_REVENDA" ? "[data-opcoes-revenda]" : "";
+        const template = seletor ? formulario.querySelector(seletor) : null;
+        referencia.replaceChildren(new Option(tipo.value ? "Selecione" : "Selecione o tipo primeiro", ""));
+        if (template) referencia.append(template.content.cloneNode(true));
+        if (valorInicial && [...referencia.options].some(opcao => opcao.value === valorInicial)) {
+            referencia.value = valorInicial;
+        }
+    };
+    tipo.addEventListener("change", () => { referencia.value = ""; atualizar(); });
+    atualizar();
+}
+
+function inicializarFormularioProduto() {
+    const formulario = document.querySelector("[data-form-produto]");
+    if (!formulario) return;
+    const tipo = formulario.querySelector("#tipoProduto");
+    const unidade = formulario.querySelector("#unidadeVenda");
+    const grupo = formulario.querySelector("[data-estoque-minimo-produto]");
+    const minimo = formulario.querySelector("#estoqueMinimo");
+    const atualizar = () => {
+        const revenda = tipo.value === "REVENDA";
+        grupo.classList.toggle("d-none", !revenda);
+        minimo.disabled = !revenda;
+        minimo.step = unidade.value === "UNIDADE" ? "1" : "0.001";
+        if (!revenda) minimo.value = "0";
+    };
+    tipo.addEventListener("change", atualizar); unidade.addEventListener("change", atualizar); atualizar();
+}
+
+function inicializarFormularioInsumo() {
+    const formulario = document.querySelector("[data-form-insumo]");
+    if (!formulario) return;
+    const unidade = formulario.querySelector("[data-unidade-medida-insumo]");
+    const quantidade = formulario.querySelector("[data-quantidade-insumo]");
+    const simbolo = formulario.querySelector("[data-simbolo-insumo]");
+    const atualizarUnidade = () => {
+        const opcao = unidade.options[unidade.selectedIndex];
+        simbolo.textContent = opcao?.dataset.simbolo || "—";
+        quantidade.setAttribute("inputmode", unidade.value === "UNIDADE" ? "numeric" : "decimal");
+        quantidade.dataset.casasDecimais = unidade.value === "UNIDADE" ? "0" : "3";
+        quantidade.setAttribute("aria-describedby", "ajudaEstoqueMinimo");
+    };
+    unidade.addEventListener("change", atualizarUnidade);
+    atualizarUnidade();
+}
+
+function inicializarFormularioCompra() {
+    const formulario = document.querySelector("[data-form-compra]");
+    if (!formulario) return;
+    const busca = formulario.querySelector("[data-busca-item-compra]");
+    const resultados = formulario.querySelector("[data-resultados-item-compra]");
+    const adicionar = formulario.querySelector("[data-adicionar-item-compra]");
+    const container = formulario.querySelector("[data-itens-compra]");
+    const vazio = formulario.querySelector("[data-itens-compra-vazio]");
+    const erro = formulario.querySelector("[data-erro-itens-compra]");
+    const totalSaida = formulario.querySelector("[data-total-compra]");
+    const quantidadeSaida = formulario.querySelector("[data-quantidade-itens-compra]");
+    const tipos = [...formulario.querySelectorAll("[data-tipo-compra]")];
+    const financeiroBloqueado = formulario.dataset.financeiroBloqueado === "true";
+    let selecionado = null, temporizador, numeroRequisicao = 0;
+    const moeda = valor => new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(valor || 0);
+    const decimal = valor => Number.parseFloat(String(valor ?? "0").replace(",", ".")) || 0;
+    const fechar = () => { clearTimeout(temporizador); numeroRequisicao++; resultados.replaceChildren(); resultados.classList.add("d-none"); };
+    const avisar = mensagem => { erro.textContent = mensagem; erro.classList.remove("d-none"); };
+    const limparAviso = () => erro.classList.add("d-none");
+
+    function reindexar() {
+        const linhas = [...container.querySelectorAll("[data-item-compra]")];
+        linhas.forEach((linha, indice) => {
+            linha.querySelector("[data-item-id]").name = `itens[${indice}].id`;
+            linha.querySelector("[data-referencia-id]").name = `itens[${indice}].referenciaId`;
+            linha.querySelector("[data-quantidade-decimal]").name = `itens[${indice}].quantidade`;
+            linha.querySelector("[data-valor-decimal]").name = `itens[${indice}].valorTotalItem`;
+        });
+        vazio.classList.toggle("d-none", linhas.length > 0);
+        quantidadeSaida.textContent = String(linhas.length);
+        const total = linhas.reduce((soma, linha) => soma + decimal(linha.querySelector("[data-valor-decimal]").value), 0);
+        totalSaida.textContent = moeda(total);
+    }
+
+    function criarCampo(rotulo, tipo) {
+        const grupo = document.createElement("div"); grupo.className = tipo === "quantidade" ? "col-sm-6 col-lg-2" : "col-sm-6 col-lg-2";
+        const label = document.createElement("label"); label.className = "form-label small"; label.textContent = rotulo;
+        const input = document.createElement("input"); input.type = "text"; input.className = "form-control"; input.inputMode = "decimal";
+        grupo.append(label, input); return {grupo, input};
+    }
+
+    function adicionarLinha(item) {
+        if ([...container.querySelectorAll("[data-item-compra]")].some(l => l.dataset.referenciaId === String(item.referenciaId))) { avisar("Este item já foi adicionado à compra."); return; }
+        limparAviso();
+        const linha = document.createElement("div"); linha.className = "row g-2 align-items-end border rounded p-3 mb-3"; linha.dataset.itemCompra = ""; linha.dataset.referenciaId = item.referenciaId;
+        const id = document.createElement("input"); id.type = "hidden"; id.value = item.id || ""; id.dataset.itemId = "";
+        const referenciaId = document.createElement("input"); referenciaId.type = "hidden"; referenciaId.value = item.referenciaId; referenciaId.dataset.referenciaId = "";
+        const nomeGrupo = document.createElement("div"); nomeGrupo.className = "col-lg-3";
+        const nomeLabel = document.createElement("div"); nomeLabel.className = "form-label small"; nomeLabel.textContent = "Item comprado";
+        const nome = document.createElement("div"); nome.className = "form-control bg-body-tertiary"; nome.textContent = item.nome; nomeGrupo.append(nomeLabel, nome);
+        const quantidade = criarCampo("Quantidade", "quantidade"); quantidade.input.value = new Intl.NumberFormat("pt-BR", {minimumFractionDigits: item.unidade === "UNIDADE" ? 0 : 3, maximumFractionDigits: 3}).format(decimal(item.quantidade));
+        const quantidadeDecimal = document.createElement("input"); quantidadeDecimal.type = "hidden"; quantidadeDecimal.dataset.quantidadeDecimal = ""; quantidadeDecimal.value = decimal(item.quantidade).toFixed(3); quantidade.grupo.appendChild(quantidadeDecimal);
+        const unidade = document.createElement("div"); unidade.className = "col-sm-6 col-lg-1"; const ul = document.createElement("div"); ul.className = "form-label small"; ul.textContent = "Unidade"; const uv = document.createElement("div"); uv.className = "form-control bg-body-tertiary"; uv.textContent = item.simbolo; unidade.append(ul, uv);
+        const valor = criarCampo("Valor total pago", "valor");
+        valor.input.dataset.compraValorItem = "";
+        valor.input.placeholder = "Ex.: 120,00";
+        valor.input.value = String(item.valor ?? "").trim() === "" ? "" : new Intl.NumberFormat("pt-BR", {minimumFractionDigits:2,maximumFractionDigits:2}).format(decimal(item.valor));
+        const valorDecimal = document.createElement("input"); valorDecimal.type = "hidden"; valorDecimal.dataset.valorDecimal = ""; valorDecimal.value = decimal(item.valor).toFixed(2); valor.grupo.appendChild(valorDecimal);
+        const custoGrupo = document.createElement("div"); custoGrupo.className = "col-sm-8 col-lg-3"; const cl = document.createElement("div"); cl.className = "form-label small"; cl.textContent = "Custo unitário"; const custo = document.createElement("div"); custo.className = "form-control bg-body-tertiary"; custoGrupo.append(cl, custo);
+        const removerGrupo = document.createElement("div"); removerGrupo.className = "col-sm-4 col-lg-1"; const remover = document.createElement("button"); remover.type = "button"; remover.className = "btn btn-outline-danger w-100"; remover.title = "Remover item"; remover.innerHTML = '<i class="bi bi-trash"></i>'; removerGrupo.appendChild(remover);
+        quantidade.input.disabled = financeiroBloqueado; valor.input.disabled = financeiroBloqueado; remover.disabled = financeiroBloqueado;
+        linha.append(id, referenciaId, nomeGrupo, quantidade.grupo, unidade, valor.grupo, custoGrupo, removerGrupo); container.appendChild(linha);
+        const atualizar = () => { const q = decimal(converterMoedaBrasileiraParaDecimal(quantidade.input.value)); const valorVazio = valor.input.value.trim() === ""; const v = valorVazio ? 0 : decimal(converterMoedaBrasileiraParaDecimal(valor.input.value)); quantidadeDecimal.value = q.toFixed(3); valorDecimal.value = valorVazio ? "" : v.toFixed(2); custo.textContent = `${moeda(q > 0 ? v / q : 0)}/${item.simbolo}`; reindexar(); };
+        quantidade.input.addEventListener("input", atualizar);
+        valor.input.addEventListener("input", () => { valor.input.value = valor.input.value.replace(/[^0-9.,]/g, ""); atualizar(); });
+        valor.input.addEventListener("blur", () => {
+            if (valor.input.value.trim() !== "") {
+                const normalizado = converterMoedaBrasileiraParaDecimal(valor.input.value);
+                valor.input.value = new Intl.NumberFormat("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(Number(normalizado));
+            }
+            atualizar();
+        });
+        remover.addEventListener("click", () => { linha.remove(); reindexar(); }); atualizar();
+    }
+
+    const tipoSelecionado = () => tipos.find(tipo => tipo.checked)?.value || "";
+    function escolher(item) { selecionado = item; busca.value = item.nome; adicionar.disabled = false; fechar(); }
+    async function pesquisar() { const termo = busca.value.trim(), tipo = tipoSelecionado(); const requisicao = ++numeroRequisicao; if (termo.length < 2 || !tipo) { fechar(); return; } const resposta = await fetch(`/compras/itens/buscar?tipo=${encodeURIComponent(tipo)}&termo=${encodeURIComponent(termo)}`); const dados = resposta.ok ? await resposta.json() : []; if (requisicao !== numeroRequisicao || busca.value.trim() !== termo) return; resultados.replaceChildren(); dados.forEach(item => { const botao = document.createElement("button"); botao.type = "button"; botao.className = "list-group-item list-group-item-action"; botao.textContent = `${item.nome} — ${item.unidadeDescricao} (${item.simbolo})`; botao.addEventListener("click", () => escolher(item)); resultados.appendChild(botao); }); if (!dados.length) { const item = document.createElement("div"); item.className = "list-group-item text-body-secondary"; item.textContent = "Nenhum item ativo encontrado."; resultados.appendChild(item); } resultados.classList.remove("d-none"); }
+    busca.addEventListener("input", () => { selecionado = null; adicionar.disabled = true; clearTimeout(temporizador); temporizador = setTimeout(pesquisar, 250); });
+    busca.addEventListener("keydown", evento => { if (evento.key === "Escape") fechar(); });
+    document.addEventListener("click", evento => { if (!busca.contains(evento.target) && !resultados.contains(evento.target)) fechar(); });
+    adicionar.addEventListener("click", () => { if (!selecionado) return; adicionarLinha({referenciaId: selecionado.id, nome: selecionado.nome, unidade: selecionado.unidade, simbolo: selecionado.simbolo, quantidade: 0, valor: ""}); selecionado = null; busca.value = ""; adicionar.disabled = true; busca.focus(); });
+    formulario.querySelectorAll("[data-item-compra-inicial]").forEach(item => adicionarLinha({id:item.dataset.id,referenciaId:item.dataset.referenciaId,nome:item.dataset.nome,unidade:item.dataset.unidade,simbolo:item.dataset.simbolo,quantidade:item.dataset.quantidade,valor:item.dataset.valor}));
+    tipos.forEach(tipo => tipo.addEventListener("change", () => { selecionado=null;busca.value="";adicionar.disabled=true;fechar();busca.disabled=!tipoSelecionado(); }));
+    busca.disabled = financeiroBloqueado || !tipoSelecionado();
+    if (financeiroBloqueado) adicionar.disabled = true;
+    formulario.addEventListener("submit", evento => { reindexar(); if (!container.querySelector("[data-item-compra]")) { evento.preventDefault(); avisar("Adicione ao menos um item à compra."); } });
+    reindexar();
+}
+
+function inicializarPreviewProducao() {
+    const formulario = document.querySelector("[data-form-producao]");
+    if (!formulario) return;
+    const saldoInicial = formulario.querySelector("[data-saldo-inicial-materiais]");
+    const compras = formulario.querySelector("[data-compras-materiais]");
+    const saldoFinal = formulario.querySelector("[data-saldo-final-materiais]");
+    const outrosCustos = formulario.querySelectorAll("[data-outro-custo-producao]");
+    const saidaRecursos = formulario.querySelector("[data-recursos-producao]");
+    const saidasMateriais = formulario.querySelectorAll("[data-materiais-consumidos], [data-resumo-materiais]");
+    const saidaTotal = formulario.querySelector("[data-total-gasto-producao]");
+    const aviso = formulario.querySelector("[data-aviso-saldo-producao]");
+    const salvar = formulario.querySelector("[data-salvar-producao]");
+    const formatar = valor => new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(valor);
+    const numero = campo => Number.parseFloat(campo?.value) || 0;
+    const atualizar = () => {
+        const recursos = numero(saldoInicial) + numero(compras);
+        const inconsistente = numero(saldoFinal) > recursos;
+        const consumidos = Math.max(0, recursos - numero(saldoFinal));
+        const valoresOutros = Array.from(outrosCustos).map(numero);
+        const total = consumidos + valoresOutros.reduce((soma, valor) => soma + valor, 0);
+        saidaRecursos.textContent = formatar(recursos);
+        saidasMateriais.forEach(saida => saida.textContent = formatar(consumidos));
+        saidaTotal.textContent = formatar(total);
+        formulario.querySelector("[data-resumo-embalagens]").textContent = formatar(valoresOutros[0] || 0);
+        formulario.querySelector("[data-resumo-gas]").textContent = formatar(valoresOutros[1] || 0);
+        formulario.querySelector("[data-resumo-outros]").textContent = formatar(valoresOutros[2] || 0);
+        aviso.classList.toggle("d-none", !inconsistente);
+        salvar.disabled = inconsistente;
+    };
+    [saldoInicial, compras, saldoFinal, ...outrosCustos].forEach(campo => campo.addEventListener("input", atualizar));
+    atualizar();
+}
 
 
 function inicializarAtalhosPeriodoRelatorio() {
@@ -148,29 +330,34 @@ function inicializarPreviewConfiguracaoEmpresa() {
 
 
 function inicializarAlternanciaSenha() {
+    const atualizarEstado = (botao, campo, mostrar) => {
+        campo.type = mostrar ? "text" : "password";
+        const rotulo = mostrar ? "Ocultar senha" : "Mostrar senha";
+        botao.setAttribute("aria-label", rotulo);
+        botao.setAttribute("title", rotulo);
+        botao.setAttribute("aria-pressed", String(mostrar));
+        const icone = botao.querySelector("i");
+        icone?.classList.toggle("bi-eye", !mostrar);
+        icone?.classList.toggle("bi-eye-slash", mostrar);
+    };
 
-    document.querySelectorAll("[data-password-toggle], [data-alternar-senha]").forEach(botao => {
-        const seletorCampo = botao.dataset.passwordTarget || botao.dataset.campoSenha;
-        const campo = seletorCampo ? document.querySelector(seletorCampo) : null;
+    document.addEventListener("click", event => {
+        const botao = event.target instanceof Element
+            ? event.target.closest("[data-password-toggle]") : null;
+        if (!botao) return;
 
-        if (!campo) {
-            return;
-        }
+        const campoId = botao.dataset.passwordTarget;
+        const campo = campoId ? document.getElementById(campoId) : null;
+        if (!(campo instanceof HTMLInputElement) || !["password", "text"].includes(campo.type)) return;
 
-        botao.addEventListener("click", () => {
-            const senhaVisivel = campo.type === "text";
-            campo.type = senhaVisivel ? "password" : "text";
+        atualizarEstado(botao, campo, campo.type === "password");
+    });
 
-            const novoRotulo = senhaVisivel ? "Mostrar senha" : "Ocultar senha";
-            botao.setAttribute("aria-label", novoRotulo);
-            botao.setAttribute("title", novoRotulo);
-            botao.setAttribute("aria-pressed", String(!senhaVisivel));
-
-            const icone = botao.querySelector("i");
-            icone?.classList.toggle("bi-eye", senhaVisivel);
-            icone?.classList.toggle("bi-eye-slash", !senhaVisivel);
-
-            campo.focus();
+    document.addEventListener("reset", event => {
+        if (!(event.target instanceof HTMLFormElement)) return;
+        event.target.querySelectorAll("[data-password-toggle]").forEach(botao => {
+            const campo = document.getElementById(botao.dataset.passwordTarget || "");
+            if (campo instanceof HTMLInputElement) atualizarEstado(botao, campo, false);
         });
     });
 }
@@ -479,9 +666,10 @@ function inicializarMascaraMonetaria() {
         campoVisual.addEventListener("input", sincronizar);
         campoVisual.addEventListener("blur", () => {
             sincronizar();
+            const casasDecimais = Number.parseInt(campoVisual.dataset.casasDecimais || "2", 10);
             campoVisual.value = new Intl.NumberFormat("pt-BR", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+                minimumFractionDigits: casasDecimais,
+                maximumFractionDigits: casasDecimais
             }).format(Number(campoDecimal.value));
         });
         sincronizar();
