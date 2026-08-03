@@ -6,6 +6,8 @@ import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioProducaoIndicadoresRes
 import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioProducaoLinhaResponse;
 import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioClienteIndicadoresResponse;
 import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioClienteLinhaResponse;
+import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroIndicadoresResponse;
+import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroDiaResponse;
 import br.com.sergio.gestaopedidos.enums.FormaPagamento;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
 import br.com.sergio.gestaopedidos.enums.TipoEntrega;
@@ -18,6 +20,8 @@ import br.com.sergio.gestaopedidos.service.RelatorioProducaoExcelService;
 import br.com.sergio.gestaopedidos.service.RelatorioProducaoService;
 import br.com.sergio.gestaopedidos.service.RelatorioClienteExcelService;
 import br.com.sergio.gestaopedidos.service.RelatorioClienteService;
+import br.com.sergio.gestaopedidos.service.RelatorioFinanceiroExcelService;
+import br.com.sergio.gestaopedidos.service.RelatorioFinanceiroService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -76,6 +80,15 @@ public class RelatorioWebController {
             "retiradas", "SUM(CASE WHEN pedido.tipoEntrega = br.com.sergio.gestaopedidos.enums.TipoEntrega.RETIRADA THEN 1 ELSE 0 END)",
             "participacao", "SUM(pedido.valorTotal)"
     );
+    private static final Map<String, String> CAMPOS_ORDENACAO_FINANCEIRO = Map.of(
+            "data", "pedido.dataAgendada",
+            "pedidos", "SUM(CASE WHEN pedido.status <> br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO THEN 1 ELSE 0 END)",
+            "cancelados", "SUM(CASE WHEN pedido.status = br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO THEN 1 ELSE 0 END)",
+            "produtos", "SUM(CASE WHEN pedido.status <> br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO THEN pedido.subtotal ELSE 0 END)",
+            "taxas", "SUM(CASE WHEN pedido.status <> br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO THEN pedido.taxaEntrega ELSE 0 END)",
+            "faturamento", "SUM(CASE WHEN pedido.status <> br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO THEN pedido.valorTotal ELSE 0 END)",
+            "ticketMedio", "SUM(CASE WHEN pedido.status <> br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO THEN pedido.valorTotal ELSE 0 END) / SUM(CASE WHEN pedido.status <> br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO THEN 1 ELSE 0 END)"
+    );
 
     private final RelatorioPedidoService relatorioPedidoService;
     private final RelatorioPedidoExcelService relatorioPedidoExcelService;
@@ -84,6 +97,8 @@ public class RelatorioWebController {
     private final RelatorioProducaoExcelService relatorioProducaoExcelService;
     private final RelatorioClienteService relatorioClienteService;
     private final RelatorioClienteExcelService relatorioClienteExcelService;
+    private final RelatorioFinanceiroService relatorioFinanceiroService;
+    private final RelatorioFinanceiroExcelService relatorioFinanceiroExcelService;
 
     @GetMapping
     public String index() {
@@ -458,6 +473,161 @@ public class RelatorioWebController {
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 ))
                 .body(arquivo);
+    }
+
+    @GetMapping("/financeiro")
+    public String financeiro(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
+            @RequestParam(required = false) FormaPagamento formaPagamento,
+            @RequestParam(required = false) TipoEntrega tipoEntrega,
+            @RequestParam(required = false) StatusPedido status,
+            @RequestParam(defaultValue = "") String cliente,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "10") int tamanho,
+            @RequestParam(defaultValue = "data") String ordenarPor,
+            @RequestParam(defaultValue = "desc") String direcao,
+            Model model
+    ) {
+        LocalDate hoje = LocalDate.now();
+        if (dataInicial == null && dataFinal == null) {
+            dataInicial = hoje.withDayOfMonth(1);
+            dataFinal = hoje;
+        }
+        int tamanhoSeguro = TAMANHOS_PERMITIDOS.contains(tamanho) ? tamanho : 10;
+        String campo = normalizarCampoFinanceiro(ordenarPor);
+        Sort.Direction sentido = normalizarDirecao(direcao);
+        PageRequest pageable = PageRequest.of(
+                Math.max(0, pagina), tamanhoSeguro, criarOrdenacaoFinanceiro(campo, sentido)
+        );
+        var filtro = criarFiltroFinanceiro(
+                dataInicial, dataFinal, formaPagamento, tipoEntrega, status, cliente
+        );
+        Page<RelatorioFinanceiroDiaResponse> dias;
+        RelatorioFinanceiroIndicadoresResponse indicadores;
+        List<br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroPagamentoResponse> pagamentos;
+        List<br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroEntregaResponse> entregas;
+        try {
+            var resultado = relatorioFinanceiroService.buscar(filtro, pageable);
+            dias = resultado.dias(); indicadores = resultado.indicadores();
+            pagamentos = resultado.pagamentos(); entregas = resultado.entregas();
+        } catch (BusinessException exception) {
+            dias = Page.empty(pageable); indicadores = RelatorioFinanceiroIndicadoresResponse.vazio();
+            pagamentos = List.of(); entregas = List.of();
+            model.addAttribute("erroPeriodo", exception.getMessage());
+        }
+        adicionarModeloFinanceiro(model, filtro, campo, sentido, tamanhoSeguro);
+        model.addAttribute("dias", dias); model.addAttribute("indicadores", indicadores);
+        model.addAttribute("pagamentos", pagamentos); model.addAttribute("entregas", entregas);
+        return "relatorios/financeiro";
+    }
+
+    @GetMapping("/financeiro/imprimir")
+    public String imprimirFinanceiro(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
+            @RequestParam(required = false) FormaPagamento formaPagamento,
+            @RequestParam(required = false) TipoEntrega tipoEntrega,
+            @RequestParam(required = false) StatusPedido status,
+            @RequestParam(defaultValue = "") String cliente,
+            @RequestParam(defaultValue = "data") String ordenarPor,
+            @RequestParam(defaultValue = "desc") String direcao,
+            Model model, RedirectAttributes redirectAttributes
+    ) {
+        var filtro = criarFiltroFinanceiro(
+                dataInicial, dataFinal, formaPagamento, tipoEntrega, status, cliente
+        );
+        try {
+            var resultado = relatorioFinanceiroService.buscarParaSaida(
+                    filtro, criarOrdenacaoFinanceiro(
+                            normalizarCampoFinanceiro(ordenarPor), normalizarDirecao(direcao)
+                    )
+            );
+            adicionarModeloFinanceiro(model, filtro, normalizarCampoFinanceiro(ordenarPor),
+                    normalizarDirecao(direcao), 10);
+            model.addAttribute("dias", resultado.dias()); model.addAttribute("indicadores", resultado.indicadores());
+            model.addAttribute("pagamentos", resultado.pagamentos()); model.addAttribute("entregas", resultado.entregas());
+            model.addAttribute("emitidoEm", LocalDateTime.now());
+            return "relatorios/financeiro-impressao";
+        } catch (BusinessException exception) {
+            redirectAttributes.addFlashAttribute("erroExportacao", exception.getMessage());
+            adicionarRedirectFinanceiro(redirectAttributes, filtro, ordenarPor, direcao);
+            return "redirect:/relatorios/financeiro";
+        }
+    }
+
+    @GetMapping("/financeiro/excel")
+    public ResponseEntity<byte[]> exportarFinanceiroExcel(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
+            @RequestParam(required = false) FormaPagamento formaPagamento,
+            @RequestParam(required = false) TipoEntrega tipoEntrega,
+            @RequestParam(required = false) StatusPedido status,
+            @RequestParam(defaultValue = "") String cliente,
+            @RequestParam(defaultValue = "data") String ordenarPor,
+            @RequestParam(defaultValue = "desc") String direcao
+    ) {
+        var filtro = criarFiltroFinanceiro(
+                dataInicial, dataFinal, formaPagamento, tipoEntrega, status, cliente
+        );
+        var resultado = relatorioFinanceiroService.buscarParaSaida(
+                filtro, criarOrdenacaoFinanceiro(
+                        normalizarCampoFinanceiro(ordenarPor), normalizarDirecao(direcao)
+                )
+        );
+        byte[] arquivo = relatorioFinanceiroExcelService.gerar(
+                configuracaoEmpresaService.getConfiguracaoAtual().nomeEmpresa(), dataInicial, dataFinal,
+                LocalDateTime.now(), resultado.indicadores(), resultado.pagamentos(),
+                resultado.entregas(), resultado.dias()
+        );
+        String nome = "relatorio-financeiro-" + dataInicial + "-a-" + dataFinal + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nome + "\"")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )).body(arquivo);
+    }
+
+    private RelatorioFinanceiroService.FiltroRelatorioFinanceiro criarFiltroFinanceiro(
+            LocalDate inicio, LocalDate fim, FormaPagamento pagamento, TipoEntrega entrega,
+            StatusPedido status, String cliente
+    ) {
+        return new RelatorioFinanceiroService.FiltroRelatorioFinanceiro(
+                inicio, fim, pagamento, entrega, status, cliente
+        );
+    }
+
+    private String normalizarCampoFinanceiro(String campo) {
+        return CAMPOS_ORDENACAO_FINANCEIRO.containsKey(campo) ? campo : "data";
+    }
+
+    private Sort criarOrdenacaoFinanceiro(String campo, Sort.Direction direcao) {
+        return JpaSort.unsafe(direcao, CAMPOS_ORDENACAO_FINANCEIRO.get(campo));
+    }
+
+    private void adicionarModeloFinanceiro(
+            Model model, RelatorioFinanceiroService.FiltroRelatorioFinanceiro filtro,
+            String campo, Sort.Direction direcao, int tamanho
+    ) {
+        model.addAttribute("dataInicial", filtro.dataInicial()); model.addAttribute("dataFinal", filtro.dataFinal());
+        model.addAttribute("formaPagamentoSelecionada", filtro.formaPagamento());
+        model.addAttribute("tipoEntregaSelecionado", filtro.tipoEntrega()); model.addAttribute("statusSelecionado", filtro.status());
+        model.addAttribute("cliente", filtro.cliente() == null ? "" : filtro.cliente().trim());
+        model.addAttribute("formasPagamento", FormaPagamento.values()); model.addAttribute("tiposEntrega", TipoEntrega.values());
+        model.addAttribute("statusPedidos", StatusPedido.values()); model.addAttribute("ordenarPor", campo);
+        model.addAttribute("direcao", direcao.name().toLowerCase()); model.addAttribute("tamanho", tamanho);
+    }
+
+    private void adicionarRedirectFinanceiro(
+            RedirectAttributes redirect, RelatorioFinanceiroService.FiltroRelatorioFinanceiro filtro,
+            String campo, String direcao
+    ) {
+        redirect.addAttribute("dataInicial", filtro.dataInicial()); redirect.addAttribute("dataFinal", filtro.dataFinal());
+        if (filtro.formaPagamento() != null) redirect.addAttribute("formaPagamento", filtro.formaPagamento());
+        if (filtro.tipoEntrega() != null) redirect.addAttribute("tipoEntrega", filtro.tipoEntrega());
+        if (filtro.status() != null) redirect.addAttribute("status", filtro.status());
+        redirect.addAttribute("cliente", filtro.cliente()); redirect.addAttribute("ordenarPor", normalizarCampoFinanceiro(campo));
+        redirect.addAttribute("direcao", normalizarDirecao(direcao).name().toLowerCase());
     }
 
     private RelatorioClienteService.FiltroRelatorioClientes criarFiltroClientes(

@@ -4,6 +4,9 @@ import br.com.sergio.gestaopedidos.entity.Pedido;
 import br.com.sergio.gestaopedidos.dto.dashboard.DashboardPedidoAtencaoResponse;
 import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioPedidoLinhaResponse;
 import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioClienteLinhaResponse;
+import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroDiaResponse;
+import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroEntregaResponse;
+import br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroPagamentoResponse;
 import br.com.sergio.gestaopedidos.enums.FormaPagamento;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
 import br.com.sergio.gestaopedidos.enums.TipoEntrega;
@@ -54,6 +57,176 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
         String getClienteNome();
         BigDecimal getFaturamentoTotal();
     }
+
+    interface IndicadoresRelatorioFinanceiro {
+        Long getPedidosTotais();
+        Long getPedidosValidos();
+        Long getCancelados();
+        BigDecimal getFaturamentoProdutos();
+        BigDecimal getTaxasEntrega();
+        BigDecimal getFaturamentoBruto();
+        BigDecimal getValorCancelado();
+    }
+
+    interface MelhorDiaRelatorioFinanceiro {
+        LocalDate getData();
+        BigDecimal getFaturamento();
+    }
+
+    String FILTROS_RELATORIO_FINANCEIRO = """
+            WHERE pedido.dataAgendada BETWEEN :dataInicial AND :dataFinal
+            AND (:formaPagamento IS NULL OR pedido.formaPagamento = :formaPagamento)
+            AND (:tipoEntrega IS NULL OR pedido.tipoEntrega = :tipoEntrega)
+            AND (:status IS NULL OR pedido.status = :status)
+            AND (
+                :cliente = ''
+                OR LOWER(cliente.nome) LIKE LOWER(CONCAT('%', :cliente, '%'))
+                OR cliente.telefone LIKE CONCAT('%', :cliente, '%')
+            )
+            """;
+
+    @Query("""
+            SELECT
+                COUNT(pedido) AS pedidosTotais,
+                COALESCE(SUM(CASE WHEN pedido.status <> :statusCancelado THEN 1 ELSE 0 END), 0) AS pedidosValidos,
+                COALESCE(SUM(CASE WHEN pedido.status = :statusCancelado THEN 1 ELSE 0 END), 0) AS cancelados,
+                COALESCE(SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.subtotal ELSE 0 END), 0) AS faturamentoProdutos,
+                COALESCE(SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.taxaEntrega ELSE 0 END), 0) AS taxasEntrega,
+                COALESCE(SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.valorTotal ELSE 0 END), 0) AS faturamentoBruto,
+                COALESCE(SUM(CASE WHEN pedido.status = :statusCancelado THEN pedido.valorTotal ELSE 0 END), 0) AS valorCancelado
+            FROM Pedido pedido
+            JOIN pedido.cliente cliente
+            """ + FILTROS_RELATORIO_FINANCEIRO)
+    IndicadoresRelatorioFinanceiro buscarIndicadoresRelatorioFinanceiro(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("status") StatusPedido status,
+            @Param("cliente") String cliente,
+            @Param("statusCancelado") StatusPedido statusCancelado
+    );
+
+    String SELECT_DIAS_RELATORIO_FINANCEIRO = """
+            SELECT new br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroDiaResponse(
+                pedido.dataAgendada,
+                SUM(CASE WHEN pedido.status <> :statusCancelado THEN 1 ELSE 0 END),
+                SUM(CASE WHEN pedido.status = :statusCancelado THEN 1 ELSE 0 END),
+                SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.subtotal ELSE 0 END),
+                SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.taxaEntrega ELSE 0 END),
+                SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.valorTotal ELSE 0 END),
+                CASE WHEN SUM(CASE WHEN pedido.status <> :statusCancelado THEN 1 ELSE 0 END) = 0 THEN 0
+                     ELSE SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.valorTotal ELSE 0 END)
+                          / SUM(CASE WHEN pedido.status <> :statusCancelado THEN 1 ELSE 0 END) END
+            )
+            FROM Pedido pedido
+            JOIN pedido.cliente cliente
+            """;
+
+    String AGRUPAMENTO_DIAS_RELATORIO_FINANCEIRO = """
+            GROUP BY pedido.dataAgendada
+            """;
+
+    @Query(
+            value = SELECT_DIAS_RELATORIO_FINANCEIRO + FILTROS_RELATORIO_FINANCEIRO + AGRUPAMENTO_DIAS_RELATORIO_FINANCEIRO,
+            countQuery = "SELECT COUNT(DISTINCT pedido.dataAgendada) FROM Pedido pedido JOIN pedido.cliente cliente "
+                    + FILTROS_RELATORIO_FINANCEIRO
+    )
+    Page<RelatorioFinanceiroDiaResponse> buscarDiasRelatorioFinanceiro(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("status") StatusPedido status,
+            @Param("cliente") String cliente,
+            @Param("statusCancelado") StatusPedido statusCancelado,
+            Pageable pageable
+    );
+
+    @Query(SELECT_DIAS_RELATORIO_FINANCEIRO + FILTROS_RELATORIO_FINANCEIRO + AGRUPAMENTO_DIAS_RELATORIO_FINANCEIRO)
+    Slice<RelatorioFinanceiroDiaResponse> buscarLoteDiasRelatorioFinanceiro(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("status") StatusPedido status,
+            @Param("cliente") String cliente,
+            @Param("statusCancelado") StatusPedido statusCancelado,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT new br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroPagamentoResponse(
+                pedido.formaPagamento,
+                COUNT(pedido),
+                SUM(pedido.valorTotal),
+                CASE WHEN SUM(SUM(pedido.valorTotal)) OVER () = 0 THEN 0
+                     ELSE SUM(pedido.valorTotal) * 100 / SUM(SUM(pedido.valorTotal)) OVER () END,
+                SUM(pedido.valorTotal) / COUNT(pedido)
+            )
+            FROM Pedido pedido
+            JOIN pedido.cliente cliente
+            """ + FILTROS_RELATORIO_FINANCEIRO + """
+            AND pedido.status <> :statusCancelado
+            GROUP BY pedido.formaPagamento
+            ORDER BY SUM(pedido.valorTotal) DESC, pedido.formaPagamento ASC
+            """)
+    List<RelatorioFinanceiroPagamentoResponse> buscarPagamentosRelatorioFinanceiro(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("status") StatusPedido status,
+            @Param("cliente") String cliente,
+            @Param("statusCancelado") StatusPedido statusCancelado
+    );
+
+    @Query("""
+            SELECT new br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroEntregaResponse(
+                pedido.tipoEntrega,
+                COUNT(pedido),
+                SUM(pedido.subtotal),
+                SUM(pedido.taxaEntrega),
+                SUM(pedido.valorTotal),
+                CASE WHEN SUM(SUM(pedido.valorTotal)) OVER () = 0 THEN 0
+                     ELSE SUM(pedido.valorTotal) * 100 / SUM(SUM(pedido.valorTotal)) OVER () END
+            )
+            FROM Pedido pedido
+            JOIN pedido.cliente cliente
+            """ + FILTROS_RELATORIO_FINANCEIRO + """
+            AND pedido.status <> :statusCancelado
+            GROUP BY pedido.tipoEntrega
+            ORDER BY SUM(pedido.valorTotal) DESC, pedido.tipoEntrega ASC
+            """)
+    List<RelatorioFinanceiroEntregaResponse> buscarEntregasRelatorioFinanceiro(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("status") StatusPedido status,
+            @Param("cliente") String cliente,
+            @Param("statusCancelado") StatusPedido statusCancelado
+    );
+
+    @Query("""
+            SELECT pedido.dataAgendada AS data, SUM(pedido.valorTotal) AS faturamento
+            FROM Pedido pedido
+            JOIN pedido.cliente cliente
+            """ + FILTROS_RELATORIO_FINANCEIRO + """
+            AND pedido.status <> :statusCancelado
+            GROUP BY pedido.dataAgendada
+            ORDER BY SUM(pedido.valorTotal) DESC, pedido.dataAgendada ASC
+            """)
+    List<MelhorDiaRelatorioFinanceiro> buscarMelhorDiaRelatorioFinanceiro(
+            @Param("dataInicial") LocalDate dataInicial,
+            @Param("dataFinal") LocalDate dataFinal,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("status") StatusPedido status,
+            @Param("cliente") String cliente,
+            @Param("statusCancelado") StatusPedido statusCancelado,
+            Pageable pageable
+    );
 
     String FILTROS_RELATORIO_CLIENTES = """
             WHERE pedido.dataAgendada BETWEEN :dataInicial AND :dataFinal
