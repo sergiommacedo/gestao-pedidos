@@ -22,8 +22,53 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarFormularioEstoque();
     inicializarFormularioFichaTecnica();
     inicializarItensProducao();
+    inicializarPreviaRendimentoProducao();
+    inicializarComposicaoProduto();
 
 });
+
+function inicializarComposicaoProduto() {
+    const formulario = document.querySelector("[data-form-composicao]");
+    if (!formulario) return;
+    const container = formulario.querySelector("[data-composicao-itens]");
+    const template = document.querySelector("[data-composicao-template]");
+    const moeda = valor => new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(valor || 0);
+    const renumerar = () => container.querySelectorAll("[data-composicao-item]").forEach((linha, indice) => linha.querySelectorAll("[data-campo]").forEach(campo => campo.name = `itens[${indice}].${campo.dataset.campo}`));
+    const totalizar = () => {
+        let total = 0;
+        container.querySelectorAll("[data-composicao-item]").forEach(linha => {
+            const opcao = linha.querySelector("[data-composicao-referencia]").selectedOptions[0];
+            const custo = Number(opcao?.dataset.custo || 0) * Number(linha.querySelector("[data-composicao-quantidade]").value || 0);
+            linha.querySelector("[data-composicao-custo]").textContent = moeda(custo); total += custo;
+        });
+        formulario.querySelector("[data-composicao-total]").textContent = moeda(total);
+    };
+    const carregar = async linha => {
+        const tipo = linha.querySelector("[data-composicao-tipo]").value;
+        const select = linha.querySelector("[data-composicao-referencia]");
+        const atual = select.dataset.valorAtual || select.value;
+        select.innerHTML = '<option value="">Selecione</option>';
+        if (!tipo) return;
+        const resposta = await fetch(`/composicoes-produtos/componentes?tipo=${encodeURIComponent(tipo)}`);
+        if (!resposta.ok) return;
+        for (const item of await resposta.json()) {
+            const opcao = document.createElement("option"); opcao.value = item.id; opcao.textContent = item.nome;
+            opcao.dataset.unidade = item.unidade; opcao.dataset.simbolo = ({UNIDADE:"un", QUILOGRAMA:"kg", GRAMA:"g", LITRO:"L", MILILITRO:"ml"})[item.unidade] || item.unidade;
+            opcao.dataset.custo = item.custoMedio; if (String(item.id) === String(atual)) opcao.selected = true; select.appendChild(opcao);
+        }
+        select.dataset.valorAtual = ""; atualizarLinha(linha);
+    };
+    const atualizarLinha = linha => { const opcao = linha.querySelector("[data-composicao-referencia]").selectedOptions[0]; linha.querySelector("[data-composicao-unidade]").textContent = opcao?.dataset.simbolo || "—"; totalizar(); };
+    const preparar = linha => {
+        linha.querySelector("[data-composicao-tipo]").addEventListener("change", () => carregar(linha));
+        linha.querySelector("[data-composicao-referencia]").addEventListener("change", () => atualizarLinha(linha));
+        linha.querySelector("[data-composicao-quantidade]").addEventListener("input", totalizar);
+        linha.querySelector("[data-composicao-remover]").addEventListener("click", () => { if (container.children.length > 1) { linha.remove(); renumerar(); totalizar(); } });
+        if (linha.querySelector("[data-composicao-tipo]").value) carregar(linha);
+    };
+    container.querySelectorAll("[data-composicao-item]").forEach(preparar);
+    formulario.querySelector("[data-composicao-adicionar]").addEventListener("click", () => { const linha = template.content.firstElementChild.cloneNode(true); container.appendChild(linha); renumerar(); preparar(linha); });
+}
 
 function inicializarFormularioFichaTecnica() {
     const formulario = document.querySelector("[data-form-ficha-tecnica]");
@@ -35,7 +80,9 @@ function inicializarFormularioFichaTecnica() {
     const vazio = formulario.querySelector("[data-ficha-vazio]");
     const erro = formulario.querySelector("[data-ficha-erro]");
     const produto = formulario.querySelector("[data-ficha-produto]");
-    const base = formulario.querySelector("[data-ficha-base]");
+    const rendimento = formulario.querySelector("[data-ficha-rendimento]");
+    const unidade = formulario.querySelector("[data-ficha-unidade]");
+    const unidadeTexto = formulario.querySelector("[data-ficha-unidade-texto]");
     let selecionado = null, temporizador, requisicao = 0;
     const moeda = valor => new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"}).format(valor || 0);
     const numero = valor => Number.parseFloat(String(valor ?? "0").replace(",", ".")) || 0;
@@ -43,10 +90,13 @@ function inicializarFormularioFichaTecnica() {
     const fechar = () => { clearTimeout(temporizador); requisicao++; resultados.replaceChildren(); resultados.classList.add("d-none"); };
     const avisar = mensagem => { erro.textContent = mensagem; erro.classList.remove("d-none"); };
 
-    function atualizarBase() {
+    function atualizarUnidadeRendimento() {
         const opcao = produto?.options[produto.selectedIndex];
-        base.textContent = !opcao?.value ? "Selecione o produto"
-            : opcao.dataset.unidade === "QUILOGRAMA" ? "1 kg do produto" : "1 unidade do produto";
+        const porQuilo = opcao?.dataset.unidade === "QUILOGRAMA";
+        unidade.textContent = !opcao?.value ? "—" : porQuilo ? "kg" : "un";
+        unidadeTexto.textContent = porQuilo ? "kg" : "unidade";
+        if (rendimento) { rendimento.step = porQuilo ? "0.001" : "1"; rendimento.min = porQuilo ? "0.001" : "1"; }
+        reindexar();
     }
 
     function reindexar() {
@@ -69,6 +119,8 @@ function inicializarFormularioFichaTecnica() {
             total += estimado;
         });
         formulario.querySelector("[data-ficha-total]").textContent = moeda(total);
+        const rendimentoEsperado = numero(rendimento?.value);
+        formulario.querySelector("[data-ficha-custo-unitario]").textContent = moeda(rendimentoEsperado > 0 ? total / rendimentoEsperado : 0);
         const situacao = formulario.querySelector("[data-ficha-situacao]");
         situacao.textContent = pendentes ? "Custo pendente" : "Custo completo";
         situacao.className = `badge ms-2 ${pendentes ? "text-bg-warning" : "text-bg-success"}`;
@@ -117,9 +169,47 @@ function inicializarFormularioFichaTecnica() {
     container.addEventListener("click", event => { const botao = event.target.closest("[data-ficha-remover]"); if (botao) { botao.closest("[data-ficha-item]").remove(); reindexar(); } });
     busca.addEventListener("keydown", event => { if (event.key === "Escape") fechar(); });
     document.addEventListener("click", event => { if (!resultados.contains(event.target) && event.target !== busca) fechar(); });
-    produto?.addEventListener("change", atualizarBase); atualizarBase();
+    produto?.addEventListener("change", atualizarUnidadeRendimento);
+    rendimento?.addEventListener("input", reindexar);
+    atualizarUnidadeRendimento();
     formulario.querySelectorAll("[data-ficha-item-inicial]").forEach(i => adicionarLinha({itemId:i.dataset.id,id:i.dataset.insumoId,nome:i.dataset.nome,unidade:i.dataset.unidade,simbolo:i.dataset.simbolo,quantidade:i.dataset.quantidade,custoMedio:i.dataset.custo,estoqueAtual:i.dataset.estoque,possuiCusto:i.dataset.possuiCusto === "true"}));
     reindexar();
+}
+
+function inicializarPreviaRendimentoProducao() {
+    const formulario = document.querySelector("[data-producao-rendimento]");
+    if (!formulario) return;
+    const moeda = valor => new Intl.NumberFormat("pt-BR", {style:"currency",currency:"BRL"}).format(valor || 0);
+    const quantidade = (valor, unidade) => `${new Intl.NumberFormat("pt-BR", {minimumFractionDigits:unidade === "UNIDADE" ? 0 : 3,maximumFractionDigits:3}).format(valor || 0)} ${unidade === "UNIDADE" ? "un" : unidade === "QUILOGRAMA" ? "kg" : unidade}`;
+    let temporizador;
+    async function atualizar(linha) {
+        const produto = linha.querySelector("[data-produto-producao]")?.value;
+        const real = linha.querySelector("[data-rendimento-real]")?.value;
+        const previa = linha.querySelector("[data-previa-producao]");
+        if (!produto || !real || Number(real) <= 0) { previa.classList.add("d-none"); return; }
+        try {
+            const produtosSelecionados = [...formulario.querySelectorAll("[data-produto-producao]")].map(campo => Number(campo.value)).filter(Number.isFinite);
+            const recebeAdicionais = Number(produto) === Math.max(...produtosSelecionados);
+            const gas = recebeAdicionais ? formulario.querySelector("[data-producao-gas]")?.value || "0" : "0";
+            const outros = recebeAdicionais ? formulario.querySelector("[data-producao-outros]")?.value || "0" : "0";
+            const resposta = await fetch(`/producoes/previa?produtoId=${encodeURIComponent(produto)}&rendimentoReal=${encodeURIComponent(real)}&valorGasEnergia=${encodeURIComponent(gas)}&valorOutros=${encodeURIComponent(outros)}`);
+            if (!resposta.ok) throw new Error();
+            const dados = await resposta.json(); previa.classList.remove("d-none");
+            previa.querySelector("[data-previa-esperado]").textContent = quantidade(dados.rendimentoEsperado,dados.unidade);
+            previa.querySelector("[data-previa-fator]").textContent = new Intl.NumberFormat("pt-BR",{minimumFractionDigits:6,maximumFractionDigits:9}).format(dados.fatorProducao);
+            previa.querySelector("[data-previa-custo-unitario]").textContent = `${moeda(dados.custoEstimadoPorUnidade)}/${dados.unidade === "UNIDADE" ? "un" : "kg"}`;
+            previa.querySelector("[data-previa-insumos-total]").textContent = moeda(dados.valorInsumos);
+            previa.querySelector("[data-previa-adicionais]").textContent = moeda(dados.gastosAdicionais);
+            previa.querySelector("[data-previa-total]").textContent = moeda(dados.custoTotalEstimado);
+            const corpo = previa.querySelector("[data-previa-insumos]"); corpo.replaceChildren();
+            dados.insumos.forEach(item => { const tr=document.createElement("tr");if(!item.estoqueSuficiente)tr.className="table-warning";[item.nome,quantidade(item.quantidadeNecessaria,item.unidade),quantidade(item.estoqueDisponivel,item.unidade),moeda(item.custoMedio),moeda(item.valorEstimado)].forEach(valor=>{const td=document.createElement("td");td.textContent=valor;tr.append(td);});corpo.append(tr); });
+            const insuficiente = dados.insumos.some(item => !item.estoqueSuficiente);const aviso=previa.querySelector("[data-previa-erro]");const mensagens=[];if(insuficiente)mensagens.push("Um ou mais Insumos não possuem estoque suficiente para esta Produção.");if(!dados.custoCompleto)mensagens.push(`Custo incompleto: ${dados.insumosSemCusto.join(", ")}.`);aviso.textContent=mensagens.join(" ");aviso.classList.toggle("d-none",mensagens.length===0);
+        } catch { previa.classList.remove("d-none");const aviso=previa.querySelector("[data-previa-erro]");aviso.textContent="Não foi possível calcular a prévia da Produção.";aviso.classList.remove("d-none"); }
+    }
+    formulario.addEventListener("input", evento => { if(!evento.target.matches("[data-rendimento-real]"))return;clearTimeout(temporizador);temporizador=setTimeout(()=>atualizar(evento.target.closest("[data-item-producao]")),250); });
+    formulario.addEventListener("change", evento => { if(evento.target.matches("[data-produto-producao]"))atualizar(evento.target.closest("[data-item-producao]")); });
+    formulario.addEventListener("input", evento => { if(!evento.target.matches("[data-producao-gas],[data-producao-outros]"))return;clearTimeout(temporizador);temporizador=setTimeout(()=>formulario.querySelectorAll("[data-item-producao]").forEach(atualizar),250); });
+    formulario.querySelectorAll("[data-item-producao]").forEach(atualizar);
 }
 
 function inicializarItensProducao() {
@@ -169,7 +259,8 @@ function inicializarFormularioEstoque() {
     const valorInicial = referencia.value;
     const atualizar = () => {
         const seletor = tipo.value === "INSUMO" ? "[data-opcoes-insumo]"
-            : tipo.value === "PRODUTO_REVENDA" ? "[data-opcoes-revenda]" : "";
+            : tipo.value === "PRODUTO_REVENDA" ? "[data-opcoes-revenda]"
+            : tipo.value === "PREPARACAO_PRODUZIDA" ? "[data-opcoes-preparacao]" : "";
         const template = seletor ? formulario.querySelector(seletor) : null;
         referencia.replaceChildren(new Option(tipo.value ? "Selecione" : "Selecione o tipo primeiro", ""));
         if (template) referencia.append(template.content.cloneNode(true));
@@ -188,12 +279,25 @@ function inicializarFormularioProduto() {
     const unidade = formulario.querySelector("#unidadeVenda");
     const grupo = formulario.querySelector("[data-estoque-minimo-produto]");
     const minimo = formulario.querySelector("#estoqueMinimo");
+    const precoGrupo = formulario.querySelector("[data-preco-produto]");
+    const preco = formulario.querySelector("#preco");
+    const acompanhamentoGrupo = formulario.querySelector("[data-acompanhamento-produto]");
+    const acompanhamento = formulario.querySelector("#permiteAcompanhamento");
+    const vendavelGrupo = formulario.querySelector("[data-vendavel-produto]");
+    const vendavel = formulario.querySelector("#vendavel");
+    const ajuda = formulario.querySelector("[data-ajuda-preparacao]");
+    const labelUnidade = formulario.querySelector("[data-label-unidade-produto]");
     const atualizar = () => {
-        const revenda = tipo.value === "REVENDA";
-        grupo.classList.toggle("d-none", !revenda);
-        minimo.disabled = !revenda;
+        const preparacao = tipo.value === "PREPARACAO_PRODUZIDA";
+        const comercial = tipo.value === "PRODUTO_COMERCIAL";
+        const controlaEstoque = preparacao || tipo.value === "PRODUTO_REVENDA";
+        grupo.classList.toggle("d-none", !controlaEstoque); minimo.disabled = !controlaEstoque;
         minimo.step = unidade.value === "UNIDADE" ? "1" : "0.001";
-        if (!revenda) minimo.value = "0";
+        if (comercial) minimo.value = "0";
+        precoGrupo.classList.toggle("d-none", preparacao); preco.disabled = preparacao; preco.required = !preparacao;
+        acompanhamentoGrupo.classList.toggle("d-none", preparacao); vendavelGrupo.classList.toggle("d-none", preparacao); ajuda.classList.toggle("d-none", !preparacao);
+        labelUnidade.textContent = preparacao ? "Unidade de controle *" : "Unidade de venda *";
+        if (preparacao) { preco.value = ""; vendavel.checked = false; acompanhamento.checked = false; }
     };
     tipo.addEventListener("change", atualizar); unidade.addEventListener("change", atualizar); atualizar();
 }
@@ -873,10 +977,20 @@ function inicializarFormularioPedido() {
         "[data-resumo-quantidade-container]"
     );
     const resumoQuantidade = formulario.querySelector("[data-resumo-quantidade]");
+    const previaEstoque = formulario.querySelector("[data-previa-estoque]");
+    const previaTitulo = formulario.querySelector("[data-previa-estoque-titulo]");
+    const previaMensagem = formulario.querySelector("[data-previa-estoque-mensagem]");
+    const previaComponentes = formulario.querySelector("[data-previa-componentes]");
+    const previaFinanceira = formulario.querySelector("[data-previa-financeira]");
+    const previaCusto = formulario.querySelector("[data-previa-custo]");
+    const previaLucro = formulario.querySelector("[data-previa-lucro]");
+    const previaMargem = formulario.querySelector("[data-previa-margem]");
     let temporizadorCliente;
     let temporizadorProduto;
     let requisicaoCliente = 0;
     let requisicaoProduto = 0;
+    let temporizadorPrevia;
+    let requisicaoPrevia = 0;
 
     function fecharResultadosClientes() {
         clearTimeout(temporizadorCliente);
@@ -1085,6 +1199,72 @@ function inicializarFormularioPedido() {
         subtotalPedido.textContent = formatarMoeda(subtotal);
         resumoTaxa.textContent = formatarMoeda(taxa);
         totalPedido.textContent = formatarMoeda(subtotal + taxa);
+        agendarPreviaEstoque();
+    }
+
+    function agendarPreviaEstoque() {
+        clearTimeout(temporizadorPrevia);
+        temporizadorPrevia = setTimeout(carregarPreviaEstoque, 300);
+    }
+
+    async function carregarPreviaEstoque() {
+        const itens = Array.from(itensContainer.querySelectorAll(".item-pedido"))
+            .map(item => ({
+                produtoId: Number(item.querySelector("[data-item-produto-id]").value),
+                quantidade: Number(item.querySelector("[data-item-quantidade]").value),
+                observacao: item.querySelector("[data-item-observacao]").value
+            }))
+            .filter(item => item.produtoId && item.quantidade > 0);
+
+        if (itens.length === 0) {
+            previaEstoque.className = "alert alert-secondary py-2";
+            previaTitulo.textContent = "Aguardando itens";
+            previaMensagem.textContent = "O estoque será baixado quando o pedido entrar em preparação.";
+            previaComponentes.replaceChildren();
+            previaComponentes.classList.add("d-none");
+            previaFinanceira?.classList.add("d-none");
+            return;
+        }
+
+        const numeroRequisicao = ++requisicaoPrevia;
+        const csrf = formulario.querySelector('input[name="_csrf"]');
+        const resposta = await fetch("/pedidos/preview-estoque", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(csrf ? {"X-CSRF-TOKEN": csrf.value} : {})
+            },
+            body: JSON.stringify({itens})
+        });
+
+        if (numeroRequisicao !== requisicaoPrevia) return;
+        if (!resposta.ok) {
+            const erro = await resposta.json().catch(() => ({}));
+            previaEstoque.className = "alert alert-warning py-2";
+            previaTitulo.textContent = "Prévia indisponível";
+            previaMensagem.textContent = erro.mensagem || "Confira os produtos e tente novamente.";
+            return;
+        }
+
+        const previa = await resposta.json();
+        previaEstoque.className = `alert py-2 ${previa.estoqueSuficiente ? "alert-success" : "alert-danger"}`;
+        previaTitulo.textContent = previa.estoqueSuficiente ? "Estoque suficiente" : "Existem itens em falta";
+        previaMensagem.textContent = "Nenhuma baixa é feita nesta prévia. A baixa ocorre ao iniciar a preparação.";
+        previaComponentes.replaceChildren();
+        previa.componentes.forEach(componente => {
+            const linha = document.createElement("div");
+            linha.className = `small d-flex justify-content-between gap-2 ${componente.suficiente ? "" : "text-danger fw-semibold"}`;
+            const unidade = componente.unidade === "UNIDADE" ? " un." : ` ${componente.unidade === "QUILOGRAMA" ? "kg" : componente.unidade.toLowerCase()}`;
+            linha.textContent = `${componente.nome}: ${componente.necessario}${unidade} necessário · ${componente.disponivel}${unidade} disponível${componente.suficiente ? "" : ` · falta ${componente.faltante}${unidade}`}`;
+            previaComponentes.appendChild(linha);
+        });
+        previaComponentes.classList.remove("d-none");
+        if (previaFinanceira) {
+            previaFinanceira.classList.remove("d-none");
+            previaCusto.textContent = formatarMoeda(Number(previa.custoEstimado));
+            previaLucro.textContent = formatarMoeda(Number(previa.lucroBrutoEstimado));
+            previaMargem.textContent = `${new Intl.NumberFormat("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(Number(previa.margemBrutaEstimada))}%`;
+        }
     }
 
     function ativarItem(item) {
@@ -1168,6 +1348,7 @@ function inicializarFormularioPedido() {
         item.dataset.produtoId = produto.id;
         item.dataset.produtoPreco = produto.preco;
         item.dataset.produtoUnidade = produto.unidadeVenda;
+        item.dataset.produtoTipo = produto.tipoProduto;
         item.dataset.permiteAcompanhamento = produto.permiteAcompanhamento;
         const unidade = produto.unidadeVenda === "UNIDADE" ? "Unidade" : "Quilograma";
         const esconderObservacao = produto.permiteAcompanhamento ? "" : " d-none";
@@ -1241,7 +1422,8 @@ function inicializarFormularioPedido() {
             nome.className = "fw-semibold";
             nome.textContent = produto.nome;
             detalhes.className = "text-muted";
-            detalhes.textContent = `${produto.unidadeVenda === "UNIDADE" ? "Unidade" : "Quilograma"} · ${formatarMoeda(Number(produto.preco))}`;
+            const tipo = produto.tipoProduto === "PRODUTO_REVENDA" ? "Revenda" : "Produto comercial";
+            detalhes.textContent = `${tipo} · ${produto.unidadeVenda === "UNIDADE" ? "Unidade" : "Quilograma"} · ${formatarMoeda(Number(produto.preco))}`;
             conteudo.append(nome, detalhes);
             resultadosProdutos.appendChild(
                 criarBotaoResultado(conteudo, () => adicionarProduto(produto))

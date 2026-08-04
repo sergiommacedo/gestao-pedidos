@@ -4,6 +4,7 @@ import br.com.sergio.gestaopedidos.dto.pedido.ItemPedidoRequest;
 import br.com.sergio.gestaopedidos.dto.pedido.DashboardOperacionalResponse;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoRequest;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoResponse;
+import br.com.sergio.gestaopedidos.dto.pedido.PreviaEstoquePedidoResponse;
 import br.com.sergio.gestaopedidos.entity.Cliente;
 import br.com.sergio.gestaopedidos.entity.ItemPedido;
 import br.com.sergio.gestaopedidos.entity.Pedido;
@@ -17,6 +18,7 @@ import br.com.sergio.gestaopedidos.mapper.PedidoMapper;
 import br.com.sergio.gestaopedidos.repository.ClienteRepository;
 import br.com.sergio.gestaopedidos.repository.PedidoRepository;
 import br.com.sergio.gestaopedidos.repository.ProdutoRepository;
+import br.com.sergio.gestaopedidos.repository.MovimentacaoEstoqueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -50,6 +52,7 @@ public class PedidoService {
     private final ProdutoRepository produtoRepository;
     private final PedidoMapper pedidoMapper;
     private final EstoqueService estoqueService;
+    private final MovimentacaoEstoqueRepository movimentacaoEstoqueRepository;
 
     @Transactional(readOnly = true)
     public List<PedidoResponse> listarTodos() {
@@ -64,6 +67,9 @@ public class PedidoService {
             String filtro,
             StatusPedido status,
             LocalDate dataAgendada,
+            TipoEntrega tipoEntrega,
+            br.com.sergio.gestaopedidos.enums.FormaPagamento formaPagamento,
+            String situacaoEstoque,
             Pageable pageable
     ) {
         String filtroTratado = filtro == null ? "" : filtro.trim();
@@ -72,6 +78,9 @@ public class PedidoService {
                         filtroTratado,
                         status,
                         dataAgendada,
+                        tipoEntrega,
+                        formaPagamento,
+                        situacaoEstoque == null ? "" : situacaoEstoque,
                         pageable
                 )
                 .map(pedidoMapper::toResponse);
@@ -84,6 +93,7 @@ public class PedidoService {
         return new DashboardOperacionalResponse(
                 dataReferencia,
                 pedidoRepository.countByDataAgendada(dataReferencia),
+                pedidoRepository.countByDataAgendadaAndStatus(dataReferencia, StatusPedido.EM_PREPARACAO),
                 pedidoRepository.countByDataAgendadaAndStatus(
                         dataReferencia,
                         StatusPedido.ENTREGUE
@@ -170,11 +180,25 @@ public class PedidoService {
     }
 
     public boolean isImprimivel(StatusPedido status) {
-        return isEditavel(status);
+        return status != null;
     }
 
     public Set<StatusPedido> statusEditaveis() {
         return STATUS_EDITAVEIS;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, String> situacoesEstoque(List<PedidoResponse> pedidos) {
+        Map<Long, String> resultado = new LinkedHashMap<>();
+        for (PedidoResponse pedido : pedidos) resultado.put(pedido.id(), situacaoEstoque(pedido));
+        return resultado;
+    }
+
+    @Transactional(readOnly = true)
+    public String situacaoEstoque(PedidoResponse pedido) {
+        if (Boolean.TRUE.equals(pedido.estoqueMovimentado())) return "Estoque baixado";
+        if (pedido.status() == StatusPedido.CANCELADO) return movimentacaoEstoqueRepository.existsByPedidoIdAndTipo(pedido.id(), br.com.sergio.gestaopedidos.enums.TipoMovimentacaoEstoque.ESTORNO_SAIDA) ? "Estoque estornado" : "Não se aplica";
+        return "Aguardando baixa";
     }
 
     public PedidoResponse salvar(PedidoRequest request) {
@@ -194,20 +218,21 @@ public class PedidoService {
             PedidoRequest request,
             List<Long> itemIds
     ) {
-        Pedido pedido = buscarEntidadePorId(id);
+        Pedido pedido = pedidoRepository.bloquearDetalhado(id).orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
         validarEditavel(pedido);
         boolean estoqueMovimentado = Boolean.TRUE.equals(pedido.getEstoqueMovimentado());
-        if (estoqueMovimentado) validarItensInalterados(pedido, request, itemIds);
+        if (estoqueMovimentado) estoqueService.estornarPedido(pedido);
         Cliente cliente = buscarClientePorId(request.clienteId());
 
         pedido.setCliente(cliente);
         pedido.setDataAgendada(request.dataAgendada());
         pedido.setFormaPagamento(request.formaPagamento());
         pedido.setTipoEntrega(request.tipoEntrega());
-        pedido.setTaxaEntrega(normalizarTaxaEntrega(request.taxaEntrega()));
+        pedido.setTaxaEntrega(normalizarTaxaEntrega(request.tipoEntrega(), request.taxaEntrega()));
         pedido.setObservacao(request.observacao());
 
-        if (!estoqueMovimentado) atualizarItensERecalcular(pedido, request, itemIds);
+        atualizarItensERecalcular(pedido, request, itemIds);
+        if (estoqueMovimentado) estoqueService.processarPedido(pedido);
 
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
     }
@@ -265,6 +290,7 @@ public class PedidoService {
             }
 
             pedido.setMotivoCancelamento(motivoTratado);
+            estoqueService.estornarPedido(pedido);
         } else if (motivoCancelamento != null && !motivoCancelamento.isBlank()) {
             throw new BusinessException(
                     "O motivo do cancelamento só pode ser informado ao cancelar o pedido."
@@ -358,9 +384,6 @@ public class PedidoService {
         pedido.calcularValorTotal();
     }
 
-    private void validarItensInalterados(Pedido pedido,PedidoRequest request,List<Long> itemIds){if(itemIds==null||request.itens()==null||itemIds.size()!=pedido.getItens().size()||request.itens().size()!=pedido.getItens().size())bloquearItensMovimentados();Map<Long,ItemPedido> atuais=pedido.getItens().stream().collect(java.util.stream.Collectors.toMap(ItemPedido::getId,java.util.function.Function.identity()));Set<Long> vistos=new HashSet<>();for(int i=0;i<itemIds.size();i++){Long id=itemIds.get(i);ItemPedido atual=id==null?null:atuais.get(id);ItemPedidoRequest recebido=request.itens().get(i);if(atual==null||!vistos.add(id)||!atual.getProduto().getId().equals(recebido.produtoId())||atual.getQuantidade().compareTo(recebido.quantidade())!=0)bloquearItensMovimentados();}}
-    private void bloquearItensMovimentados(){throw new BusinessException("O pedido já movimentou estoque e não pode ter seus itens alterados.");}
-
     private void atualizarItemExistente(
             ItemPedido itemPedido,
             ItemPedidoRequest request
@@ -387,7 +410,9 @@ public class PedidoService {
 
         BigDecimal subtotalPedido = BigDecimal.ZERO;
 
+        Set<Long> produtosInformados = new HashSet<>();
         for (ItemPedidoRequest itemRequest : request.itens()) {
+            if (!produtosInformados.add(itemRequest.produtoId())) throw new BusinessException("Um produto não pode ser repetido no pedido.");
             Produto produto = buscarProdutoPorId(itemRequest.produtoId());
 
             validarProdutoDisponivelParaVenda(produto);
@@ -421,17 +446,26 @@ public class PedidoService {
                 .formaPagamento(request.formaPagamento())
                 .tipoEntrega(request.tipoEntrega())
                 .subtotal(BigDecimal.ZERO)
-                .taxaEntrega(normalizarTaxaEntrega(request.taxaEntrega()))
+                .taxaEntrega(normalizarTaxaEntrega(request.tipoEntrega(), request.taxaEntrega()))
                 .valorTotal(BigDecimal.ZERO)
                 .observacao(request.observacao())
                 .cliente(cliente)
                 .build();
     }
 
-    private BigDecimal normalizarTaxaEntrega(BigDecimal taxaEntrega) {
+    private BigDecimal normalizarTaxaEntrega(TipoEntrega tipoEntrega, BigDecimal taxaEntrega) {
+        if (tipoEntrega == TipoEntrega.RETIRADA) return BigDecimal.ZERO.setScale(2);
         return taxaEntrega != null
                 ? taxaEntrega.setScale(2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
+    }
+
+    @Transactional(readOnly = true)
+    public PreviaEstoquePedidoResponse preverEstoque(PedidoRequest request) {
+        if (request == null || request.itens() == null || request.itens().isEmpty()) throw new BusinessException("Adicione ao menos um produto para consultar o Estoque.");
+        Pedido pedido = criarPedido(request, null);
+        substituirItensERecalcular(pedido, request);
+        return estoqueService.preverPedido(pedido);
     }
 
     private ItemPedido criarItemPedido(
@@ -483,7 +517,9 @@ public class PedidoService {
     }
 
     private void validarProdutoDisponivelParaVenda(Produto produto) {
-        if (!Boolean.TRUE.equals(produto.getAtivo()) || !Boolean.TRUE.equals(produto.getVendavel())) {
+        if (!Boolean.TRUE.equals(produto.getAtivo()) || !Boolean.TRUE.equals(produto.getVendavel())
+                || (produto.getTipoProduto()!=br.com.sergio.gestaopedidos.enums.TipoProduto.PRODUTO_COMERCIAL
+                && produto.getTipoProduto()!=br.com.sergio.gestaopedidos.enums.TipoProduto.PRODUTO_REVENDA)) {
             throw new BusinessException("Este produto não está disponível para venda.");
         }
     }

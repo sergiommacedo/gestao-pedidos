@@ -5,18 +5,16 @@
       layout:decorate="~{layout/layout}">
 
 <section layout:fragment="content">
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <a th:href="@{/usuarios}" class="btn btn-outline-secondary" aria-label="Voltar para usuários">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-        <div>
+    <header class="page-header">
+        <div class="page-header-content">
             <h2 class="mb-0" th:text="${titulo}">Usuário</h2>
             <small class="text-muted">
                 <span th:if="${modoEdicao}">Atualize os dados de acesso do usuário</span>
                 <span th:unless="${modoEdicao}">Cadastre um novo acesso ao sistema</span>
             </small>
         </div>
-    </div>
+        <div class="page-header-actions"><a th:href="@{/usuarios}" class="btn btn-outline-secondary" aria-label="Voltar para usuários"><i class="bi bi-arrow-left"></i></a></div>
+    </header>
 
     <div class="card shadow-sm">
         <div class="card-body p-4">

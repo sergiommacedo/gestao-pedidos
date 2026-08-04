@@ -30,6 +30,18 @@ public class ItemPedido {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
+    @Column(name = "custo_unitario_historico", precision = 18, scale = 6)
+    private BigDecimal custoUnitarioHistorico;
+
+    @Column(name = "custo_total_historico", precision = 18, scale = 2)
+    private BigDecimal custoTotalHistorico;
+
+    @Column(name = "lucro_bruto_historico", precision = 18, scale = 2)
+    private BigDecimal lucroBrutoHistorico;
+
+    @Column(name = "margem_bruta_historica", precision = 9, scale = 4)
+    private BigDecimal margemBrutaHistorica;
+
     @Column(length = 255)
     private String observacao;
 
@@ -48,5 +60,21 @@ public class ItemPedido {
             subtotal = precoUnitario.multiply(quantidade)
                     .setScale(2, RoundingMode.HALF_UP);
         }
+    }
+
+    public BigDecimal lucroBrutoEstimado() {
+        return lucroBrutoHistorico;
+    }
+
+    public void aplicarCustoHistorico(BigDecimal custoTotal) {
+        if (custoTotal == null || quantidade == null || quantidade.signum() <= 0 || subtotal == null) {
+            throw new IllegalArgumentException("Item inválido para consolidação do custo histórico.");
+        }
+        custoTotalHistorico = custoTotal.setScale(2, RoundingMode.HALF_UP);
+        custoUnitarioHistorico = custoTotalHistorico.divide(quantidade, 6, RoundingMode.HALF_UP);
+        lucroBrutoHistorico = subtotal.subtract(custoTotalHistorico).setScale(2, RoundingMode.HALF_UP);
+        margemBrutaHistorica = subtotal.signum() == 0 ? null
+                : lucroBrutoHistorico.multiply(BigDecimal.valueOf(100))
+                        .divide(subtotal, 4, RoundingMode.HALF_UP);
     }
 }

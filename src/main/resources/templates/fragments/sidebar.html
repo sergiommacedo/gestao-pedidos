@@ -138,6 +138,12 @@
                 <span>Compras</span>
             </a>
 
+            <a th:href="@{/composicoes-produtos}" sec:authorize="hasRole('ADMIN')"
+               class="nav-link d-flex align-items-center gap-3"
+               th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/composicoes-produtos')} ? ' active'">
+                <i class="bi bi-diagram-3"></i><span>Composições dos Produtos</span>
+            </a>
+
             <a th:href="@{/estoque}" sec:authorize="hasRole('ADMIN')" class="nav-link d-flex align-items-center gap-3" th:classappend="${currentRequestPath != null and #strings.startsWith(currentRequestPath, '/estoque')} ? ' active'">
                 <i class="bi bi-boxes"></i><span>Estoque</span>
             </a>

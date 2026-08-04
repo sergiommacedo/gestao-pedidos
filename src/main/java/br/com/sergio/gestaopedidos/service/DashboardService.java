@@ -46,20 +46,43 @@ public class DashboardService {
     private final SaldoEstoqueRepository saldoEstoqueRepository;
     private final CompraRepository compraRepository;
     private final FichaTecnicaRepository fichaTecnicaRepository;
+    private final EstoqueService estoqueService;
+    private final ProducaoService producaoService;
 
     @Transactional(readOnly = true)
     public DashboardOperacionalResponse buscarDashboard(LocalDate data) {
         DashboardIndicadoresResponse pedidos = buscarIndicadores(data);
-        var producao = montarProducao(producaoRepository.resumirDashboard(data).orElse(null));
+        var resultadoFinanceiro = buscarResultadoFinanceiro(data);
+        var producao = montarProducao(producaoRepository.resumirConfirmadasDashboard(data));
+        var rascunhos = montarRascunhos(data);
         var estoque = montarEstoque();
         var compras = montarCompras(compraRepository.resumirDashboard(data));
         long fichasPendentes = fichaTecnicaRepository.contarAtivasComCustoPendente();
         long produtosSemFicha = fichaTecnicaRepository.contarProdutosProduzidosAtivosSemFicha();
-        return new DashboardOperacionalResponse(data, pedidos, buscarPedidosQuePrecisamAtencao(data),
-                buscarResumoStatus(data), producao, estoque, compras,
+        return new DashboardOperacionalResponse(data, pedidos, resultadoFinanceiro, buscarPedidosQuePrecisamAtencao(data),
+                buscarResumoStatus(data), producao, rascunhos, estoque, compras,
                 itemPedidoRepository.resumirProdutosMaisVendidosDashboard(data, StatusPedido.CANCELADO,
                         PageRequest.of(0, LIMITE_LISTAS)),
-                montarAlertas(producao, estoque, fichasPendentes, produtosSemFicha));
+                montarAlertas(rascunhos, estoque, fichasPendentes, produtosSemFicha));
+    }
+
+    @Transactional(readOnly = true)
+    public DashboardOperacionalResponse.ResultadoFinanceiro buscarResultadoFinanceiro(LocalDate data) {
+        return montarResultadoFinanceiro(
+                pedidoRepository.resumirFinanceiroDashboard(data, StatusPedido.CANCELADO));
+    }
+
+    private DashboardOperacionalResponse.ResultadoFinanceiro montarResultadoFinanceiro(
+            PedidoRepository.ResumoFinanceiroDashboard resumo) {
+        long validos = resumo == null ? 0 : numero(resumo.getPedidosValidos());
+        long comCusto = resumo == null ? 0 : numero(resumo.getPedidosComCusto());
+        BigDecimal receita = resumo == null ? BigDecimal.ZERO : valorOuZero(resumo.getReceitaProdutos());
+        BigDecimal cmv = resumo == null ? BigDecimal.ZERO : valorOuZero(resumo.getCmv());
+        BigDecimal lucro = resumo == null ? BigDecimal.ZERO : valorOuZero(resumo.getLucroBruto());
+        BigDecimal margem = receita.signum() == 0 ? null
+                : lucro.multiply(BigDecimal.valueOf(100)).divide(receita, 2, RoundingMode.HALF_UP);
+        return new DashboardOperacionalResponse.ResultadoFinanceiro(receita, cmv, lucro, margem,
+                Math.max(0, validos - comCusto), validos == comCusto);
     }
 
     @Transactional(readOnly = true)
@@ -143,21 +166,34 @@ public class DashboardService {
 
     private DashboardOperacionalResponse.ProducaoDia montarProducao(ProducaoRepository.ResumoDashboard r) {
         return r == null
-                ? new DashboardOperacionalResponse.ProducaoDia(null, null, 0, BigDecimal.ZERO, BigDecimal.ZERO, null)
-                : new DashboardOperacionalResponse.ProducaoDia(r.getId(), r.getStatus(), (int) numero(r.getProdutos()),
-                    valorOuZero(r.getQuantidade()), valorOuZero(r.getCusto()), r.getConfirmadaEm());
+                ? new DashboardOperacionalResponse.ProducaoDia(0, 0, BigDecimal.ZERO, BigDecimal.ZERO)
+                : new DashboardOperacionalResponse.ProducaoDia(numero(r.getProducoes()), (int) numero(r.getProdutos()),
+                    valorOuZero(r.getQuantidade()), valorOuZero(r.getCusto()));
+    }
+
+    private List<DashboardOperacionalResponse.ProducaoRascunho> montarRascunhos(LocalDate data) {
+        return producaoRepository.buscarRascunhosDashboard(data).stream().map(p -> {
+            var detalhes = producaoService.buscarDetalhes(p.getId());
+            var preparacoes = detalhes.estoquesPreparacoes().stream()
+                    .map(e -> new DashboardOperacionalResponse.PreparacaoRascunho(e.produtoNome(), e.unidade(),
+                            e.producaoAdicionada(), e.estoqueAntes()))
+                    .toList();
+            return new DashboardOperacionalResponse.ProducaoRascunho(p.getId(), preparacoes,
+                    detalhes.resumo().producao().custoTotal());
+        }).toList();
     }
 
     private DashboardOperacionalResponse.EstoqueResumo montarEstoque() {
         SaldoEstoqueRepository.ResumoDashboard r = saldoEstoqueRepository.resumirDashboard();
+        var valores = estoqueService.indicadores();
         List<DashboardOperacionalResponse.ItemEstoque> alertas = saldoEstoqueRepository
                 .listarAlertasDashboard(PageRequest.of(0, LIMITE_LISTAS)).stream().map(this::mapearEstoque).toList();
         List<DashboardOperacionalResponse.ItemEstoque> produzidos = saldoEstoqueRepository
                 .listarProduzidosDisponiveisDashboard(PageRequest.of(0, LIMITE_LISTAS)).stream().map(this::mapearEstoque).toList();
         return new DashboardOperacionalResponse.EstoqueResumo(numero(r.getItensComSaldo()), numero(r.getAbaixoDoMinimo()),
                 numero(r.getSemEstoque()), numero(r.getProduzidosDisponiveis()), numero(r.getRevendaDisponiveis()),
-                valorOuZero(r.getValorInsumos()), valorOuZero(r.getValorRevenda()), valorOuZero(r.getValorProduzidos()),
-                valorOuZero(r.getValorTotal()), alertas, produzidos);
+                valores.valorInsumos(), valores.valorRevenda(), valores.valorProduzidos(),
+                valores.valorTotal(), alertas, produzidos);
     }
 
     private DashboardOperacionalResponse.ItemEstoque mapearEstoque(SaldoEstoqueRepository.Visao v) {
@@ -175,14 +211,14 @@ public class DashboardService {
                 valorOuZero(r.getValorRevenda()));
     }
 
-    private List<DashboardOperacionalResponse.Alerta> montarAlertas(DashboardOperacionalResponse.ProducaoDia producao,
+    private List<DashboardOperacionalResponse.Alerta> montarAlertas(List<DashboardOperacionalResponse.ProducaoRascunho> rascunhos,
             DashboardOperacionalResponse.EstoqueResumo estoque, long fichasPendentes, long produtosSemFicha) {
         List<DashboardOperacionalResponse.Alerta> alertas = new java.util.ArrayList<>();
         if (estoque.semEstoque() > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-x-circle", "danger", "Itens sem estoque", estoque.semEstoque()+" item(ns) estão sem estoque.", "/estoque?situacao=SEM_ESTOQUE", true));
         if (estoque.abaixoDoMinimo() > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-exclamation-triangle", "warning", "Estoque abaixo do mínimo", estoque.abaixoDoMinimo()+" item(ns) precisam de atenção.", "/estoque?situacao=BAIXO", true));
         if (fichasPendentes > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-calculator", "warning", "Custo de ficha pendente", fichasPendentes+" Ficha(s) Técnica(s) possuem custo incompleto.", "/fichas-tecnicas?custo=PENDENTE", true));
         if (produtosSemFicha > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-journal-x", "warning", "Produtos sem Ficha Técnica", produtosSemFicha+" Produto(s) Produzido(s) ativo(s) ainda não possuem ficha.", "/fichas-tecnicas/nova", true));
-        if (producao.existe() && producao.status() == br.com.sergio.gestaopedidos.enums.StatusProducao.RASCUNHO) alertas.add(new DashboardOperacionalResponse.Alerta("bi-hourglass-split", "info", "Produção em rascunho", "A Produção de hoje ainda não foi confirmada.", "/producoes/"+producao.id(), true));
+        if (!rascunhos.isEmpty()) alertas.add(new DashboardOperacionalResponse.Alerta("bi-hourglass-split", "info", "Produção em rascunho", rascunhos.size()+" Produção(ões) aguardam confirmação.", "/producoes", true));
         return List.copyOf(alertas);
     }
 

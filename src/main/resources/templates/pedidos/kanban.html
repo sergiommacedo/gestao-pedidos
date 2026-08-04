@@ -5,13 +5,13 @@
       layout:decorate="~{layout/layout}">
 
 <section layout:fragment="content">
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-2 kanban-topo">
-        <div>
+    <header class="page-header kanban-topo mb-2">
+        <div class="page-header-content">
             <h2 class="mb-0"><i class="bi bi-kanban"></i> Kanban de Pedidos</h2>
             <small class="text-muted">Acompanhe e avance os pedidos do dia</small>
         </div>
 
-        <div class="d-flex flex-wrap gap-1 kanban-navegacao">
+        <div class="page-header-actions kanban-navegacao">
             <div class="btn-group" role="group" aria-label="Visualização dos pedidos">
                 <a th:href="@{/pedidos}" class="btn btn-outline-secondary">
                     <i class="bi bi-list-ul"></i> Lista
@@ -25,7 +25,7 @@
                 <i class="bi bi-plus-circle"></i> Novo Pedido
             </a>
         </div>
-    </div>
+    </header>
 
     <div class="card shadow-sm mb-2 kanban-filtros">
         <div class="card-body kanban-filtros-corpo">
@@ -115,6 +115,10 @@
                             </div>
                             <small class="text-muted" th:if="${pedido.itens != null and pedido.itens.size() > 3}"
                                    th:text="'+' + ${pedido.itens.size() - 3} + ' item(ns)'"></small>
+                        </div>
+
+                        <div class="mb-2">
+                            <span class="badge" th:classappend="${situacoesEstoque[pedido.id] == 'Estoque baixado'} ? ' text-bg-success' : (${situacoesEstoque[pedido.id] == 'Estoque estornado'} ? ' text-bg-info' : ' text-bg-secondary')" th:text="${situacoesEstoque[pedido.id]}"></span>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center border-top kanban-total">

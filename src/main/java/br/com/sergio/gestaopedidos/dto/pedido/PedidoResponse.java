@@ -48,6 +48,12 @@ public record PedidoResponse(
         @Schema(description = "Valor total do pedido", example = "93.90")
         BigDecimal valorTotal,
 
+        BigDecimal custoTotalHistorico,
+
+        BigDecimal lucroBrutoEstimado,
+
+        BigDecimal margemBrutaEstimada,
+
         @Schema(description = "Observações do pedido", example = "Sem cebola.")
         String observacao,
 

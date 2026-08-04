@@ -67,7 +67,7 @@ public class FichaTecnicaWebController {
     public String editar(@PathVariable Long id, Model model) {
         var ficha = fichaService.buscarPorId(id);
         FichaTecnicaRequest request = FichaTecnicaRequest.builder().produtoId(ficha.produtoId())
-                .observacao(ficha.observacao()).ativa(ficha.ativa())
+                .rendimentoEsperado(ficha.rendimentoEsperado()).observacao(ficha.observacao()).ativa(ficha.ativa())
                 .itens(ficha.itens().stream().map(i -> ItemFichaTecnicaRequest.builder().id(i.id())
                         .insumoId(i.insumoId()).quantidade(i.quantidade()).build()).toList()).build();
         model.addAttribute("ficha", request);

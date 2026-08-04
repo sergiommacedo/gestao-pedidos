@@ -1,204 +1,29 @@
 package br.com.sergio.gestaopedidos.service;
-
-import br.com.sergio.gestaopedidos.dto.producao.*;
-import br.com.sergio.gestaopedidos.entity.Producao;
-import br.com.sergio.gestaopedidos.entity.*;
-import br.com.sergio.gestaopedidos.enums.*;
-import br.com.sergio.gestaopedidos.exception.BusinessException;
-import br.com.sergio.gestaopedidos.repository.*;
-import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.*;
-import java.lang.reflect.*;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.*;
-import static org.assertj.core.api.Assertions.*;
-
-class ProducaoServiceTest {
-    private static final LocalDate DATA = LocalDate.of(2026, 8, 8);
-
-    @Test void deveCalcularComprasSemSobraEValoresNulos() {
-        Fake f = new Fake();
-        var resposta = f.service().salvar(request(DATA, "0", "1050", "0", null, "30", "20"));
-        assertThat(resposta.recursosDisponiveis()).isEqualByComparingTo("1050.00");
-        assertThat(resposta.custoMateriaisConsumidos()).isEqualByComparingTo("1050.00");
-        assertThat(resposta.valorEmbalagens()).isEqualByComparingTo("0.00");
-        assertThat(resposta.totalGasto()).isEqualByComparingTo("1100.00");
-    }
-
-    @Test void deveCalcularCenariosComSobraESaldoAnterior() {
-        Fake f = new Fake();
-        var primeiro = f.service().salvar(request(DATA, "0", "1050", "350", "100", "30", "20"));
-        assertThat(primeiro.custoMateriaisConsumidos()).isEqualByComparingTo("700.00");
-        assertThat(primeiro.totalGasto()).isEqualByComparingTo("850.00");
-        f.entidade = null;
-        var segundo = f.service().salvar(request(DATA.plusDays(7), "350", "500", "150", "80", "30", "20"));
-        assertThat(segundo.custoMateriaisConsumidos()).isEqualByComparingTo("700.00");
-        assertThat(segundo.totalGasto()).isEqualByComparingTo("830.00");
-    }
-
-    @Test void deveAceitarSaldoFinalIgualAosRecursos() {
-        var resposta = new Fake().service().salvar(request(DATA, "100", "200", "300", "10", "0", "0"));
-        assertThat(resposta.custoMateriaisConsumidos()).isZero();
-        assertThat(resposta.totalGasto()).isEqualByComparingTo("10.00");
-    }
-
-    @Test void deveRejeitarSaldoFinalSuperiorEAsegurarCustoNuncaNegativo() {
-        Fake f = new Fake();
-        assertThatThrownBy(() -> f.service().salvar(request(DATA, "100", "200", "400", "0", "0", "0")))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("O saldo final não pode ser maior que o saldo inicial somado às compras.");
-        assertThat(f.entidade).isNull();
-    }
-
-    @Test void deveRejeitarCadaValorNegativo() {
-        Fake f = new Fake();
-        assertThatThrownBy(() -> f.service().salvar(request(DATA, "-1", "0", "0", "0", "0", "0"))).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> f.service().salvar(request(DATA, "0", "-1", "0", "0", "0", "0"))).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> f.service().salvar(request(DATA, "0", "0", "-1", "0", "0", "0"))).isInstanceOf(BusinessException.class);
-        assertThatThrownBy(() -> f.service().salvar(request(DATA, "0", "0", "0", "-1", "0", "0"))).isInstanceOf(BusinessException.class);
-    }
-
-    @Test void devePreservarCustoDoRegistroLegado() {
-        Fake f = new Fake();
-        f.entidade = legado(1L, "600", "50", "20", "10");
-        var resposta = f.service().buscarPorId(1L);
-        assertThat(resposta.saldoInicialMateriais()).isZero();
-        assertThat(resposta.valorComprasMateriais()).isEqualByComparingTo("600.00");
-        assertThat(resposta.saldoFinalMateriais()).isZero();
-        assertThat(resposta.custoMateriaisConsumidos()).isEqualByComparingTo("600.00");
-        assertThat(resposta.totalGasto()).isEqualByComparingTo("680.00");
-    }
-
-    @Test void registroJaMigradoNaoUsaNemSobrescreveValorLegado() {
-        Fake f = new Fake();
-        f.entidade = entidade(1L, DATA, "350", "500", "150", "80", "30", "20");
-        f.entidade.setValorIngredientes(bd("9999"));
-        var resposta = f.service().buscarPorId(1L);
-        assertThat(resposta.custoMateriaisConsumidos()).isEqualByComparingTo("700.00");
-        assertThat(f.entidade.getValorIngredientes()).isEqualByComparingTo("9999");
-    }
-
-    @Test void deveSugerirSaldoFinalAnteriorSemCriarVinculo() {
-        Fake f = new Fake();
-        f.anterior = entidade(1L, DATA.minusDays(7), "0", "500", "175", "0", "0", "0");
-        assertThat(f.service().sugerirSaldoInicial(DATA)).isEqualByComparingTo("175.00");
-        assertThat(f.dataConsultadaAnterior).isEqualTo(DATA);
-    }
-
-    @Test void deveSugerirProducaoMaisRecenteQuandoDataNaoInformada() {
-        Fake f = new Fake();
-        f.maisRecente = entidade(1L, DATA, "0", "500", "125", "0", "0", "0");
-        assertThat(f.service().sugerirSaldoInicial(null)).isEqualByComparingTo("125.00");
-    }
-
-    @Test void edicaoPreservaSaldoSalvoEPermiteManterData() {
-        Fake f = new Fake();
-        f.entidade = entidade(1L, DATA, "350", "500", "150", "0", "0", "0");
-        f.anterior = entidade(2L, DATA.minusDays(7), "0", "100", "90", "0", "0", "0");
-        var resposta = f.service().atualizar(1L, request(DATA, "350", "500", "150", "10", "0", "0"));
-        assertThat(resposta.saldoInicialMateriais()).isEqualByComparingTo("350.00");
-        assertThat(f.consultouAnterior).isFalse();
-    }
-
-    @Test void deveCalcularResultadoPositivoNegativoZeradoMargemEFaturamentoZero() {
-        Fake f = new Fake();
-        f.entidade = entidade(1L, DATA, "0", "150", "0", "0", "0", "0");
-        f.financeiro = financeiro(DATA, 3, "270", "30");
-        var positivo = f.service().buscarResumoPorId(1L);
-        assertThat(positivo.resultadoBrutoEstimado()).isEqualByComparingTo("150.00");
-        assertThat(positivo.margemBrutaEstimada()).isEqualByComparingTo("50.00");
-        f.entidade.setValorComprasMateriais(bd("350"));
-        assertThat(f.service().buscarResumoPorId(1L).resultadoBrutoEstimado()).isEqualByComparingTo("-50.00");
-        f.entidade.setValorComprasMateriais(bd("300"));
-        assertThat(f.service().buscarResumoPorId(1L).resultadoBrutoEstimado()).isZero();
-        f.financeiro = null;
-        var semFaturamento = f.service().buscarResumoPorId(1L);
-        assertThat(semFaturamento.margemBrutaEstimada()).isZero();
-        assertThat(semFaturamento.resultadoBrutoEstimado()).isEqualByComparingTo("-300.00");
-    }
-
-    @Test void devePaginarFiltrarAgregarPedidosValidosEExcluirSemAlterarPedidos() {
-        Fake f = new Fake();
-        f.entidade = entidade(1L, DATA, "0", "4", "0", "0", "0", "0");
-        f.financeiro = financeiro(DATA, 1, "10", "2"); f.total = 15;
-        var page = PageRequest.of(1, 10, Sort.by("dataProducao"));
-        var resposta = f.service().listar(DATA.minusDays(7), DATA, page);
-        assertThat(resposta.getNumber()).isEqualTo(1);
-        assertThat(resposta.getTotalElements()).isEqualTo(11);
-        assertThat(resposta.getContent().getFirst().pedidosValidos()).isEqualTo(1);
-        assertThat(resposta.getContent().getFirst().faturamentoTotal()).isEqualByComparingTo("12.00");
-        f.service().excluir(1L);
-        assertThat(f.excluiuProducao).isTrue();
-        assertThat(f.alterouPedido).isFalse();
-    }
-
-    private ProducaoRequest request(LocalDate data, String inicial, String compras, String saldoFinal,
-                                     String embalagens, String gas, String outros) {
-        return ProducaoRequest.builder().dataProducao(data).saldoInicialMateriais(bdOuNulo(inicial))
-                .valorComprasMateriais(bdOuNulo(compras)).saldoFinalMateriais(bdOuNulo(saldoFinal))
-                .valorEmbalagens(bdOuNulo(embalagens)).valorGasEnergia(bdOuNulo(gas))
-                .valorOutros(bdOuNulo(outros)).observacao(" teste ")
-                .itens(List.of(ItemProducaoRequest.builder().produtoId(10L).quantidade(BigDecimal.ONE).build())).build();
-    }
-
-    private Producao entidade(Long id, LocalDate data, String inicial, String compras, String saldoFinal,
-                              String embalagens, String gas, String outros) {
-        return Producao.builder().id(id).dataProducao(data).valorIngredientes(BigDecimal.ZERO)
-                .saldoInicialMateriais(bd(inicial)).valorComprasMateriais(bd(compras)).saldoFinalMateriais(bd(saldoFinal))
-                .valorEmbalagens(bd(embalagens)).valorGasEnergia(bd(gas)).valorOutros(bd(outros)).build();
-    }
-
-    private Producao legado(Long id, String ingredientes, String embalagens, String gas, String outros) {
-        return Producao.builder().id(id).dataProducao(DATA).valorIngredientes(bd(ingredientes))
-                .valorEmbalagens(bd(embalagens)).valorGasEnergia(bd(gas)).valorOutros(bd(outros)).build();
-    }
-
-    private PedidoRepository.ResumoFinanceiroProducao financeiro(LocalDate data, long pedidos, String produtos, String taxas) {
-        Map<String,Object> valores = Map.of("getDataProducao", data, "getPedidosValidos", pedidos,
-                "getFaturamentoProdutos", bd(produtos), "getTaxasEntrega", bd(taxas),
-                "getFaturamentoTotal", bd(produtos).add(bd(taxas)));
-        return (PedidoRepository.ResumoFinanceiroProducao) Proxy.newProxyInstance(getClass().getClassLoader(),
-                new Class[]{PedidoRepository.ResumoFinanceiroProducao.class}, (proxy, method, args) -> valores.get(method.getName()));
-    }
-
-    private static BigDecimal bd(String valor) { return new BigDecimal(valor); }
-    private static BigDecimal bdOuNulo(String valor) { return valor == null ? null : bd(valor); }
-
-    private class Fake implements InvocationHandler {
-        Producao entidade, anterior, maisRecente;
-        PedidoRepository.ResumoFinanceiroProducao financeiro;
-        boolean duplicada, duplicadaAtualizacao, excluiuProducao, alterouPedido, consultouAnterior;
-        LocalDate dataConsultadaAnterior;
-        long total = 1;
-        ProducaoRepository producoes;
-
-        ProducaoService service() {
-            ClassLoader loader = getClass().getClassLoader();
-            producoes = (ProducaoRepository) Proxy.newProxyInstance(loader, new Class[]{ProducaoRepository.class}, this);
-            PedidoRepository pedidos = (PedidoRepository) Proxy.newProxyInstance(loader, new Class[]{PedidoRepository.class}, this);
-            ProdutoRepository produtos = (ProdutoRepository) Proxy.newProxyInstance(loader, new Class[]{ProdutoRepository.class}, this);
-            FichaTecnicaRepository fichas = (FichaTecnicaRepository) Proxy.newProxyInstance(loader, new Class[]{FichaTecnicaRepository.class}, this);
-            MovimentacaoEstoqueRepository movimentos = (MovimentacaoEstoqueRepository) Proxy.newProxyInstance(loader, new Class[]{MovimentacaoEstoqueRepository.class}, this);
-            return new ProducaoService(producoes, pedidos, produtos, fichas, movimentos, null);
-        }
-
-        public Object invoke(Object proxy, Method method, Object[] args) {
-            return switch (method.getName()) {
-                case "existsByDataProducao" -> duplicada;
-                case "existsByDataProducaoAndIdNot" -> duplicadaAtualizacao;
-                case "saveAndFlush" -> { entidade = (Producao) args[0]; if (entidade.getId() == null) entidade.setId(1L); yield entidade; }
-                case "findById" -> proxy == producoes ? Optional.ofNullable(entidade) : Optional.of(Produto.builder().id(10L).nome("Feijoada").ativo(true).tipoProduto(TipoProduto.PRODUZIDO).unidadeVenda(UnidadeVenda.UNIDADE).build());
-                case "buscarDetalhada" -> Optional.ofNullable(entidade);
-                case "findByProdutoId" -> Optional.of(FichaTecnica.builder().id(20L).produto(Produto.builder().id(10L).nome("Feijoada").ativo(true).tipoProduto(TipoProduto.PRODUZIDO).unidadeVenda(UnidadeVenda.UNIDADE).build()).ativa(true).build());
-                case "findFirstByOrderByDataProducaoDesc" -> Optional.ofNullable(maisRecente);
-                case "findFirstByDataProducaoLessThanOrderByDataProducaoDesc" -> { consultouAnterior = true; dataConsultadaAnterior = (LocalDate) args[0]; yield Optional.ofNullable(anterior); }
-                case "delete" -> { if (proxy == producoes) excluiuProducao = true; else alterouPedido = true; yield null; }
-                case "resumirFinanceiroProducao" -> Optional.ofNullable(financeiro);
-                case "buscarPorPeriodo" -> new PageImpl<>(entidade == null ? List.of() : List.of(entidade), (Pageable) args[2], total);
-                case "resumirFinanceiroProducoes" -> financeiro == null ? List.of() : List.of(financeiro);
-                default -> null;
-            };
-        }
-    }
+import br.com.sergio.gestaopedidos.dto.producao.*;import br.com.sergio.gestaopedidos.entity.*;import br.com.sergio.gestaopedidos.enums.*;import br.com.sergio.gestaopedidos.repository.*;import org.junit.jupiter.api.*;import org.mockito.ArgumentCaptor;import java.math.*;import java.time.*;import java.util.*;import static org.assertj.core.api.Assertions.*;import static org.mockito.ArgumentMatchers.*;import static org.mockito.Mockito.*;
+class ProducaoServiceTest{
+ ProducaoRepository producoes;ProdutoRepository produtos;FichaTecnicaRepository fichas;MovimentacaoEstoqueRepository movimentos;SaldoEstoqueRepository saldos;EstoqueService estoque;ProducaoService service;Produto preparacao;FichaTecnica ficha;Insumo insumo;
+ @BeforeEach void setup(){producoes=mock(ProducaoRepository.class);produtos=mock(ProdutoRepository.class);fichas=mock(FichaTecnicaRepository.class);movimentos=mock(MovimentacaoEstoqueRepository.class);saldos=mock(SaldoEstoqueRepository.class);estoque=mock(EstoqueService.class);service=new ProducaoService(producoes,produtos,fichas,movimentos,saldos,estoque);preparacao=Produto.builder().id(1L).nome("Feijoada pronta").tipoProduto(TipoProduto.PREPARACAO_PRODUZIDA).ativo(true).unidadeVenda(UnidadeVenda.QUILOGRAMA).build();insumo=Insumo.builder().id(2L).nome("Feijão").ativo(true).unidadeMedida(UnidadeMedida.QUILOGRAMA).build();ficha=FichaTecnica.builder().id(3L).produto(preparacao).rendimentoEsperado(new BigDecimal("35.000")).ativa(true).build();ficha.adicionarItem(ItemFichaTecnica.builder().insumo(insumo).quantidade(new BigDecimal("10.000")).unidadeHistorica(UnidadeMedida.QUILOGRAMA).nomeHistorico("Feijão").build());when(produtos.findById(1L)).thenReturn(Optional.of(preparacao));when(fichas.findByProdutoId(1L)).thenReturn(Optional.of(ficha));when(fichas.buscarAtivasPorProdutos(anyCollection())).thenReturn(List.of(ficha));when(producoes.saveAndFlush(any())).thenAnswer(i->i.getArgument(0));}
+ @Test void seletorRetornaPreparacaoMesmoSemConsultarSaldo(){when(produtos.buscarProduzidosAtivosComFichaAtiva()).thenReturn(List.of(preparacao));assertThat(service.produtosDisponiveis()).containsExactly(preparacao);verifyNoInteractions(saldos);}
+ @Test void comercialNaoPodeSerProduzido(){preparacao.setTipoProduto(TipoProduto.PRODUTO_COMERCIAL);assertThatThrownBy(()->service.salvar(request())).hasMessageContaining("Somente preparações");}
+ @Test void ausenciaDeFichaRejeitaRascunho(){when(fichas.findByProdutoId(1L)).thenReturn(Optional.empty());assertThatThrownBy(()->service.salvar(request())).hasMessageContaining("Ficha Técnica");}
+ @Test void rascunhoNaoMovimentaEstoque(){service.salvar(request());verifyNoInteractions(estoque);}
+ @Test void confirmacaoCalculaCustoTotalComGasEOutros(){Producao p=entidade("35.000");when(producoes.bloquearDetalhada(9L)).thenReturn(Optional.of(p));when(estoque.processarProducao(eq(p),anyMap(),eq(new BigDecimal("15.00")))).thenReturn(new BigDecimal("100.00"));service.confirmar(9L);assertThat(p.getStatus()).isEqualTo(StatusProducao.CONFIRMADA);assertThat(p.getValorInsumosConsumidos()).isEqualByComparingTo("100.00");assertThat(p.getCustoTotal()).isEqualByComparingTo("115.00");}
+ @Test void rendimentoIgualAoEsperadoAplicaFatorUmEConsomeReceitaCompleta(){assertConsumo("35.000","1.000000000","10.000");}
+ @Test void rendimentoAbaixoDoEsperadoAplicaConsumoProporcional(){assertConsumo("34.800","0.994285714","9.943");}
+ @Test void rendimentoAcimaDoEsperadoAplicaConsumoProporcional(){assertConsumo("38.500","1.100000000","11.000");}
+ @Test void previaMostraEstoqueCustoFatorEGastosSemMovimentar(){when(saldos.buscarSaldo(TipoItemEstoque.INSUMO,2L)).thenReturn(Optional.of(SaldoEstoque.builder().quantidadeAtual(new BigDecimal("9.000")).custoMedioAtual(new BigDecimal("8.500000")).build()));var previa=service.prever(1L,new BigDecimal("34.800"),new BigDecimal("5"),new BigDecimal("2"));assertThat(previa.rendimentoEsperado()).isEqualByComparingTo("35.000");assertThat(previa.fatorProducao()).isEqualByComparingTo("0.994285714");assertThat(previa.insumos().getFirst().quantidadeNecessaria()).isEqualByComparingTo("9.943");assertThat(previa.insumos().getFirst().estoqueSuficiente()).isFalse();assertThat(previa.valorInsumos()).isEqualByComparingTo("84.52");assertThat(previa.gastosAdicionais()).isEqualByComparingTo("7.00");assertThat(previa.custoTotalEstimado()).isEqualByComparingTo("91.52");assertThat(previa.custoEstimadoPorUnidade()).isEqualByComparingTo("2.629885");verifyNoInteractions(estoque);}
+ @Test void detalhesDoRascunhoAlimentamCardsEItemComAMesmaPrevia(){Producao p=entidade("35.000");p.setValorGasEnergia(new BigDecimal("5"));p.setValorOutros(new BigDecimal("2"));when(producoes.buscarDetalhada(9L)).thenReturn(Optional.of(p));when(saldos.buscarSaldo(TipoItemEstoque.INSUMO,2L)).thenReturn(Optional.of(SaldoEstoque.builder().quantidadeAtual(new BigDecimal("100")).custoMedioAtual(new BigDecimal("30.690000")).build()));var d=service.buscarDetalhes(9L);assertThat(d.totalConsumido()).isEqualByComparingTo("306.90");assertThat(d.resumo().producao().valorInsumosConsumidos()).isEqualByComparingTo("306.90");assertThat(d.resumo().producao().gastosAdicionais()).isEqualByComparingTo("7.00");assertThat(d.resumo().producao().custoTotal()).isEqualByComparingTo("313.90");assertThat(d.produtos().getFirst().rendimentoEsperadoHistorico()).isEqualByComparingTo("35.000");assertThat(d.produtos().getFirst().fatorProducao()).isEqualByComparingTo("1.000000000");assertThat(d.produtos().getFirst().custoTotal()).isEqualByComparingTo("313.90");assertThat(d.produtos().getFirst().custoUnitario()).isEqualByComparingTo("8.968571");verifyNoInteractions(estoque);}
+ @Test void previaIdentificaCustoFaltanteERejeitaRendimentoZero(){when(saldos.buscarSaldo(TipoItemEstoque.INSUMO,2L)).thenReturn(Optional.empty());var previa=service.prever(1L,new BigDecimal("35"),BigDecimal.ZERO,BigDecimal.ZERO);assertThat(previa.custoCompleto()).isFalse();assertThat(previa.insumosSemCusto()).containsExactly("Feijão");assertThatThrownBy(()->service.prever(1L,BigDecimal.ZERO,BigDecimal.ZERO,BigDecimal.ZERO)).hasMessageContaining("maior que zero");}
+ @Test void edicaoRecompoeTodosOsCamposPersistidosSemAlterarData(){Producao p=entidade("35.000");p.setDataProducao(LocalDate.of(2026,8,4));p.setObservacao("Panela da manhã");p.setValorGasEnergia(new BigDecimal("5"));p.setValorOutros(new BigDecimal("2"));when(producoes.buscarDetalhada(9L)).thenReturn(Optional.of(p));var r=service.buscarRascunhoParaEdicao(9L);assertThat(r.dataProducao()).isEqualTo("2026-08-04");assertThat(r.observacao()).isEqualTo("Panela da manhã");assertThat(r.valorGasEnergia()).isEqualByComparingTo("5.00");assertThat(r.valorOutros()).isEqualByComparingTo("2.00");assertThat(r.itens()).singleElement().satisfies(i->{assertThat(i.getProdutoId()).isEqualTo(1L);assertThat(i.getQuantidade()).isEqualByComparingTo("35.000");});}
+ @Test void previaDeVariasPreparacoesMantemRateioExistenteDosAdicionaisNoUltimoProduto(){Produto segunda=Produto.builder().id(3L).nome("Caldo").tipoProduto(TipoProduto.PREPARACAO_PRODUZIDA).ativo(true).unidadeVenda(UnidadeVenda.QUILOGRAMA).build();FichaTecnica ficha2=FichaTecnica.builder().id(4L).produto(segunda).rendimentoEsperado(new BigDecimal("10.000")).ativa(true).build();ficha2.adicionarItem(ItemFichaTecnica.builder().insumo(insumo).quantidade(new BigDecimal("2.000")).unidadeHistorica(UnidadeMedida.QUILOGRAMA).nomeHistorico("Feijão").build());Producao p=entidade("35.000");p.setValorGasEnergia(new BigDecimal("5"));p.setValorOutros(new BigDecimal("2"));p.adicionarItem(ItemProducao.builder().produto(segunda).nomeHistorico("Caldo").unidadeHistorica(UnidadeMedida.QUILOGRAMA).quantidade(new BigDecimal("10.000")).build());when(producoes.buscarDetalhada(9L)).thenReturn(Optional.of(p));when(fichas.buscarAtivasPorProdutos(anyCollection())).thenReturn(List.of(ficha,ficha2));when(saldos.buscarSaldo(TipoItemEstoque.INSUMO,2L)).thenReturn(Optional.of(SaldoEstoque.builder().quantidadeAtual(new BigDecimal("100")).custoMedioAtual(new BigDecimal("10.000000")).build()));var itens=service.buscarDetalhes(9L).produtos();assertThat(itens).extracting(ItemProducaoResponse::custoTotal).containsExactly(new BigDecimal("100.00"),new BigDecimal("27.00"));verifyNoInteractions(estoque);}
+ @Test void confirmacaoPreservaRendimentoEsperadoEFatorMesmoAposAlterarFicha(){Producao p=entidade("34.800");when(producoes.bloquearDetalhada(9L)).thenReturn(Optional.of(p));when(estoque.processarProducao(any(),anyMap(),any())).thenReturn(new BigDecimal("84.52"));service.confirmar(9L);ItemProducao item=p.getItens().getFirst();ficha.setRendimentoEsperado(new BigDecimal("40.000"));assertThat(item.getRendimentoEsperadoHistorico()).isEqualByComparingTo("35.000");assertThat(item.getFatorProducao()).isEqualByComparingTo("0.994285714");}
+ @Test void confirmacaoDuplicadaBloqueada(){Producao p=entidade("35.500");p.setStatus(StatusProducao.CONFIRMADA);when(producoes.bloquearDetalhada(9L)).thenReturn(Optional.of(p));assertThatThrownBy(()->service.confirmar(9L)).hasMessageContaining("confirmada");verifyNoInteractions(estoque);}
+ @Test void variasProducoesNaMesmaDataSaoPermitidas(){ProducaoRequest r=request();service.salvar(r);service.salvar(r);verify(producoes,times(2)).saveAndFlush(any());}
+ @Test void segundoRascunhoDaMesmaPreparacaoEhBloqueadoComMensagemEspecifica(){when(producoes.existeRascunhoComPreparacao(anyCollection(),isNull())).thenReturn(true);assertThatThrownBy(()->service.salvar(request())).hasMessage("Já existe uma Produção em rascunho para esta Preparação. Edite ou confirme o rascunho existente antes de criar outro.");verify(producoes,never()).saveAndFlush(any());}
+ @Test void edicaoExcluiOProprioRascunhoDaValidacaoEPermiteAlterarData(){Producao p=entidade("35.000");p.setDataProducao(LocalDate.of(2026,8,4));when(producoes.buscarDetalhada(9L)).thenReturn(Optional.of(p));ProducaoRequest r=ProducaoRequest.builder().dataProducao(LocalDate.of(2026,8,5)).itens(request().itens()).build();service.atualizar(9L,r);verify(producoes).existeRascunhoComPreparacao(Set.of(1L),9L);assertThat(p.getDataProducao()).isEqualTo(LocalDate.of(2026,8,5));}
+ @Test void detalheDoRascunhoMostraEstoqueDaPreparacaoAntesEDepois(){Producao p=entidade("35.000");when(producoes.buscarDetalhada(9L)).thenReturn(Optional.of(p));when(saldos.buscarSaldo(TipoItemEstoque.INSUMO,2L)).thenReturn(Optional.of(SaldoEstoque.builder().quantidadeAtual(new BigDecimal("20.000")).custoMedioAtual(new BigDecimal("30.690000")).build()));when(saldos.buscarSaldo(TipoItemEstoque.PREPARACAO_PRODUZIDA,1L)).thenReturn(Optional.of(SaldoEstoque.builder().quantidadeAtual(new BigDecimal("17.000")).custoMedioAtual(new BigDecimal("8.000000")).valorTotalEstoque(new BigDecimal("136.00")).build()));var d=service.buscarDetalhes(9L);var e=d.estoquesPreparacoes().getFirst();assertThat(e.estoqueAntes()).isEqualByComparingTo("17.000");assertThat(e.producaoAdicionada()).isEqualByComparingTo("35.000");assertThat(e.estoqueDepois()).isEqualByComparingTo("52.000");assertThat(e.valorProduzido()).isEqualByComparingTo("321.90");var c=d.consumos().getFirst();assertThat(c.estoqueAntes()).isEqualByComparingTo("20.000");assertThat(c.estoqueDepois()).isEqualByComparingTo("10.000");assertThat(c.estoqueSuficiente()).isTrue();verifyNoInteractions(estoque);}
+ @Test void detalheConfirmadoUsaSaldosHistoricosDasMovimentacoes(){Producao p=entidade("35.000");p.setStatus(StatusProducao.CONFIRMADA);p.setValorInsumosConsumidos(new BigDecimal("306.90"));p.setCustoTotal(new BigDecimal("321.90"));ItemProducao item=p.getItens().getFirst();item.setRendimentoEsperadoHistorico(new BigDecimal("35.000"));item.setFatorProducao(new BigDecimal("1.000000000"));item.setCustoTotal(new BigDecimal("321.90"));item.setCustoUnitario(new BigDecimal("9.197143"));MovimentacaoEstoque saida=MovimentacaoEstoque.builder().tipo(TipoMovimentacaoEstoque.SAIDA_CONSUMO_PRODUCAO).insumo(insumo).nomeHistorico("Feijão").unidadeHistorica(UnidadeMedida.QUILOGRAMA).quantidade(new BigDecimal("10.000")).custoUnitario(new BigDecimal("30.690000")).valorTotal(new BigDecimal("306.90")).saldoAnterior(new BigDecimal("20.000")).saldoPosterior(new BigDecimal("10.000")).build();MovimentacaoEstoque entrada=MovimentacaoEstoque.builder().tipo(TipoMovimentacaoEstoque.ENTRADA_PRODUCAO).produto(preparacao).nomeHistorico("Feijoada pronta").unidadeHistorica(UnidadeMedida.QUILOGRAMA).quantidade(new BigDecimal("35.000")).custoUnitario(new BigDecimal("9.197143")).valorTotal(new BigDecimal("321.90")).saldoAnterior(new BigDecimal("17.000")).saldoPosterior(new BigDecimal("52.000")).build();when(producoes.buscarDetalhada(9L)).thenReturn(Optional.of(p));when(movimentos.findByProducaoIdOrderByIdAsc(9L)).thenReturn(List.of(saida,entrada));when(saldos.buscarSaldo(any(),anyLong())).thenReturn(Optional.of(SaldoEstoque.builder().quantidadeAtual(new BigDecimal("999.000")).custoMedioAtual(BigDecimal.ONE).build()));var d=service.buscarDetalhes(9L);assertThat(d.estoquesPreparacoes().getFirst().estoqueAntes()).isEqualByComparingTo("17.000");assertThat(d.estoquesPreparacoes().getFirst().estoqueDepois()).isEqualByComparingTo("52.000");assertThat(d.consumos().getFirst().estoqueAntes()).isEqualByComparingTo("20.000");assertThat(d.consumos().getFirst().estoqueDepois()).isEqualByComparingTo("10.000");}
+ private ProducaoRequest request(){return ProducaoRequest.builder().dataProducao(LocalDate.now()).valorGasEnergia(new BigDecimal("10")).valorOutros(new BigDecimal("5")).itens(List.of(ItemProducaoRequest.builder().produtoId(1L).quantidade(new BigDecimal("35.500")).build())).build();}
+ private void assertConsumo(String real,String fator,String consumo){Producao p=entidade(real);when(producoes.bloquearDetalhada(9L)).thenReturn(Optional.of(p));when(estoque.processarProducao(any(),anyMap(),any())).thenReturn(BigDecimal.ZERO.setScale(2));service.confirmar(9L);ArgumentCaptor<Map<Long,Map<Insumo,BigDecimal>>> captor=ArgumentCaptor.forClass(Map.class);verify(estoque).processarProducao(eq(p),captor.capture(),eq(new BigDecimal("15.00")));assertThat(captor.getValue().get(1L).get(insumo)).isEqualByComparingTo(consumo);assertThat(p.getItens().getFirst().getFatorProducao()).isEqualByComparingTo(fator);}
+ private Producao entidade(String quantidade){Producao p=Producao.builder().id(9L).dataProducao(LocalDate.now()).status(StatusProducao.RASCUNHO).valorGasEnergia(new BigDecimal("10")).valorOutros(new BigDecimal("5")).build();p.adicionarItem(ItemProducao.builder().produto(preparacao).nomeHistorico(preparacao.getNome()).unidadeHistorica(UnidadeMedida.QUILOGRAMA).quantidade(new BigDecimal(quantidade)).build());return p;}
 }

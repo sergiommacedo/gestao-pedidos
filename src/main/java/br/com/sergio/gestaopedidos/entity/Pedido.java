@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -53,6 +54,15 @@ public class Pedido {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal valorTotal;
+
+    @Column(name = "custo_total_historico", precision = 18, scale = 2)
+    private BigDecimal custoTotalHistorico;
+
+    @Column(name = "lucro_bruto_estimado", precision = 18, scale = 2)
+    private BigDecimal lucroBrutoEstimado;
+
+    @Column(name = "margem_bruta_estimada", precision = 9, scale = 4)
+    private BigDecimal margemBrutaEstimada;
 
     @Column(length = 500)
     private String observacao;
@@ -114,5 +124,16 @@ public class Pedido {
                 taxaEntrega != null ? taxaEntrega : BigDecimal.ZERO;
 
         valorTotal = subtotalSeguro.add(taxaEntregaSegura);
+    }
+
+    public void aplicarResultadoHistorico(BigDecimal cmv) {
+        if (cmv == null || subtotal == null) {
+            throw new IllegalArgumentException("Pedido inválido para consolidação do resultado histórico.");
+        }
+        custoTotalHistorico = cmv.setScale(2, RoundingMode.HALF_UP);
+        lucroBrutoEstimado = subtotal.subtract(custoTotalHistorico).setScale(2, RoundingMode.HALF_UP);
+        margemBrutaEstimada = subtotal.signum() == 0 ? null
+                : lucroBrutoEstimado.multiply(BigDecimal.valueOf(100))
+                        .divide(subtotal, 4, RoundingMode.HALF_UP);
     }
 }

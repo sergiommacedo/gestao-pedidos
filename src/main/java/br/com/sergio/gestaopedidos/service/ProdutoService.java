@@ -25,6 +25,7 @@ public class ProdutoService {
 
     private final ProdutoRepository produtoRepository;
     private final ProdutoMapper produtoMapper;
+    private final jakarta.persistence.EntityManager entityManager;
 
     @Transactional(readOnly = true)
     public List<ProdutoResponse> listarTodos() {
@@ -39,22 +40,12 @@ public class ProdutoService {
             String filtro,
             Pageable pageable
     ) {
-        Page<Produto> paginaProdutos;
+        return listarPaginado(filtro,null,null,null,pageable);
+    }
 
-        if (filtro == null || filtro.isBlank()) {
-            paginaProdutos = produtoRepository.findAll(pageable);
-        } else {
-            String filtroTratado = filtro.trim();
-
-            paginaProdutos = produtoRepository
-                    .findByNomeContainingIgnoreCaseOrDescricaoContainingIgnoreCase(
-                            filtroTratado,
-                            filtroTratado,
-                            pageable
-                    );
-        }
-
-        return paginaProdutos.map(produtoMapper::toResponse);
+    @Transactional(readOnly=true)
+    public Page<ProdutoResponse> listarPaginado(String filtro,TipoProduto tipo,Boolean ativo,Boolean vendavel,Pageable pageable){
+        return produtoRepository.listar(filtro==null?"":filtro.trim(),tipo,ativo,vendavel,pageable).map(produtoMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -68,9 +59,7 @@ public class ProdutoService {
         String termoTratado = termo == null ? "" : termo.trim();
 
         return produtoRepository
-                .findTop20ByAtivoTrueAndVendavelTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
-                        termoTratado
-                )
+                .buscarVendaveis(java.util.EnumSet.of(TipoProduto.PRODUTO_COMERCIAL,TipoProduto.PRODUTO_REVENDA),termoTratado,org.springframework.data.domain.PageRequest.of(0,20))
                 .stream()
                 .map(produtoMapper::toResponse)
                 .toList();
@@ -85,8 +74,7 @@ public class ProdutoService {
             produto.setAtivo(true);
         }
 
-        produto.setTipoProduto(request.tipoProduto() == null ? TipoProduto.PRODUZIDO : request.tipoProduto());
-        produto.setVendavel(request.vendavel() == null ? true : request.vendavel());
+        aplicarRegrasPorTipo(produto,request);
         produto.setEstoqueMinimo(normalizarEstoqueMinimo(request.tipoProduto(), request.unidadeVenda(), request.estoqueMinimo()));
 
         Produto produtoSalvo = produtoRepository.save(produto);
@@ -97,26 +85,25 @@ public class ProdutoService {
     public ProdutoResponse atualizar(Long id, ProdutoRequest request) {
         Produto produto = buscarEntidadePorId(id);
 
+        if(entityManager!=null&&produto.getTipoProduto()!=request.tipoProduto())validarMudancaTipo(id);
+
         validarNomeDuplicadoNaAtualizacao(produto, request.nome());
 
         produto.setNome(request.nome());
         produto.setDescricao(request.descricao());
-        produto.setPreco(request.preco());
-
         if (request.ativo() != null) {
             produto.setAtivo(request.ativo());
         }
 
-        produto.setUnidadeVenda(request.unidadeVenda());
-        produto.setPermiteAcompanhamento(request.permiteAcompanhamento());
-        produto.setTipoProduto(request.tipoProduto() == null ? TipoProduto.PRODUZIDO : request.tipoProduto());
-        produto.setVendavel(request.vendavel() == null ? true : request.vendavel());
+        aplicarRegrasPorTipo(produto,request);
         produto.setEstoqueMinimo(normalizarEstoqueMinimo(request.tipoProduto(), request.unidadeVenda(), request.estoqueMinimo()));
 
         Produto produtoAtualizado = produtoRepository.save(produto);
 
         return produtoMapper.toResponse(produtoAtualizado);
     }
+
+    private void validarMudancaTipo(Long id){Long dependencias=entityManager.createQuery("SELECT COUNT(f) FROM FichaTecnica f WHERE f.produto.id=:id",Long.class).setParameter("id",id).getSingleResult()+entityManager.createQuery("SELECT COUNT(c) FROM ComposicaoProduto c WHERE c.produtoComercial.id=:id",Long.class).setParameter("id",id).getSingleResult()+entityManager.createQuery("SELECT COUNT(s) FROM SaldoEstoque s WHERE s.produto.id=:id",Long.class).setParameter("id",id).getSingleResult()+entityManager.createQuery("SELECT COUNT(i) FROM ItemCompra i WHERE i.produto.id=:id",Long.class).setParameter("id",id).getSingleResult()+entityManager.createQuery("SELECT COUNT(i) FROM ItemProducao i WHERE i.produto.id=:id",Long.class).setParameter("id",id).getSingleResult();if(dependencias>0)throw new BusinessException("O tipo do produto não pode ser alterado porque existem Fichas, Composições, Estoque, Compras ou Produções vinculadas.");}
 
     public void excluir(Long id) {
         Produto produto = buscarEntidadePorId(id);
@@ -150,18 +137,36 @@ public class ProdutoService {
 
     @Transactional(readOnly = true)
     public List<ProdutoResponse> listarProduzidos() {
-        return produtoRepository.findByTipoProdutoOrderByNomeAsc(TipoProduto.PRODUZIDO).stream().map(produtoMapper::toResponse).toList();
+        return produtoRepository.findByTipoProdutoOrderByNomeAsc(TipoProduto.PREPARACAO_PRODUZIDA).stream().map(produtoMapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public List<ProdutoResponse> listarProduzidosAtivos() {
-        return produtoRepository.findByTipoProdutoAndAtivoTrueOrderByNomeAsc(TipoProduto.PRODUZIDO).stream().map(produtoMapper::toResponse).toList();
+        return produtoRepository.findByTipoProdutoAndAtivoTrueOrderByNomeAsc(TipoProduto.PREPARACAO_PRODUZIDA).stream().map(produtoMapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public List<ProdutoResponse> buscarRevendaAtivosPorNome(String termo) {
         return produtoRepository.findTop20ByTipoProdutoAndAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(
-                TipoProduto.REVENDA, termo == null ? "" : termo.trim()).stream().map(produtoMapper::toResponse).toList();
+                TipoProduto.PRODUTO_REVENDA, termo == null ? "" : termo.trim()).stream().map(produtoMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly=true)
+    public List<ProdutoResponse> listarComerciaisAtivos(){return produtoRepository.findByTipoProdutoAndAtivoTrueOrderByNomeAsc(TipoProduto.PRODUTO_COMERCIAL).stream().map(produtoMapper::toResponse).toList();}
+
+    private void aplicarRegrasPorTipo(Produto produto,ProdutoRequest request){
+        TipoProduto tipo=request.tipoProduto();
+        if(tipo==null)throw new BusinessException("Tipo do produto é obrigatório.");
+        if(request.unidadeVenda()==null)throw new BusinessException("Unidade é obrigatória.");
+        produto.setTipoProduto(tipo);produto.setUnidadeVenda(request.unidadeVenda());
+        if(tipo==TipoProduto.PREPARACAO_PRODUZIDA){
+            produto.setPreco(null);produto.setVendavel(false);produto.setPermiteAcompanhamento(false);
+        }else{
+            if(request.preco()==null||request.preco().signum()<=0)throw new BusinessException("Preço deve ser maior que zero.");
+            produto.setPreco(request.preco().setScale(2,java.math.RoundingMode.HALF_UP));
+            produto.setVendavel(Boolean.TRUE.equals(request.vendavel()));
+            produto.setPermiteAcompanhamento(Boolean.TRUE.equals(request.permiteAcompanhamento()));
+        }
     }
 
     private void validarNomeDuplicado(String nome) {
@@ -173,7 +178,7 @@ public class ProdutoService {
     }
 
     private BigDecimal normalizarEstoqueMinimo(TipoProduto tipo, UnidadeVenda unidade, BigDecimal valor) {
-        if (tipo != TipoProduto.REVENDA) return BigDecimal.ZERO.setScale(3);
+        if (tipo == TipoProduto.PRODUTO_COMERCIAL) return BigDecimal.ZERO.setScale(3);
         BigDecimal minimo = valor == null ? BigDecimal.ZERO : valor;
         if (minimo.signum() < 0 || minimo.stripTrailingZeros().scale() > 3)
             throw new BusinessException("Estoque mínimo deve ser positivo e ter no máximo três casas decimais.");

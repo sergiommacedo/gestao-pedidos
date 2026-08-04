@@ -31,6 +31,14 @@ public record ItemPedidoResponse(
         @Schema(description = "Subtotal do item", example = "99.80")
         BigDecimal subtotal,
 
+        BigDecimal custoUnitarioHistorico,
+
+        BigDecimal custoTotalHistorico,
+
+        BigDecimal lucroBrutoEstimado,
+
+        BigDecimal margemBrutaHistorica,
+
         @Schema(description = "Observação do item", example = "Sem farofa")
         String observacao
 

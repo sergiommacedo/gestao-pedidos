@@ -123,11 +123,12 @@ public class EstoqueWebController {
         model.addAttribute("categorias", categoriasManuais());
         model.addAttribute("insumos", insumoService.buscarAtivosPorNome(""));
         model.addAttribute("produtosRevenda", produtoService.buscarRevendaAtivosPorNome(""));
+        model.addAttribute("preparacoes", produtoService.listarProduzidosAtivos());
         model.addAttribute("tiposSaida", new TipoMovimentacaoEstoque[]{TipoMovimentacaoEstoque.SAIDA_CONSUMO_MANUAL,
                 TipoMovimentacaoEstoque.SAIDA_PERDA, TipoMovimentacaoEstoque.SAIDA_AJUSTE});
     }
 
     private int tamanhoValido(int tamanho, int padrao) { return TAMANHOS.contains(tamanho) ? tamanho : padrao; }
-    private TipoItemEstoque[] categoriasManuais(){return new TipoItemEstoque[]{TipoItemEstoque.INSUMO,TipoItemEstoque.PRODUTO_REVENDA};}
+    private TipoItemEstoque[] categoriasManuais(){return new TipoItemEstoque[]{TipoItemEstoque.INSUMO,TipoItemEstoque.PREPARACAO_PRODUZIDA,TipoItemEstoque.PRODUTO_REVENDA};}
     private LocalDateTime agora() { return LocalDateTime.now().withSecond(0).withNano(0); }
 }

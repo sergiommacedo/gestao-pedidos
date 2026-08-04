@@ -1,213 +1,91 @@
 package br.com.sergio.gestaopedidos.service;
 
 import br.com.sergio.gestaopedidos.dto.producao.*;
-import br.com.sergio.gestaopedidos.entity.Producao;
 import br.com.sergio.gestaopedidos.entity.*;
 import br.com.sergio.gestaopedidos.enums.*;
-import br.com.sergio.gestaopedidos.enums.StatusPedido;
 import br.com.sergio.gestaopedidos.exception.*;
 import br.com.sergio.gestaopedidos.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.*;
-import java.time.LocalDate;
+import java.time.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Service
-@RequiredArgsConstructor
-@Transactional
+@Service @RequiredArgsConstructor @Transactional
 public class ProducaoService {
-    private final ProducaoRepository producaoRepository;
-    private final PedidoRepository pedidoRepository;
-    private final ProdutoRepository produtoRepository;
-    private final FichaTecnicaRepository fichaTecnicaRepository;
-    private final MovimentacaoEstoqueRepository movimentacaoRepository;
-    private final EstoqueService estoqueService;
+    private final ProducaoRepository producoes;
+    private final ProdutoRepository produtos;
+    private final FichaTecnicaRepository fichas;
+    private final MovimentacaoEstoqueRepository movimentos;
+    private final SaldoEstoqueRepository saldos;
+    private final EstoqueService estoque;
 
-    @Transactional(readOnly = true)
-    public Page<ProducaoResumoResponse> listar(LocalDate inicio, LocalDate fim, Pageable pageable) {
-        validarPeriodo(inicio, fim);
-        Page<Producao> pagina = producaoRepository.buscarPorPeriodo(inicio, fim, pageable);
-        List<LocalDate> datas = pagina.getContent().stream().map(Producao::getDataProducao).toList();
-        Map<LocalDate, PedidoRepository.ResumoFinanceiroProducao> financeiros = datas.isEmpty()
-                ? Map.of()
-                : pedidoRepository.resumirFinanceiroProducoes(datas, StatusPedido.CANCELADO).stream()
-                    .collect(Collectors.toMap(PedidoRepository.ResumoFinanceiroProducao::getDataProducao, Function.identity()));
-        List<ProducaoResumoResponse> respostas = pagina.getContent().stream()
-                .map(p -> montarResumo(p, financeiros.get(p.getDataProducao()))).toList();
-        return new PageImpl<>(respostas, pageable, pagina.getTotalElements());
+    @Transactional(readOnly=true) public Page<ProducaoResumoResponse> listar(LocalDate inicio,LocalDate fim,Pageable pageable){validarPeriodo(inicio,fim);return producoes.buscarPorPeriodo(inicio,fim,pageable).map(p->new ProducaoResumoResponse(mapear(p),moeda(p.getCustoTotal())));}
+    @Transactional(readOnly=true) public ProducaoResponse buscarPorId(Long id){return mapear(buscar(id));}
+    @Transactional(readOnly=true) public ProducaoDetalhesResponse buscarDetalhes(Long id){Producao p=buscar(id);if(p.statusEfetivo()==StatusProducao.CONFIRMADA)return detalhes(p,consumosMovimentados(p),null,null);Map<Long,FichaTecnica> fs=validarPreparacoesEFichas(p);Map<Long,Map<Insumo,BigDecimal>> porProduto=calcularConsumos(p,fs,false);return detalhes(p,agrupar(porProduto),porProduto,fs);}
+    @Transactional(readOnly=true) public ProducaoRequest buscarRascunhoParaEdicao(Long id){Producao p=buscar(id);validarRascunho(p);if(p.getDataProducao()==null)throw new BusinessException("A Produção em rascunho não possui data. Informe uma data válida antes de editar.");return ProducaoRequest.builder().dataProducao(p.getDataProducao()).valorGasEnergia(moeda(p.getValorGasEnergia())).valorOutros(moeda(p.getValorOutros())).observacao(p.getObservacao()).itens(new ArrayList<>(p.getItens().stream().map(i->ItemProducaoRequest.builder().id(i.getId()).produtoId(i.getProduto().getId()).quantidade(i.getQuantidade()).build()).toList())).build();}
+    @Transactional(readOnly=true) public List<Produto> produtosDisponiveis(){return produtos.buscarProduzidosAtivosComFichaAtiva();}
+    @Transactional(readOnly=true) public PreviaProducaoResponse prever(Long produtoId,BigDecimal rendimentoReal,BigDecimal valorGasEnergia,BigDecimal valorOutros){
+        Produto produto=produtos.findById(produtoId).orElseThrow(()->new ResourceNotFoundException("Produto não encontrado."));validarPreparacao(produto);BigDecimal real=quantidade(rendimentoReal,produto);
+        FichaTecnica ficha=fichas.findByProdutoId(produtoId).filter(f->Boolean.TRUE.equals(f.getAtiva())&&!f.getItens().isEmpty()).orElseThrow(()->new BusinessException("A preparação "+produto.getNome()+" não possui Ficha Técnica ativa com itens."));
+        BigDecimal esperado=validarRendimentoFicha(ficha),fator=fator(real,esperado);List<PreviaProducaoResponse.Insumo> itens=new ArrayList<>();List<String> semCusto=new ArrayList<>();BigDecimal insumos=zero2();
+        for(ItemFichaTecnica item:ficha.getItens()){BigDecimal necessaria=consumo(item.getQuantidade(),fator);SaldoEstoque saldo=saldos.buscarSaldo(TipoItemEstoque.INSUMO,item.getInsumo().getId()).orElse(null);BigDecimal disponivel=saldo==null?BigDecimal.ZERO.setScale(3):saldo.getQuantidadeAtual(),medio=saldo==null?zero6():saldo.getCustoMedioAtual(),valor=necessaria.multiply(medio).setScale(2,RoundingMode.HALF_UP);if(medio.signum()<=0)semCusto.add(item.getNomeHistorico());insumos=insumos.add(valor);itens.add(PreviaProducaoResponse.Insumo.builder().id(item.getInsumo().getId()).nome(item.getNomeHistorico()).unidade(item.getUnidadeHistorica()).quantidadeNecessaria(necessaria).estoqueDisponivel(disponivel).custoMedio(medio).valorEstimado(valor).estoqueSuficiente(disponivel.compareTo(necessaria)>=0).build());}
+        insumos=insumos.setScale(2,RoundingMode.HALF_UP);BigDecimal adicionais=naoNegativo(valorGasEnergia,"Gás/Energia").add(naoNegativo(valorOutros,"Outros")).setScale(2);BigDecimal total=insumos.add(adicionais).setScale(2,RoundingMode.HALF_UP);return PreviaProducaoResponse.builder().produtoId(produtoId).produtoNome(produto.getNome()).rendimentoEsperado(esperado).rendimentoReal(real).unidade(unidade(produto)).fatorProducao(fator).insumos(itens).valorInsumos(insumos).gastosAdicionais(adicionais).custoTotalEstimado(total).custoEstimadoPorUnidade(total.divide(real,6,RoundingMode.HALF_UP)).custoCompleto(semCusto.isEmpty()).insumosSemCusto(semCusto).build();
     }
 
-    @Transactional(readOnly = true)
-    public ProducaoResumoResponse buscarResumoPorId(Long id) {
-        Producao producao = buscarEntidade(id);
-        return montarResumo(producao, pedidoRepository.resumirFinanceiroProducao(
-                producao.getDataProducao(), StatusPedido.CANCELADO).orElse(null));
+    public ProducaoResponse salvar(ProducaoRequest r){validarRascunhoDuplicado(r,null);Producao p=new Producao();aplicar(p,r);return mapear(producoes.saveAndFlush(p));}
+    public ProducaoResponse atualizar(Long id,ProducaoRequest r){Producao p=buscar(id);validarRascunho(p);validarRascunhoDuplicado(r,id);aplicar(p,r);return mapear(producoes.saveAndFlush(p));}
+    public void excluir(Long id){Producao p=buscar(id);validarRascunho(p);producoes.delete(p);}
+    public ProducaoDetalhesResponse confirmar(Long id){
+        Producao p=producoes.bloquearDetalhada(id).orElseThrow(()->new ResourceNotFoundException("Produção não encontrada."));validarRascunho(p);
+        Map<Long,FichaTecnica> fs=validarPreparacoesEFichas(p);Map<Long,Map<Insumo,BigDecimal>> porProduto=calcularConsumos(p,fs,true);
+        BigDecimal adicionais=moeda(p.getValorGasEnergia()).add(moeda(p.getValorOutros())).setScale(2);
+        BigDecimal consumido=estoque.processarProducao(p,porProduto,adicionais);
+        p.setValorInsumosConsumidos(consumido);p.setCustoTotal(consumido.add(adicionais).setScale(2,RoundingMode.HALF_UP));p.setStatus(StatusProducao.CONFIRMADA);p.setConfirmadaEm(LocalDateTime.now());
+        producoes.saveAndFlush(p);return detalhes(p,agrupar(porProduto),null,null);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<ProducaoResumoResponse> buscarPorData(LocalDate data) {
-        return producaoRepository.findByDataProducao(data).map(p -> montarResumo(p,
-                pedidoRepository.resumirFinanceiroProducao(data, StatusPedido.CANCELADO).orElse(null)));
+    private void aplicar(Producao p,ProducaoRequest r){if(r.dataProducao()==null)throw new BusinessException("Data da produção é obrigatória.");p.setDataProducao(r.dataProducao());p.setValorGasEnergia(naoNegativo(r.valorGasEnergia(),"Gás/Energia"));p.setValorOutros(naoNegativo(r.valorOutros(),"Outros"));p.setObservacao(texto(r.observacao()));aplicarItens(p,r.itens());}
+    private void aplicarItens(Producao p,List<ItemProducaoRequest> requests){if(requests==null||requests.isEmpty())throw new BusinessException("Adicione ao menos uma preparação produzida.");Set<Long> ids=new HashSet<>();List<ItemProducao> itens=new ArrayList<>();for(ItemProducaoRequest r:requests){if(r==null||r.getProdutoId()==null)throw new BusinessException("Selecione a preparação produzida.");if(!ids.add(r.getProdutoId()))throw new BusinessException("A mesma preparação não pode ser repetida.");Produto produto=produtos.findById(r.getProdutoId()).orElseThrow(()->new ResourceNotFoundException("Produto não encontrado."));validarPreparacao(produto);BigDecimal q=quantidade(r.getQuantidade(),produto);FichaTecnica f=fichas.findByProdutoId(produto.getId()).orElseThrow(()->new BusinessException("A preparação "+produto.getNome()+" não possui Ficha Técnica."));if(!Boolean.TRUE.equals(f.getAtiva())||f.getItens().isEmpty())throw new BusinessException("A Ficha Técnica de "+produto.getNome()+" deve estar ativa e possuir itens.");itens.add(ItemProducao.builder().produto(produto).nomeHistorico(produto.getNome()).unidadeHistorica(unidade(produto)).quantidade(q).build());}p.limparItens();itens.forEach(p::adicionarItem);}
+    private Map<Long,FichaTecnica> validarPreparacoesEFichas(Producao p){Set<Long> ids=p.getItens().stream().map(i->i.getProduto().getId()).collect(Collectors.toSet());p.getItens().forEach(i->{validarPreparacao(i.getProduto());quantidade(i.getQuantidade(),i.getProduto());});Map<Long,FichaTecnica> fs=fichas.buscarAtivasPorProdutos(ids).stream().collect(Collectors.toMap(f->f.getProduto().getId(),Function.identity()));for(ItemProducao i:p.getItens()){FichaTecnica f=fs.get(i.getProduto().getId());if(f==null||f.getItens().isEmpty())throw new BusinessException("A preparação "+i.getProduto().getNome()+" não possui Ficha Técnica ativa com itens.");validarRendimentoFicha(f);}return fs;}
+    private Map<Long,Map<Insumo,BigDecimal>> calcularConsumos(Producao p,Map<Long,FichaTecnica> fs,boolean registrarHistorico){Map<Long,Map<Insumo,BigDecimal>> resultado=new LinkedHashMap<>();for(ItemProducao ip:p.getItens()){FichaTecnica ficha=fs.get(ip.getProduto().getId());BigDecimal esperado=validarRendimentoFicha(ficha),aplicado=fator(ip.getQuantidade(),esperado);if(registrarHistorico){ip.setRendimentoEsperadoHistorico(esperado);ip.setFatorProducao(aplicado);}Map<Insumo,BigDecimal> cs=new LinkedHashMap<>();for(ItemFichaTecnica item:ficha.getItens())cs.merge(item.getInsumo(),consumo(item.getQuantidade(),aplicado),BigDecimal::add);resultado.put(ip.getProduto().getId(),cs);}return resultado;}
+    private Map<Insumo,BigDecimal> consumosPrevistos(Producao p){try{return agrupar(calcularConsumos(p,validarPreparacoesEFichas(p),false));}catch(BusinessException e){return Map.of();}}
+    private Map<Insumo,BigDecimal> consumosMovimentados(Producao p){Map<Insumo,BigDecimal> r=new LinkedHashMap<>();movimentos.findByProducaoIdOrderByIdAsc(p.getId()).stream().filter(m->m.getTipo()==TipoMovimentacaoEstoque.SAIDA_CONSUMO_PRODUCAO&&m.getInsumo()!=null).forEach(m->r.merge(m.getInsumo(),m.getQuantidade(),BigDecimal::add));return r;}
+    private Map<Insumo,BigDecimal> agrupar(Map<Long,Map<Insumo,BigDecimal>> origem){Map<Insumo,BigDecimal> r=new LinkedHashMap<>();origem.values().forEach(m->m.forEach((i,q)->r.merge(i,q,BigDecimal::add)));return r;}
+    private ProducaoDetalhesResponse detalhes(Producao p,Map<Insumo,BigDecimal> consumos,Map<Long,Map<Insumo,BigDecimal>> porProduto,Map<Long,FichaTecnica> fs){
+        List<MovimentacaoEstoque> historico=movimentos.findByProducaoIdOrderByIdAsc(p.getId());
+        Map<Long,MovimentacaoEstoque> saidas=historico.stream().filter(m->m.getTipo()==TipoMovimentacaoEstoque.SAIDA_CONSUMO_PRODUCAO&&m.getInsumo()!=null).collect(Collectors.toMap(m->m.getInsumo().getId(),Function.identity(),(a,b)->a));
+        Map<Long,BigDecimal> custosMedios=new HashMap<>();List<String> semCusto=new ArrayList<>();
+        List<ConsumoInsumoProducaoResponse> cs=consumos.entrySet().stream().map(e->{
+            MovimentacaoEstoque m=saidas.get(e.getKey().getId());SaldoEstoque s=saldos.buscarSaldo(TipoItemEstoque.INSUMO,e.getKey().getId()).orElse(null);
+            BigDecimal custo=m!=null?m.getCustoUnitario():s==null?zero6():s.getCustoMedioAtual();BigDecimal antes=m!=null?m.getSaldoAnterior():s==null?BigDecimal.ZERO.setScale(3):s.getQuantidadeAtual();BigDecimal depois=m!=null?m.getSaldoPosterior():antes.subtract(e.getValue()).setScale(3,RoundingMode.HALF_UP);BigDecimal falta=depois.signum()<0?depois.abs():BigDecimal.ZERO.setScale(3);
+            custosMedios.put(e.getKey().getId(),custo);if(p.statusEfetivo()==StatusProducao.RASCUNHO&&custo.signum()<=0)semCusto.add(e.getKey().getNome());
+            return ConsumoInsumoProducaoResponse.builder().insumoId(e.getKey().getId()).insumoNome(e.getKey().getNome()).unidade(e.getKey().getUnidadeMedida()).quantidade(e.getValue()).estoqueAntes(antes).estoqueDepois(depois).falta(falta).estoqueSuficiente(depois.signum()>=0).custoMedio(custo).custoTotal(e.getValue().multiply(custo).setScale(2,RoundingMode.HALF_UP)).build();
+        }).toList();
+        List<MovimentacaoProducaoResponse> ms=historico.stream().map(m->MovimentacaoProducaoResponse.builder().id(m.getId()).data(m.getDataMovimentacao()).item(m.getNomeHistorico()).categoria(m.getTipoItem()).tipo(m.getTipo()).unidade(m.getUnidadeHistorica()).quantidade(m.getQuantidade()).custoUnitario(m.getCustoUnitario()).valorTotal(m.getValorTotal()).saldoAnterior(m.getSaldoAnterior()).saldoPosterior(m.getSaldoPosterior()).build()).toList();
+        BigDecimal totalInsumos=cs.stream().map(ConsumoInsumoProducaoResponse::custoTotal).reduce(zero2(),BigDecimal::add).setScale(2,RoundingMode.HALF_UP);boolean rascunho=porProduto!=null;BigDecimal adicionais=moeda(p.getValorGasEnergia()).add(moeda(p.getValorOutros())).setScale(2),custoTotal=rascunho?totalInsumos.add(adicionais).setScale(2,RoundingMode.HALF_UP):moeda(p.getCustoTotal());
+        List<ItemProducaoResponse> itens=rascunho?mapearItensPrevia(p,porProduto,fs,custosMedios,totalInsumos,adicionais):mapearItens(p);ProducaoResponse producao=rascunho?mapearPrevia(p,itens,totalInsumos,custoTotal):mapear(p);List<EstoquePreparacaoProducaoResponse> estoquesPreparacoes=mapearEstoquesPreparacoes(p,itens,historico,rascunho);
+        return ProducaoDetalhesResponse.builder().resumo(new ProducaoResumoResponse(producao,custoTotal)).produtos(itens).estoquesPreparacoes(estoquesPreparacoes).consumos(cs).movimentacoes(ms).produtosDistintos(p.getItens().size()).insumosDistintos(cs.size()).quantidadeTotal(p.getItens().stream().map(ItemProducao::getQuantidade).reduce(BigDecimal.ZERO,BigDecimal::add)).totalConsumido(totalInsumos).custoCompleto(semCusto.isEmpty()).insumosSemCusto(semCusto).build();
     }
-
-    @Transactional(readOnly = true)
-    public ProducaoResponse buscarPorId(Long id) { return mapear(buscarEntidade(id)); }
-
-    @Transactional(readOnly = true)
-    public BigDecimal sugerirSaldoInicial(LocalDate dataReferencia) {
-        Optional<Producao> anterior = dataReferencia == null
-                ? producaoRepository.findFirstByOrderByDataProducaoDesc()
-                : producaoRepository.findFirstByDataProducaoLessThanOrderByDataProducaoDesc(dataReferencia);
-        return anterior.map(this::valoresMateriais).map(ValoresMateriais::saldoFinal).orElseGet(this::zero);
-    }
-
-    public ProducaoResponse salvar(ProducaoRequest request) {
-        if (producaoRepository.existsByDataProducao(request.dataProducao())) duplicada();
-        Producao producao = new Producao(); aplicar(producao, request);
-        return mapear(salvarSeguro(producao));
-    }
-
-    public ProducaoResponse atualizar(Long id, ProducaoRequest request) {
-        Producao producao = buscarEntidade(id);
-        validarRascunho(producao);
-        if (producaoRepository.existsByDataProducaoAndIdNot(request.dataProducao(), id)) duplicada();
-        aplicar(producao, request);
-        return mapear(salvarSeguro(producao));
-    }
-
-    public void excluir(Long id) { Producao p=buscarEntidade(id);validarRascunho(p);producaoRepository.delete(p); }
-
-    public ProducaoDetalhesResponse confirmar(Long id){Producao p=producaoRepository.bloquearDetalhada(id).orElseThrow(()->new ResourceNotFoundException("Produção não encontrada."));validarRascunho(p);Map<Long,FichaTecnica> fichas=validarProdutosEFichas(p);Map<Long,Map<Insumo,BigDecimal>> consumosPorProduto=consumosPorProduto(p,fichas);estoqueService.processarProducao(p,consumosPorProduto);p.setStatus(StatusProducao.CONFIRMADA);p.setConfirmadaEm(java.time.LocalDateTime.now());producaoRepository.saveAndFlush(p);return montarDetalhes(p,agruparConsumos(consumosPorProduto));}
-
-    @Transactional(readOnly=true) public ProducaoDetalhesResponse buscarDetalhes(Long id){Producao p=producaoRepository.buscarDetalhada(id).orElseThrow(()->new ResourceNotFoundException("Produção não encontrada."));Map<Insumo,BigDecimal> consumos=p.getItens().isEmpty()?Map.of():p.statusEfetivo()==StatusProducao.CONFIRMADA?consumosMovimentados(p):agruparConsumosExistentes(p);return montarDetalhes(p,consumos);}
-
-    @Transactional(readOnly=true) public List<Produto> produtosDisponiveis(){return produtoRepository.buscarProduzidosAtivosComFichaAtiva();}
-
-    private Producao salvarSeguro(Producao producao) {
-        try { return producaoRepository.saveAndFlush(producao); }
-        catch (DataIntegrityViolationException e) { throw new BusinessException("Já existe uma produção cadastrada para esta data."); }
-    }
-
-    private void aplicar(Producao p, ProducaoRequest r) {
-        BigDecimal saldoInicial = moeda(r.saldoInicialMateriais());
-        BigDecimal compras = moeda(r.valorComprasMateriais());
-        BigDecimal saldoFinal = moeda(r.saldoFinalMateriais());
-        validarMateriais(saldoInicial, compras, saldoFinal);
-        p.setDataProducao(r.dataProducao());
-        p.setSaldoInicialMateriais(saldoInicial); p.setValorComprasMateriais(compras);
-        p.setSaldoFinalMateriais(saldoFinal);
-        if (p.getValorIngredientes() == null) p.setValorIngredientes(zero());
-        p.setValorEmbalagens(moeda(r.valorEmbalagens())); p.setValorGasEnergia(moeda(r.valorGasEnergia()));
-        p.setValorOutros(moeda(r.valorOutros()));
-        validarNaoNegativo(p.getValorEmbalagens(), "Embalagens");
-        validarNaoNegativo(p.getValorGasEnergia(), "Gás/Energia");
-        validarNaoNegativo(p.getValorOutros(), "Outros");
-        p.setObservacao(r.observacao() == null ? null : r.observacao().trim());
-        aplicarItens(p,r.itens());
-    }
-
-    private void aplicarItens(Producao p,List<ItemProducaoRequest> itens){if(itens==null||itens.isEmpty())throw new BusinessException("Adicione ao menos um produto produzido.");Set<Long> ids=new HashSet<>();List<ItemProducao> novos=new ArrayList<>();for(ItemProducaoRequest r:itens){if(r==null||r.getProdutoId()==null)throw new BusinessException("Selecione o produto produzido.");if(!ids.add(r.getProdutoId()))throw new BusinessException("O mesmo produto não pode ser informado duas vezes.");Produto produto=produtoRepository.findById(r.getProdutoId()).orElseThrow(()->new ResourceNotFoundException("Produto não encontrado."));validarProduto(produto);BigDecimal q=quantidade(r.getQuantidade(),produto);FichaTecnica f=fichaTecnicaRepository.findByProdutoId(produto.getId()).orElseThrow(()->new BusinessException("O produto "+produto.getNome()+" não possui Ficha Técnica."));if(!Boolean.TRUE.equals(f.getAtiva()))throw new BusinessException("A Ficha Técnica de "+produto.getNome()+" está inativa.");novos.add(ItemProducao.builder().produto(produto).nomeHistorico(produto.getNome()).unidadeHistorica(unidade(produto)).quantidade(q).build());}p.limparItens();novos.forEach(p::adicionarItem);}
-
-    private Map<Long,FichaTecnica> validarProdutosEFichas(Producao p){if(p.getItens()==null||p.getItens().isEmpty())throw new BusinessException("Adicione ao menos um produto produzido.");Set<Long> ids=new HashSet<>();for(ItemProducao i:p.getItens()){validarProduto(i.getProduto());quantidade(i.getQuantidade(),i.getProduto());if(!ids.add(i.getProduto().getId()))throw new BusinessException("O mesmo produto não pode ser informado duas vezes.");}Map<Long,FichaTecnica> fs=fichaTecnicaRepository.buscarAtivasPorProdutos(ids).stream().collect(Collectors.toMap(f->f.getProduto().getId(),Function.identity()));for(ItemProducao i:p.getItens())if(!fs.containsKey(i.getProduto().getId()))throw new BusinessException("O produto "+i.getProduto().getNome()+" não possui Ficha Técnica ativa.");return fs;}
-    private Map<Long,Map<Insumo,BigDecimal>> consumosPorProduto(Producao p,Map<Long,FichaTecnica> fs){Map<Long,Map<Insumo,BigDecimal>> resultado=new LinkedHashMap<>();for(ItemProducao ip:p.getItens()){Map<Insumo,BigDecimal> consumos=new LinkedHashMap<>();FichaTecnica ficha=fs.get(ip.getProduto().getId());if(ficha==null||ficha.getItens()==null||ficha.getItens().isEmpty())throw new BusinessException("O produto "+ip.getProduto().getNome()+" não possui consumo definido na Ficha Técnica.");for(ItemFichaTecnica it:ficha.getItens())consumos.merge(it.getInsumo(),ip.getQuantidade().multiply(it.getQuantidade()).setScale(3,RoundingMode.HALF_UP),BigDecimal::add);if(consumos.isEmpty())throw new BusinessException("A produção deve possuir consumo de Insumos.");resultado.put(ip.getProduto().getId(),consumos);}return resultado;}
-    private Map<Insumo,BigDecimal> agruparConsumos(Map<Long,Map<Insumo,BigDecimal>> porProduto){Map<Insumo,BigDecimal> resultado=new LinkedHashMap<>();porProduto.values().forEach(consumos->consumos.forEach((insumo,quantidade)->resultado.merge(insumo,quantidade,BigDecimal::add)));resultado.replaceAll((insumo,quantidade)->quantidade.setScale(3,RoundingMode.HALF_UP));return resultado;}
-    private Map<Insumo,BigDecimal> agruparConsumos(Producao p,Map<Long,FichaTecnica> fs){return agruparConsumos(consumosPorProduto(p,fs));}
-    private Map<Insumo,BigDecimal> agruparConsumosExistentes(Producao p){Map<Long,FichaTecnica> fs=fichaTecnicaRepository.buscarAtivasPorProdutos(p.getItens().stream().map(i->i.getProduto().getId()).toList()).stream().collect(Collectors.toMap(f->f.getProduto().getId(),Function.identity()));return fs.size()==p.getItens().size()?agruparConsumos(p,fs):Map.of();}
-    private Map<Insumo,BigDecimal> consumosMovimentados(Producao p){Map<Insumo,BigDecimal> resultado=new LinkedHashMap<>();movimentacaoRepository.findByProducaoIdOrderByIdAsc(p.getId()).stream().filter(m->m.getTipo()==TipoMovimentacaoEstoque.SAIDA_CONSUMO_PRODUCAO&&m.getInsumo()!=null).forEach(m->resultado.merge(m.getInsumo(),m.getQuantidade(),BigDecimal::add));return resultado;}
-    private void validarProduto(Produto p){if(p.getTipoProduto()!=TipoProduto.PRODUZIDO)throw new BusinessException("Somente produtos produzidos podem ser incluídos na Produção.");if(!Boolean.TRUE.equals(p.getAtivo()))throw new BusinessException("O produto "+p.getNome()+" está inativo.");}
-    private BigDecimal quantidade(BigDecimal q,Produto p){if(q==null||q.signum()<=0)throw new BusinessException("Quantidade produzida deve ser maior que zero.");if(q.stripTrailingZeros().scale()>3)throw new BusinessException("Quantidade deve ter no máximo três casas decimais.");if(p.getUnidadeVenda()==UnidadeVenda.UNIDADE&&q.stripTrailingZeros().scale()>0)throw new BusinessException("Quantidade em unidade deve ser inteira.");return q.setScale(3,RoundingMode.UNNECESSARY);}
+    private List<EstoquePreparacaoProducaoResponse> mapearEstoquesPreparacoes(Producao p,List<ItemProducaoResponse> itens,List<MovimentacaoEstoque> historico,boolean rascunho){Map<Long,MovimentacaoEstoque> entradas=historico.stream().filter(m->m.getTipo()==TipoMovimentacaoEstoque.ENTRADA_PRODUCAO&&m.getProduto()!=null).collect(Collectors.toMap(m->m.getProduto().getId(),Function.identity(),(a,b)->a));return itens.stream().map(i->{if(!rascunho){MovimentacaoEstoque m=entradas.get(i.produtoId());return EstoquePreparacaoProducaoResponse.builder().produtoId(i.produtoId()).produtoNome(i.produtoNome()).unidade(i.unidade()).estoqueAntes(m==null?null:m.getSaldoAnterior()).producaoAdicionada(i.quantidade()).estoqueDepois(m==null?null:m.getSaldoPosterior()).custoUnitarioProducao(i.custoUnitario()).valorProduzido(i.custoTotal()).historico(true).build();}SaldoEstoque s=saldos.buscarSaldo(TipoItemEstoque.PREPARACAO_PRODUZIDA,i.produtoId()).orElse(null);BigDecimal antes=s==null?BigDecimal.ZERO.setScale(3):s.getQuantidadeAtual(),custoAntes=s==null?zero6():s.getCustoMedioAtual(),valorAntes=s==null?zero2():s.getValorTotalEstoque(),depois=antes.add(i.quantidade()).setScale(3),valorDepois=valorAntes.add(i.custoTotal()).setScale(2),custoDepois=depois.signum()==0?zero6():valorDepois.divide(depois,6,RoundingMode.HALF_UP);return EstoquePreparacaoProducaoResponse.builder().produtoId(i.produtoId()).produtoNome(i.produtoNome()).unidade(i.unidade()).estoqueAntes(antes).producaoAdicionada(i.quantidade()).estoqueDepois(depois).custoMedioAntes(custoAntes).custoMedioDepois(custoDepois).valorEstoqueAntes(valorAntes).valorEstoqueDepois(valorDepois).custoUnitarioProducao(i.custoUnitario()).valorProduzido(i.custoTotal()).historico(false).build();}).toList();}
+    private List<ItemProducaoResponse> mapearItensPrevia(Producao p,Map<Long,Map<Insumo,BigDecimal>> porProduto,Map<Long,FichaTecnica> fs,Map<Long,BigDecimal> custosMedios,BigDecimal totalInsumos,BigDecimal adicionais){Map<Long,BigDecimal> custos=new LinkedHashMap<>();for(ItemProducao item:p.getItens().stream().sorted(Comparator.comparing(i->i.getProduto().getId())).toList()){BigDecimal custo=porProduto.get(item.getProduto().getId()).entrySet().stream().map(e->e.getValue().multiply(custosMedios.getOrDefault(e.getKey().getId(),zero6()))).reduce(BigDecimal.ZERO,BigDecimal::add).setScale(2,RoundingMode.HALF_UP);custos.put(item.getProduto().getId(),custo);}BigDecimal soma=custos.values().stream().reduce(zero2(),BigDecimal::add);Long ultimo=custos.keySet().stream().reduce((a,b)->b).orElseThrow();custos.put(ultimo,custos.get(ultimo).add(totalInsumos.subtract(soma)).add(adicionais).setScale(2,RoundingMode.HALF_UP));return p.getItens().stream().map(i->{FichaTecnica f=fs.get(i.getProduto().getId());BigDecimal esperado=validarRendimentoFicha(f),aplicado=fator(i.getQuantidade(),esperado),total=custos.get(i.getProduto().getId());return ItemProducaoResponse.builder().id(i.getId()).produtoId(i.getProduto().getId()).produtoNome(i.getNomeHistorico()).unidade(i.getUnidadeHistorica()).quantidade(i.getQuantidade()).rendimentoEsperadoHistorico(esperado).fatorProducao(aplicado).custoTotal(total).custoUnitario(total.divide(i.getQuantidade(),6,RoundingMode.HALF_UP)).fichaAtiva(true).build();}).toList();}
+    private ProducaoResponse mapearPrevia(Producao p,List<ItemProducaoResponse> itens,BigDecimal totalInsumos,BigDecimal custoTotal){BigDecimal gas=moeda(p.getValorGasEnergia()),outros=moeda(p.getValorOutros());return ProducaoResponse.builder().id(p.getId()).dataProducao(p.getDataProducao()).valorInsumosConsumidos(totalInsumos).valorGasEnergia(gas).valorOutros(outros).gastosAdicionais(gas.add(outros).setScale(2)).custoTotal(custoTotal).observacao(p.getObservacao()).criadoEm(p.getCriadoEm()).atualizadoEm(p.getAtualizadoEm()).status(p.statusEfetivo()).confirmadaEm(p.getConfirmadaEm()).itens(itens).quantidadeTotal(p.getItens().stream().map(ItemProducao::getQuantidade).reduce(BigDecimal.ZERO,BigDecimal::add)).build();}
+    private ProducaoResponse mapear(Producao p){BigDecimal gas=moeda(p.getValorGasEnergia()),outros=moeda(p.getValorOutros());return ProducaoResponse.builder().id(p.getId()).dataProducao(p.getDataProducao()).valorInsumosConsumidos(moeda(p.getValorInsumosConsumidos())).valorGasEnergia(gas).valorOutros(outros).gastosAdicionais(gas.add(outros).setScale(2)).custoTotal(moeda(p.getCustoTotal())).observacao(p.getObservacao()).criadoEm(p.getCriadoEm()).atualizadoEm(p.getAtualizadoEm()).status(p.statusEfetivo()).confirmadaEm(p.getConfirmadaEm()).itens(mapearItens(p)).quantidadeTotal(p.getItens().stream().map(ItemProducao::getQuantidade).reduce(BigDecimal.ZERO,BigDecimal::add)).build();}
+    private List<ItemProducaoResponse> mapearItens(Producao p){return p.getItens().stream().map(i->ItemProducaoResponse.builder().id(i.getId()).produtoId(i.getProduto().getId()).produtoNome(i.getNomeHistorico()).unidade(i.getUnidadeHistorica()).quantidade(i.getQuantidade()).rendimentoEsperadoHistorico(i.getRendimentoEsperadoHistorico()).fatorProducao(i.getFatorProducao()).custoTotal(moeda(i.getCustoTotal())).custoUnitario(i.getCustoUnitario()==null?zero6():i.getCustoUnitario()).fichaAtiva(true).build()).toList();}
+    private void validarPreparacao(Produto p){if(p.getTipoProduto()!=TipoProduto.PREPARACAO_PRODUZIDA)throw new BusinessException("Somente preparações produzidas podem ser incluídas na Produção.");if(!Boolean.TRUE.equals(p.getAtivo()))throw new BusinessException("A preparação "+p.getNome()+" está inativa.");}
+    private BigDecimal quantidade(BigDecimal q,Produto p){if(q==null||q.signum()<=0||q.stripTrailingZeros().scale()>3)throw new BusinessException("Quantidade produzida deve ser maior que zero e ter no máximo três casas decimais.");if(p.getUnidadeVenda()==UnidadeVenda.UNIDADE&&q.stripTrailingZeros().scale()>0)throw new BusinessException("Quantidade em unidade deve ser inteira.");return q.setScale(3,RoundingMode.UNNECESSARY);}
     private UnidadeMedida unidade(Produto p){return p.getUnidadeVenda()==UnidadeVenda.UNIDADE?UnidadeMedida.UNIDADE:UnidadeMedida.QUILOGRAMA;}
-    private void validarRascunho(Producao p){if(p.statusEfetivo()==StatusProducao.CONFIRMADA)throw new BusinessException("Produção confirmada não pode ser alterada.");}
-
-    private ProducaoResumoResponse montarResumo(Producao p, PedidoRepository.ResumoFinanceiroProducao f) {
-        ProducaoResponse resposta = mapear(p); BigDecimal produtos = f == null ? zero() : moeda(f.getFaturamentoProdutos());
-        BigDecimal taxas = f == null ? zero() : moeda(f.getTaxasEntrega());
-        BigDecimal faturamento = produtos.add(taxas).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal resultado = calcularResultado(faturamento, resposta.totalGasto());
-        BigDecimal margem = calcularMargem(resultado, faturamento);
-        return ProducaoResumoResponse.builder().producao(resposta).pedidosValidos(f == null || f.getPedidosValidos() == null ? 0 : f.getPedidosValidos())
-                .faturamentoProdutos(produtos).taxasEntrega(taxas).faturamentoTotal(faturamento)
-                .totalGasto(resposta.totalGasto()).resultadoBrutoEstimado(resultado).margemBrutaEstimada(margem).build();
-    }
-
-    private ProducaoResponse mapear(Producao p) {
-        ValoresMateriais materiais = valoresMateriais(p);
-        BigDecimal recursos = calcularRecursosDisponiveis(materiais.saldoInicial(), materiais.compras());
-        BigDecimal consumidos = calcularCustoMateriaisConsumidos(recursos, materiais.saldoFinal());
-        BigDecimal embalagens=moeda(p.getValorEmbalagens());
-        BigDecimal gas=moeda(p.getValorGasEnergia()), outros=moeda(p.getValorOutros());
-        BigDecimal outrosCustos = calcularOutrosCustos(embalagens, gas, outros);
-        return ProducaoResponse.builder().id(p.getId()).dataProducao(p.getDataProducao())
-                .saldoInicialMateriais(materiais.saldoInicial()).valorComprasMateriais(materiais.compras())
-                .saldoFinalMateriais(materiais.saldoFinal()).recursosDisponiveis(recursos)
-                .custoMateriaisConsumidos(consumidos).valorEmbalagens(embalagens)
-                .valorGasEnergia(gas).valorOutros(outros).outrosCustos(outrosCustos)
-                .totalGasto(calcularTotalGasto(consumidos, outrosCustos))
-                .observacao(p.getObservacao()).criadoEm(p.getCriadoEm()).atualizadoEm(p.getAtualizadoEm())
-                .status(p.statusEfetivo()).confirmadaEm(p.getConfirmadaEm()).itens(mapearItens(p))
-                .quantidadeTotal(p.getItens().stream().map(ItemProducao::getQuantidade).reduce(BigDecimal.ZERO,BigDecimal::add)).build();
-    }
-
-    private List<ItemProducaoResponse> mapearItens(Producao p){return p.getItens().stream().map(i->ItemProducaoResponse.builder().id(i.getId()).produtoId(i.getProduto().getId()).produtoNome(i.getNomeHistorico()).unidade(i.getUnidadeHistorica()).quantidade(i.getQuantidade()).custoLote(moeda(i.getCustoLote())).custoUnitario(i.getCustoUnitario()==null?BigDecimal.ZERO.setScale(6):i.getCustoUnitario()).valorProduzido(moeda(i.getCustoLote())).fichaAtiva(true).build()).toList();}
-    private ProducaoDetalhesResponse montarDetalhes(Producao p,Map<Insumo,BigDecimal> consumos){ProducaoResumoResponse resumo=montarResumo(p,pedidoRepository.resumirFinanceiroProducao(p.getDataProducao(),StatusPedido.CANCELADO).orElse(null));List<MovimentacaoEstoque> movimentos=movimentacaoRepository.findByProducaoIdOrderByIdAsc(p.getId());Map<Long,MovimentacaoEstoque> saidas=movimentos.stream().filter(m->m.getTipo()==TipoMovimentacaoEstoque.SAIDA_CONSUMO_PRODUCAO&&m.getInsumo()!=null).collect(Collectors.toMap(m->m.getInsumo().getId(),Function.identity(),(a,b)->a));List<ConsumoInsumoProducaoResponse> cs=consumos.entrySet().stream().map(e->{MovimentacaoEstoque movimento=saidas.get(e.getKey().getId());return ConsumoInsumoProducaoResponse.builder().insumoId(e.getKey().getId()).insumoNome(e.getKey().getNome()).unidade(e.getKey().getUnidadeMedida()).quantidade(e.getValue()).custoMedio(movimento==null?BigDecimal.ZERO.setScale(6):movimento.getCustoUnitario()).custoTotal(movimento==null?zero():movimento.getValorTotal()).build();}).toList();List<MovimentacaoProducaoResponse> ms=movimentos.stream().map(m->MovimentacaoProducaoResponse.builder().id(m.getId()).data(m.getDataMovimentacao()).item(m.getNomeHistorico()).categoria(m.getTipoItem()).tipo(m.getTipo()).unidade(m.getUnidadeHistorica()).quantidade(m.getQuantidade()).custoUnitario(m.getCustoUnitario()).valorTotal(m.getValorTotal()).saldoAnterior(m.getSaldoAnterior()).saldoPosterior(m.getSaldoPosterior()).build()).toList();BigDecimal totalConsumido=movimentos.stream().filter(m->m.getTipo()==TipoMovimentacaoEstoque.SAIDA_CONSUMO_PRODUCAO).map(MovimentacaoEstoque::getValorTotal).reduce(zero(),BigDecimal::add).setScale(2,RoundingMode.HALF_UP);return ProducaoDetalhesResponse.builder().resumo(resumo).produtos(mapearItens(p)).consumos(cs).movimentacoes(ms).produtosDistintos(p.getItens().size()).insumosDistintos(cs.size()).quantidadeTotal(p.getItens().stream().map(ItemProducao::getQuantidade).reduce(BigDecimal.ZERO,BigDecimal::add)).totalConsumido(totalConsumido).build();}
-
-    private ValoresMateriais valoresMateriais(Producao p) {
-        boolean aindaLegado = p.getSaldoInicialMateriais() == null
-                && p.getValorComprasMateriais() == null && p.getSaldoFinalMateriais() == null;
-        if (aindaLegado) return new ValoresMateriais(zero(), moeda(p.getValorIngredientes()), zero());
-        return new ValoresMateriais(moeda(p.getSaldoInicialMateriais()), moeda(p.getValorComprasMateriais()),
-                moeda(p.getSaldoFinalMateriais()));
-    }
-
-    private BigDecimal calcularRecursosDisponiveis(BigDecimal saldoInicial, BigDecimal compras) {
-        return saldoInicial.add(compras).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal calcularCustoMateriaisConsumidos(BigDecimal recursos, BigDecimal saldoFinal) {
-        BigDecimal consumido = recursos.subtract(saldoFinal).setScale(2, RoundingMode.HALF_UP);
-        if (consumido.signum() < 0) throw new BusinessException("O custo dos materiais consumidos não pode ser negativo.");
-        return consumido;
-    }
-
-    private BigDecimal calcularOutrosCustos(BigDecimal embalagens, BigDecimal gas, BigDecimal outros) {
-        return embalagens.add(gas).add(outros).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal calcularTotalGasto(BigDecimal materiaisConsumidos, BigDecimal outrosCustos) {
-        return materiaisConsumidos.add(outrosCustos).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal calcularResultado(BigDecimal faturamentoTotal, BigDecimal totalGasto) {
-        return faturamentoTotal.subtract(totalGasto).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal calcularMargem(BigDecimal resultado, BigDecimal faturamentoTotal) {
-        return faturamentoTotal.signum() == 0 ? zero()
-                : resultado.multiply(BigDecimal.valueOf(100)).divide(faturamentoTotal, 2, RoundingMode.HALF_UP);
-    }
-
-    private void validarMateriais(BigDecimal saldoInicial, BigDecimal compras, BigDecimal saldoFinal) {
-        validarNaoNegativo(saldoInicial, "Saldo inicial de materiais");
-        validarNaoNegativo(compras, "Compras da produção");
-        validarNaoNegativo(saldoFinal, "Saldo final de materiais");
-        if (saldoFinal.compareTo(calcularRecursosDisponiveis(saldoInicial, compras)) > 0)
-            throw new BusinessException("O saldo final não pode ser maior que o saldo inicial somado às compras.");
-    }
-
-    private void validarNaoNegativo(BigDecimal valor, String campo) {
-        if (valor.signum() < 0) throw new BusinessException(campo + " não pode ser negativo.");
-    }
-
-    private Producao buscarEntidade(Long id) { return producaoRepository.buscarDetalhada(id).orElseThrow(() -> new ResourceNotFoundException("Produção não encontrada.")); }
-    private void validarPeriodo(LocalDate inicio, LocalDate fim) { if (inicio != null && fim != null && inicio.isAfter(fim)) throw new BusinessException("A data inicial não pode ser posterior à data final."); }
-    private void duplicada() { throw new BusinessException("Já existe uma produção cadastrada para esta data."); }
-    private BigDecimal moeda(BigDecimal v) { return (v == null ? BigDecimal.ZERO : v).setScale(2, RoundingMode.HALF_UP); }
-    private BigDecimal zero() { return BigDecimal.ZERO.setScale(2); }
-    private record ValoresMateriais(BigDecimal saldoInicial, BigDecimal compras, BigDecimal saldoFinal) {}
+    private BigDecimal validarRendimentoFicha(FichaTecnica ficha){BigDecimal r=ficha.getRendimentoEsperado();if(r==null||r.signum()<=0)throw new BusinessException("A Ficha Técnica de "+ficha.getProduto().getNome()+" deve possuir rendimento esperado maior que zero.");return r.setScale(3,RoundingMode.UNNECESSARY);}
+    private BigDecimal fator(BigDecimal real,BigDecimal esperado){return real.divide(esperado,9,RoundingMode.HALF_UP);}
+    private BigDecimal consumo(BigDecimal totalReceita,BigDecimal fator){return totalReceita.multiply(fator).setScale(3,RoundingMode.HALF_UP);}
+    private void validarRascunhoDuplicado(ProducaoRequest r,Long ignorarId){if(r.itens()==null||r.itens().isEmpty())return;Set<Long> ids=r.itens().stream().filter(Objects::nonNull).map(ItemProducaoRequest::getProdutoId).filter(Objects::nonNull).collect(Collectors.toSet());if(!ids.isEmpty()&&producoes.existeRascunhoComPreparacao(ids,ignorarId))throw new BusinessException("Já existe uma Produção em rascunho para esta Preparação. Edite ou confirme o rascunho existente antes de criar outro.");}
+    private Producao buscar(Long id){return producoes.buscarDetalhada(id).orElseThrow(()->new ResourceNotFoundException("Produção não encontrada."));}
+    private void validarRascunho(Producao p){if(p.statusEfetivo()!=StatusProducao.RASCUNHO)throw new BusinessException("Produção confirmada não pode ser alterada.");}
+    private void validarPeriodo(LocalDate i,LocalDate f){if(i!=null&&f!=null&&i.isAfter(f))throw new BusinessException("A data inicial não pode ser posterior à data final.");}
+    private BigDecimal naoNegativo(BigDecimal v,String nome){v=moeda(v);if(v.signum()<0)throw new BusinessException(nome+" não pode ser negativo.");return v;}
+    private BigDecimal moeda(BigDecimal v){return(v==null?BigDecimal.ZERO:v).setScale(2,RoundingMode.HALF_UP);}private BigDecimal zero2(){return BigDecimal.ZERO.setScale(2);}private BigDecimal zero6(){return BigDecimal.ZERO.setScale(6);}private String texto(String s){return s==null||s.trim().isEmpty()?null:s.trim();}
 }

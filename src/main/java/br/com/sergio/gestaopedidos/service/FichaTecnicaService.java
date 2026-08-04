@@ -66,7 +66,9 @@ public class FichaTecnicaService {
         Produto produto = validarProdutoNovo(request.getProdutoId());
         if (fichaRepository.existsByProdutoId(produto.getId()))
             throw new BusinessException("Este produto já possui uma ficha técnica.");
-        FichaTecnica ficha = FichaTecnica.builder().produto(produto).observacao(texto(request.getObservacao()))
+        FichaTecnica ficha = FichaTecnica.builder().produto(produto)
+                .rendimentoEsperado(validarRendimento(request.getRendimentoEsperado(), produto))
+                .observacao(texto(request.getObservacao()))
                 .ativa(request.getAtiva() == null ? true : request.getAtiva()).build();
         montarItensNovos(ficha, request.getItens());
         fichaRepository.save(ficha);
@@ -106,13 +108,14 @@ public class FichaTecnicaService {
         }
         ficha.getItens().clear();
         ficha.getItens().addAll(resultado);
+        ficha.setRendimentoEsperado(validarRendimento(request.getRendimentoEsperado(), ficha.getProduto()));
         ficha.setObservacao(texto(request.getObservacao()));
         ficha.setAtiva(request.getAtiva() == null ? ficha.getAtiva() : request.getAtiva());
         fichaRepository.save(ficha);
         return buscarPorId(id);
     }
 
-    public void ativar(Long id) { buscarDetalhada(id).setAtiva(true); }
+    public void ativar(Long id) { FichaTecnica f=buscarDetalhada(id);if(f.getProduto().getTipoProduto()!=TipoProduto.PREPARACAO_PRODUZIDA)throw new BusinessException("Somente preparação produzida pode possuir Ficha Técnica.");if(f.getItens().isEmpty())throw new BusinessException("Adicione ao menos um Insumo antes de ativar a Ficha Técnica.");validarRendimento(f.getRendimentoEsperado(),f.getProduto());f.setAtiva(true); }
     public void inativar(Long id) { buscarDetalhada(id).setAtiva(false); }
     public void excluir(Long id) { fichaRepository.delete(buscarDetalhada(id)); }
 
@@ -132,8 +135,8 @@ public class FichaTecnicaService {
     private Produto validarProdutoNovo(Long id) {
         if (id == null) throw new BusinessException("Selecione o produto.");
         Produto produto = produtoService.buscarEntidadePorId(id);
-        if (produto.getTipoProduto() != TipoProduto.PRODUZIDO)
-            throw new BusinessException("Somente produtos produzidos podem possuir ficha técnica.");
+        if (produto.getTipoProduto() != TipoProduto.PREPARACAO_PRODUZIDA)
+            throw new BusinessException("Somente preparações produzidas podem possuir Ficha Técnica.");
         if (!Boolean.TRUE.equals(produto.getAtivo()))
             throw new BusinessException("Este produto não está disponível para uma nova ficha técnica.");
         return produto;
@@ -160,6 +163,16 @@ public class FichaTecnicaService {
         if (unidade == UnidadeMedida.UNIDADE && quantidade.stripTrailingZeros().scale() > 0)
             throw new BusinessException("Quantidade em unidade deve ser um número inteiro.");
         return quantidade.setScale(3, RoundingMode.UNNECESSARY);
+    }
+
+    private BigDecimal validarRendimento(BigDecimal rendimento, Produto produto) {
+        if (rendimento == null) throw new BusinessException("Informe o rendimento esperado da receita.");
+        if (rendimento.signum() <= 0) throw new BusinessException("O rendimento esperado deve ser maior que zero.");
+        if (rendimento.stripTrailingZeros().scale() > 3)
+            throw new BusinessException("O rendimento esperado deve ter no máximo três casas decimais.");
+        if (produto.getUnidadeVenda() == UnidadeVenda.UNIDADE && rendimento.stripTrailingZeros().scale() > 0)
+            throw new BusinessException("O rendimento esperado em unidade deve ser um número inteiro.");
+        return rendimento.setScale(3, RoundingMode.UNNECESSARY);
     }
 
     private void aplicarInsumo(ItemFichaTecnica item, Insumo insumo) {
@@ -199,15 +212,18 @@ public class FichaTecnicaService {
                     .custoEstimado(estimado).possuiCusto(possui).build());
         }
         total = total.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal rendimento = ficha.getRendimentoEsperado();
+        BigDecimal custoPorUnidade = total.divide(rendimento, 6, RoundingMode.HALF_UP);
         BigDecimal preco = ficha.getProduto().getPreco() == null ? BigDecimal.ZERO : ficha.getProduto().getPreco();
         BigDecimal margem = preco.subtract(total).setScale(2, RoundingMode.HALF_UP);
         BigDecimal percentual = preco.signum() == 0 ? BigDecimal.ZERO.setScale(2)
                 : margem.divide(preco, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP);
         return FichaTecnicaResponse.builder().id(ficha.getId()).produtoId(ficha.getProduto().getId())
                 .produtoNome(ficha.getProduto().getNome()).unidadeVendaProduto(ficha.getProduto().getUnidadeVenda())
+                .rendimentoEsperado(rendimento).unidadeRendimento(ficha.getProduto().getUnidadeVenda() == UnidadeVenda.UNIDADE ? UnidadeMedida.UNIDADE : UnidadeMedida.QUILOGRAMA)
                 .precoVenda(preco).observacao(ficha.getObservacao()).ativa(ficha.getAtiva())
                 .criadoEm(ficha.getCriadoEm()).atualizadoEm(ficha.getAtualizadoEm()).itens(itens)
-                .custoEstimadoTotal(total).custoCompleto(pendentes == 0).quantidadeItensSemCusto(pendentes)
+                .custoEstimadoTotal(total).custoEstimadoPorUnidade(custoPorUnidade).custoCompleto(pendentes == 0).quantidadeItensSemCusto(pendentes)
                 .margemContribuicaoEstimada(margem).margemPercentualEstimada(percentual).build();
     }
 

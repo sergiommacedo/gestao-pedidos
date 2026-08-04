@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -86,6 +87,9 @@ public class PedidoWebController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate dataAgendada,
+            @RequestParam(required = false) TipoEntrega tipoEntrega,
+            @RequestParam(required = false) FormaPagamento formaPagamento,
+            @RequestParam(defaultValue = "") String situacaoEstoque,
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "10") int tamanho,
             @RequestParam(defaultValue = "dataAgendada") String ordenarPor,
@@ -108,6 +112,9 @@ public class PedidoWebController {
                 filtroTratado,
                 status,
                 dataAgendada,
+                tipoEntrega,
+                formaPagamento,
+                situacaoEstoque,
                 pageable
         );
 
@@ -126,6 +133,10 @@ public class PedidoWebController {
         model.addAttribute("filtro", filtroTratado);
         model.addAttribute("statusSelecionado", status);
         model.addAttribute("dataAgendada", dataAgendada);
+        model.addAttribute("tipoEntregaSelecionado", tipoEntrega);
+        model.addAttribute("formaPagamentoSelecionada", formaPagamento);
+        model.addAttribute("situacaoEstoqueSelecionada", situacaoEstoque);
+        model.addAttribute("situacoesEstoque", pedidoService.situacoesEstoque(paginaPedidos.getContent()));
         model.addAttribute(
                 "dataAgendadaIso",
                 dataAgendada == null ? "" : dataAgendada.toString()
@@ -210,6 +221,7 @@ public class PedidoWebController {
                 ));
         model.addAttribute("transicoesStatus", transicoesStatus);
         model.addAttribute("proximosStatus", proximosStatus);
+        model.addAttribute("situacoesEstoque", pedidoService.situacoesEstoque(pedidos));
         adicionarPermissoesAcoes(model);
 
         return "pedidos/kanban";
@@ -394,6 +406,7 @@ public class PedidoWebController {
         PedidoResponse pedido = pedidoService.buscarPorId(id);
         model.addAttribute("pedido", pedido);
         model.addAttribute("movimentacoesEstoque", estoqueService.movimentacoesPedido(id));
+        model.addAttribute("situacaoEstoque", pedidoService.situacaoEstoque(pedido));
         String origemNormalizada = normalizarOrigem(origem);
         boolean origemRelatorio = "relatorio".equals(origemNormalizada);
         model.addAttribute(
@@ -419,6 +432,9 @@ public class PedidoWebController {
             @RequestParam(required = false) String motivoCancelamento,
             @RequestParam(defaultValue = "") String filtro,
             @RequestParam(required = false) StatusPedido statusFiltro,
+            @RequestParam(required = false) TipoEntrega tipoEntrega,
+            @RequestParam(required = false) FormaPagamento formaPagamento,
+            @RequestParam(defaultValue = "") String situacaoEstoque,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate dataAgendada,
@@ -441,10 +457,6 @@ public class PedidoWebController {
                     "Pedido " + pedido.id() + " alterado para "
                             + pedido.status().getDescricao() + "."
             );
-            if (pedido.status() == StatusPedido.CANCELADO && Boolean.TRUE.equals(pedido.estoqueMovimentado())) {
-                redirectAttributes.addFlashAttribute("mensagemSucesso", "Pedido " + pedido.id()
-                        + " cancelado. O estoque deste pedido ainda não é devolvido automaticamente.");
-            }
         } catch (BusinessException | ResourceNotFoundException exception) {
             redirectAttributes.addFlashAttribute("mensagemErro", exception.getMessage());
         }
@@ -474,6 +486,11 @@ public class PedidoWebController {
 
         if (dataAgendada != null) {
             redirectAttributes.addAttribute("dataAgendada", dataAgendada.toString());
+        }
+        if (tipoEntrega != null) redirectAttributes.addAttribute("tipoEntrega", tipoEntrega);
+        if (formaPagamento != null) redirectAttributes.addAttribute("formaPagamento", formaPagamento);
+        if (situacaoEstoque != null && !situacaoEstoque.isBlank()) {
+            redirectAttributes.addAttribute("situacaoEstoque", situacaoEstoque);
         }
 
         return "redirect:/pedidos";
@@ -524,6 +541,17 @@ public class PedidoWebController {
             @RequestParam(defaultValue = "") String termo
     ) {
         return produtoService.buscarAtivosEVendaveisPorNome(termo);
+    }
+
+    @PostMapping("/preview-estoque")
+    @ResponseBody
+    public ResponseEntity<?> preverEstoque(@RequestBody PedidoRequest pedido) {
+        try {
+            return ResponseEntity.ok(pedidoService.preverEstoque(pedido));
+        } catch (BusinessException | ResourceNotFoundException exception) {
+            return ResponseEntity.unprocessableEntity()
+                    .body(Map.of("mensagem", exception.getMessage()));
+        }
     }
 
     @GetMapping("/{id}/comanda")
@@ -642,7 +670,7 @@ public class PedidoWebController {
                                             .unidadeVenda(UnidadeVenda.UNIDADE)
                                             .permiteAcompanhamento(false)
                                             .ativo(false)
-                                            .tipoProduto(br.com.sergio.gestaopedidos.enums.TipoProduto.PRODUZIDO)
+                                            .tipoProduto(br.com.sergio.gestaopedidos.enums.TipoProduto.PREPARACAO_PRODUZIDA)
                                             .vendavel(false)
                                             .build()
                             );

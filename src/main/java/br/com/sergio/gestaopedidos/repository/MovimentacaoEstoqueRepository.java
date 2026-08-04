@@ -6,4 +6,5 @@ public interface MovimentacaoEstoqueRepository extends JpaRepository<Movimentaca
  @EntityGraph(attributePaths={"insumo","produto","itemCompra"})List<MovimentacaoEstoque> findByItemCompraCompraIdAndTipoOrderByIdAsc(Long compraId,TipoMovimentacaoEstoque tipo);
  @EntityGraph(attributePaths={"insumo","produto","producao"})List<MovimentacaoEstoque> findByProducaoIdOrderByIdAsc(Long producaoId);
  @EntityGraph(attributePaths={"produto","pedido"})List<MovimentacaoEstoque> findByPedidoIdAndTipoOrderByIdAsc(Long pedidoId,TipoMovimentacaoEstoque tipo);
+ @EntityGraph(attributePaths={"insumo","produto","pedido","movimentacaoOrigem"})List<MovimentacaoEstoque> findByPedidoIdOrderByIdAsc(Long pedidoId);
 }

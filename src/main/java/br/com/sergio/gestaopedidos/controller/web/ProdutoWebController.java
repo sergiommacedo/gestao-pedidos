@@ -46,6 +46,9 @@ public class ProdutoWebController {
     @GetMapping
     public String listar(
             @RequestParam(defaultValue = "") String filtro,
+            @RequestParam(required = false) TipoProduto tipo,
+            @RequestParam(required = false) Boolean ativo,
+            @RequestParam(required = false) Boolean vendavel,
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "10") int tamanho,
             @RequestParam(defaultValue = "id") String ordenarPor,
@@ -65,7 +68,7 @@ public class ProdutoWebController {
         );
 
         Page<ProdutoResponse> paginaProdutos =
-                produtoService.listarPaginado(filtroTratado, pageable);
+                produtoService.listarPaginado(filtroTratado,tipo,ativo,vendavel,pageable);
 
         model.addAttribute("paginaProdutos", paginaProdutos);
         model.addAttribute("produtos", paginaProdutos.getContent());
@@ -73,6 +76,7 @@ public class ProdutoWebController {
         model.addAttribute("ordenarPor", campoOrdenacao);
         model.addAttribute("direcao", direcaoOrdenacao.name().toLowerCase());
         model.addAttribute("tamanho", tamanhoValido);
+        model.addAttribute("tipoSelecionado",tipo);model.addAttribute("ativoSelecionado",ativo);model.addAttribute("vendavelSelecionado",vendavel);
 
         return "produtos/listar";
     }
@@ -81,7 +85,8 @@ public class ProdutoWebController {
     public String novo(Model model) {
         model.addAttribute("produto", ProdutoRequest.builder()
                 .ativo(true)
-                .tipoProduto(TipoProduto.PRODUZIDO)
+                .tipoProduto(TipoProduto.PRODUTO_COMERCIAL)
+                .unidadeVenda(UnidadeVenda.UNIDADE)
                 .vendavel(true)
                 .permiteAcompanhamento(false)
                 .estoqueMinimo(java.math.BigDecimal.ZERO)

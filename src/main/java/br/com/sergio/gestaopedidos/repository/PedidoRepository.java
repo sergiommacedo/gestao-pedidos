@@ -34,6 +34,11 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
         Long getSaiuParaEntrega(); BigDecimal getProdutos(); BigDecimal getTaxas(); BigDecimal getFaturamento();
     }
 
+    interface ResumoFinanceiroDashboard {
+        Long getPedidosValidos(); Long getPedidosComCusto();
+        BigDecimal getReceitaProdutos(); BigDecimal getCmv(); BigDecimal getLucroBruto();
+    }
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"cliente", "itens", "itens.produto"})
     @Query("SELECT p FROM Pedido p WHERE p.id = :id")
@@ -429,11 +434,21 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             )
             AND (:status IS NULL OR p.status = :status)
             AND (:dataAgendada IS NULL OR p.dataAgendada = :dataAgendada)
+            AND (:tipoEntrega IS NULL OR p.tipoEntrega = :tipoEntrega)
+            AND (:formaPagamento IS NULL OR p.formaPagamento = :formaPagamento)
+            AND (:situacaoEstoque = ''
+                OR (:situacaoEstoque = 'AGUARDANDO' AND p.estoqueMovimentado = false AND p.status <> br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO)
+                OR (:situacaoEstoque = 'BAIXADO' AND p.estoqueMovimentado = true)
+                OR (:situacaoEstoque = 'ESTORNADO' AND p.status = br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO AND EXISTS (SELECT m.id FROM MovimentacaoEstoque m WHERE m.pedido = p AND m.tipo = br.com.sergio.gestaopedidos.enums.TipoMovimentacaoEstoque.ESTORNO_SAIDA))
+                OR (:situacaoEstoque = 'NAO_APLICA' AND p.status = br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO AND NOT EXISTS (SELECT m.id FROM MovimentacaoEstoque m WHERE m.pedido = p AND m.tipo = br.com.sergio.gestaopedidos.enums.TipoMovimentacaoEstoque.SAIDA_VENDA)))
             """)
     Page<Pedido> buscarPaginado(
             @Param("filtro") String filtro,
             @Param("status") StatusPedido status,
             @Param("dataAgendada") LocalDate dataAgendada,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("situacaoEstoque") String situacaoEstoque,
             Pageable pageable
     );
 
@@ -585,6 +600,19 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
                                       @Param("cancelado") StatusPedido cancelado,
                                       @Param("preparacao") StatusPedido preparacao,
                                       @Param("saiuEntrega") StatusPedido saiuEntrega);
+
+    @Query("""
+            SELECT COUNT(p) AS pedidosValidos,
+                   COALESCE(SUM(CASE WHEN p.custoTotalHistorico IS NOT NULL THEN 1 ELSE 0 END), 0) AS pedidosComCusto,
+                   COALESCE(SUM(CASE WHEN p.custoTotalHistorico IS NOT NULL THEN p.subtotal ELSE 0 END), 0) AS receitaProdutos,
+                   COALESCE(SUM(p.custoTotalHistorico), 0) AS cmv,
+                   COALESCE(SUM(p.lucroBrutoEstimado), 0) AS lucroBruto
+            FROM Pedido p
+            WHERE p.dataAgendada = :data
+              AND p.status <> :cancelado
+            """)
+    ResumoFinanceiroDashboard resumirFinanceiroDashboard(@Param("data") LocalDate data,
+                                                          @Param("cancelado") StatusPedido cancelado);
 
     @Query("""
             SELECT COALESCE(SUM(p.valorTotal), 0)

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,6 +20,9 @@ public class FichaTecnica {
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "produto_id", nullable = false, updatable = false)
     private Produto produto;
+
+    @Column(name = "rendimento_esperado", nullable = false, precision = 15, scale = 3)
+    private BigDecimal rendimentoEsperado;
 
     @Column(length = 500)
     private String observacao;
