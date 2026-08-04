@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -123,5 +124,16 @@ public class Pedido {
                 taxaEntrega != null ? taxaEntrega : BigDecimal.ZERO;
 
         valorTotal = subtotalSeguro.add(taxaEntregaSegura);
+    }
+
+    public void aplicarResultadoHistorico(BigDecimal cmv) {
+        if (cmv == null || subtotal == null) {
+            throw new IllegalArgumentException("Pedido inválido para consolidação do resultado histórico.");
+        }
+        custoTotalHistorico = cmv.setScale(2, RoundingMode.HALF_UP);
+        lucroBrutoEstimado = subtotal.subtract(custoTotalHistorico).setScale(2, RoundingMode.HALF_UP);
+        margemBrutaEstimada = subtotal.signum() == 0 ? null
+                : lucroBrutoEstimado.multiply(BigDecimal.valueOf(100))
+                        .divide(subtotal, 4, RoundingMode.HALF_UP);
     }
 }

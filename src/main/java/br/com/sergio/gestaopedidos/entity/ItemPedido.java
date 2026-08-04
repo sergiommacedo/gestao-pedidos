@@ -65,4 +65,16 @@ public class ItemPedido {
     public BigDecimal lucroBrutoEstimado() {
         return lucroBrutoHistorico;
     }
+
+    public void aplicarCustoHistorico(BigDecimal custoTotal) {
+        if (custoTotal == null || quantidade == null || quantidade.signum() <= 0 || subtotal == null) {
+            throw new IllegalArgumentException("Item inválido para consolidação do custo histórico.");
+        }
+        custoTotalHistorico = custoTotal.setScale(2, RoundingMode.HALF_UP);
+        custoUnitarioHistorico = custoTotalHistorico.divide(quantidade, 6, RoundingMode.HALF_UP);
+        lucroBrutoHistorico = subtotal.subtract(custoTotalHistorico).setScale(2, RoundingMode.HALF_UP);
+        margemBrutaHistorica = subtotal.signum() == 0 ? null
+                : lucroBrutoHistorico.multiply(BigDecimal.valueOf(100))
+                        .divide(subtotal, 4, RoundingMode.HALF_UP);
+    }
 }
