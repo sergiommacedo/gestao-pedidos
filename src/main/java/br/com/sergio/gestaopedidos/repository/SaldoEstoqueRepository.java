@@ -3,7 +3,7 @@ import br.com.sergio.gestaopedidos.entity.*;import br.com.sergio.gestaopedidos.e
 public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>{
  interface InsumoCusto{Long getId();String getNome();String getUnidade();BigDecimal getCustoMedio();BigDecimal getEstoqueAtual();}
  interface Visao{String getTipoItem();Long getReferenciaId();String getItemNome();String getUnidade();Boolean getAtivo();BigDecimal getQuantidadeAtual();BigDecimal getEstoqueMinimo();BigDecimal getCustoMedioAtual();BigDecimal getValorTotalEstoque();LocalDateTime getAtualizadoEm();}
- interface ResumoDashboard{Long getItensComSaldo();Long getAbaixoDoMinimo();Long getSemEstoque();Long getProduzidosDisponiveis();Long getRevendaDisponiveis();BigDecimal getValorInsumos();BigDecimal getValorRevenda();BigDecimal getValorProduzidos();BigDecimal getValorTotal();}
+ interface ResumoDashboard{Long getItensComSaldo();Long getAbaixoDoMinimo();Long getSemEstoque();Long getProduzidosDisponiveis();Long getRevendaDisponiveis();}
  @Lock(LockModeType.PESSIMISTIC_WRITE)@Query("SELECT i FROM Insumo i WHERE i.id=:id")Optional<Insumo> bloquearInsumo(@Param("id")Long id);
  @Lock(LockModeType.PESSIMISTIC_WRITE)@Query("SELECT p FROM Produto p WHERE p.id=:id")Optional<Produto> bloquearProduto(@Param("id")Long id);
  @Lock(LockModeType.PESSIMISTIC_WRITE)@Query("SELECT s FROM SaldoEstoque s WHERE s.tipoItem=:tipo AND ((:tipo=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.INSUMO AND s.insumo.id=:id) OR (:tipo<>br.com.sergio.gestaopedidos.enums.TipoItemEstoque.INSUMO AND s.produto.id=:id))")Optional<SaldoEstoque> bloquearSaldo(@Param("tipo")TipoItemEstoque tipo,@Param("id")Long id);
@@ -44,11 +44,8 @@ public interface SaldoEstoqueRepository extends JpaRepository<SaldoEstoque,Long>
  SUM(CASE WHEN ((s.insumo IS NOT NULL AND s.insumo.estoqueMinimo>0 AND s.quantidadeAtual<=s.insumo.estoqueMinimo) OR (s.produto IS NOT NULL AND s.produto.estoqueMinimo>0 AND s.quantidadeAtual<=s.produto.estoqueMinimo)) THEN 1 ELSE 0 END) AS abaixoDoMinimo,
  SUM(CASE WHEN s.quantidadeAtual=0 THEN 1 ELSE 0 END) AS semEstoque,
  SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PREPARACAO_PRODUZIDA AND s.quantidadeAtual>0 THEN 1 ELSE 0 END) AS produzidosDisponiveis,
- SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PRODUTO_REVENDA AND s.quantidadeAtual>0 THEN 1 ELSE 0 END) AS revendaDisponiveis,
- COALESCE(SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.INSUMO THEN s.valorTotalEstoque ELSE 0 END),0) AS valorInsumos,
- COALESCE(SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PRODUTO_REVENDA THEN s.valorTotalEstoque ELSE 0 END),0) AS valorRevenda,
- COALESCE(SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PREPARACAO_PRODUZIDA THEN s.valorTotalEstoque ELSE 0 END),0) AS valorProduzidos,
- COALESCE(SUM(s.valorTotalEstoque),0) AS valorTotal FROM SaldoEstoque s
+ SUM(CASE WHEN s.tipoItem=br.com.sergio.gestaopedidos.enums.TipoItemEstoque.PRODUTO_REVENDA AND s.quantidadeAtual>0 THEN 1 ELSE 0 END) AS revendaDisponiveis
+ FROM SaldoEstoque s
  """) ResumoDashboard resumirDashboard();
  @Query(value="""
  SELECT * FROM (

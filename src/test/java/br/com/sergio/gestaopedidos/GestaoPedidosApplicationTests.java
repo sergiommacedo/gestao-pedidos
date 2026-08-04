@@ -29,7 +29,7 @@ class GestaoPedidosApplicationTests {
         var dashboard = dashboardAnaliticoService.buscar(LocalDate.of(2026, 8, 4));
         assertThat(dashboard.vendasPorDia()).isEmpty();
         assertThat(dashboard.producaoPorDia()).isEmpty();
-        assertThat(dashboard.lucroBrutoEstimado()).isZero();
+        assertThat(dashboard.lucroBrutoEstimado()).isNull();
     }
 
 }

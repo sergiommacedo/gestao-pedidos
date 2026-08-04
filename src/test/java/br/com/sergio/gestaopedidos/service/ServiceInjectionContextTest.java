@@ -41,7 +41,7 @@ class ServiceInjectionContextTest {
         assertConstrutorUnico(ComposicaoProdutoService.class, 4);
         assertConstrutorUnico(ProducaoService.class, 6);
         assertConstrutorUnico(PedidoService.class, 5);
-        assertConstrutorUnico(DashboardService.class, 6);
+        assertConstrutorUnico(DashboardService.class, 8);
     }
 
     private void assertConstrutorUnico(Class<?> tipo, int dependencias) {
