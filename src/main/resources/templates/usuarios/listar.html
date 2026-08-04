@@ -5,8 +5,8 @@
       layout:decorate="~{layout/layout}">
 
 <section layout:fragment="content">
-    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
-        <div>
+    <header class="page-header">
+        <div class="page-header-content">
             <h2 class="mb-0">
                 <i class="bi bi-person-gear"></i>
                 Usuários
@@ -14,11 +14,11 @@
             <small class="text-muted">Lista de usuários cadastrados</small>
         </div>
 
-        <a th:href="@{/usuarios/novo}" class="btn btn-primary align-self-start align-self-sm-auto">
+        <div class="page-header-actions"><a th:href="@{/usuarios/novo}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i>
             Novo usuário
-        </a>
-    </div>
+        </a></div>
+    </header>
 
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3">

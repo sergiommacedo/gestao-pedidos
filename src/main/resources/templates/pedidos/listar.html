@@ -6,8 +6,8 @@
 
 <section layout:fragment="content">
 
-    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-4">
-        <div>
+    <header class="page-header">
+        <div class="page-header-content">
             <h2 class="mb-0">
                 <i class="bi bi-receipt-cutoff"></i>
                 Pedidos
@@ -15,7 +15,7 @@
             <small class="text-muted">Consulte e acompanhe os pedidos cadastrados</small>
         </div>
 
-        <div class="d-flex flex-wrap gap-2 align-self-start align-self-sm-auto">
+        <div class="page-header-actions">
             <div class="btn-group" role="group" aria-label="Visualização dos pedidos">
                 <a th:href="@{/pedidos}" class="btn btn-outline-secondary active" aria-current="page">
                     <i class="bi bi-list-ul"></i> Lista
@@ -29,7 +29,7 @@
                 Novo Pedido
             </a>
         </div>
-    </div>
+    </header>
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>

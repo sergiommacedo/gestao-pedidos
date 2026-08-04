@@ -481,6 +481,65 @@ body {
     padding-top: 88px !important;
 }
 
+/* Cabeçalho compartilhado das páginas de consulta e manutenção. */
+.page-header,
+.main-content header:has(.btn) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.page-header-content,
+.main-content header:has(.btn) > :first-child {
+    min-width: 0;
+}
+
+.page-header-actions,
+.main-content header:has(.btn) > :last-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    align-self: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.page-header-actions > form,
+.main-content header:has(.btn) > :last-child > form {
+    display: flex;
+    width: auto;
+    height: auto;
+    margin: 0;
+}
+
+.page-header-actions .btn,
+.page-header-actions.btn,
+.main-content header:has(.btn) > :last-child .btn,
+.main-content header:has(.btn) > :last-child.btn {
+    flex: 0 0 auto;
+    width: auto;
+    height: auto;
+    white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+    .page-header,
+    .main-content header:has(.btn) {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .page-header-actions,
+    .main-content header:has(.btn) > :last-child {
+        flex: 0 0 auto;
+        justify-content: flex-end;
+        width: auto;
+    }
+}
+
 .btn-primary {
     --bs-btn-color: var(--app-primary-contrast);
     --bs-btn-bg: var(--app-primary);
