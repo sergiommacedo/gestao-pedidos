@@ -30,6 +30,12 @@ public class ItemPedido {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
+    @Column(name = "custo_unitario_historico", precision = 18, scale = 6)
+    private BigDecimal custoUnitarioHistorico;
+
+    @Column(name = "custo_total_historico", precision = 18, scale = 2)
+    private BigDecimal custoTotalHistorico;
+
     @Column(length = 255)
     private String observacao;
 
@@ -48,5 +54,9 @@ public class ItemPedido {
             subtotal = precoUnitario.multiply(quantidade)
                     .setScale(2, RoundingMode.HALF_UP);
         }
+    }
+
+    public BigDecimal lucroBrutoEstimado() {
+        return custoTotalHistorico == null || subtotal == null ? null : subtotal.subtract(custoTotalHistorico);
     }
 }

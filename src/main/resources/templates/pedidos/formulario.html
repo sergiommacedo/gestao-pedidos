@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR"
       xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout/layout}">
 
@@ -90,6 +91,7 @@
                                  th:data-produto-nome="${produtosSelecionados[item.produtoId].nome}"
                                  th:data-produto-preco="${produtosSelecionados[item.produtoId].preco}"
                                  th:data-produto-unidade="${produtosSelecionados[item.produtoId].unidadeVenda}"
+                                 th:data-produto-tipo="${produtosSelecionados[item.produtoId].tipoProduto}"
                                  th:data-permite-acompanhamento="${produtosSelecionados[item.produtoId].permiteAcompanhamento}">
                                 <div class="card-body">
                                     <input type="hidden" name="itemIds"
@@ -257,6 +259,18 @@
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <span class="fs-5 fw-semibold">Total</span>
                             <strong class="fs-4 text-primary" data-pedido-total>R$ 0,00</strong>
+                        </div>
+                        <div class="alert alert-secondary py-2" role="status" data-previa-estoque>
+                            <div class="fw-semibold" data-previa-estoque-titulo>Aguardando itens</div>
+                            <small data-previa-estoque-mensagem>O estoque será baixado quando o pedido entrar em preparação.</small>
+                            <div class="mt-2 d-none" data-previa-componentes></div>
+                        </div>
+                        <div class="border rounded p-3 mb-4 d-none" data-previa-financeira
+                             sec:authorize="hasRole('ADMIN')">
+                            <div class="small text-muted mb-2">Estimativa interna</div>
+                            <div class="d-flex justify-content-between"><span>Custo dos itens</span><strong data-previa-custo>—</strong></div>
+                            <div class="d-flex justify-content-between"><span>Lucro bruto estimado</span><strong data-previa-lucro>—</strong></div>
+                            <div class="d-flex justify-content-between"><span>Margem bruta estimada</span><strong data-previa-margem>—</strong></div>
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" value="salvar" class="btn btn-primary btn-lg"

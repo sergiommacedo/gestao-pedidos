@@ -54,6 +54,12 @@ public class Pedido {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal valorTotal;
 
+    @Column(name = "custo_total_historico", precision = 18, scale = 2)
+    private BigDecimal custoTotalHistorico;
+
+    @Column(name = "lucro_bruto_estimado", precision = 18, scale = 2)
+    private BigDecimal lucroBrutoEstimado;
+
     @Column(length = 500)
     private String observacao;
 

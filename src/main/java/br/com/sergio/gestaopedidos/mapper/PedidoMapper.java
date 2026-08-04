@@ -23,6 +23,7 @@ public interface PedidoMapper {
     @Mapping(target = "produtoNome", source = "produto.nome")
     @Mapping(target = "unidadeVenda", source = "produto.unidadeVenda")
     @Mapping(target = "valorUnitario", source = "precoUnitario")
+    @Mapping(target = "lucroBrutoEstimado", expression = "java(itemPedido.lucroBrutoEstimado())")
     ItemPedidoResponse toItemResponse(ItemPedido itemPedido);
 
     List<PedidoResponse> toResponseList(List<Pedido> pedidos);

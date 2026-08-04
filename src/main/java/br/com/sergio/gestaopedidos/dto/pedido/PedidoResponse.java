@@ -48,6 +48,10 @@ public record PedidoResponse(
         @Schema(description = "Valor total do pedido", example = "93.90")
         BigDecimal valorTotal,
 
+        BigDecimal custoTotalHistorico,
+
+        BigDecimal lucroBrutoEstimado,
+
         @Schema(description = "Observações do pedido", example = "Sem cebola.")
         String observacao,
 
@@ -65,4 +69,11 @@ public record PedidoResponse(
         List<ItemPedidoResponse> itens
 
 ) {
+    public BigDecimal margemBrutaEstimada() {
+        if (subtotal == null || lucroBrutoEstimado == null || subtotal.signum() <= 0) {
+            return null;
+        }
+        return lucroBrutoEstimado.multiply(new BigDecimal("100"))
+                .divide(subtotal, 2, java.math.RoundingMode.HALF_UP);
+    }
 }

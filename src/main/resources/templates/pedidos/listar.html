@@ -33,7 +33,7 @@
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
-            <h3 class="h5 mb-0">Dashboard Operacional</h3>
+            <h3 class="h5 mb-0">Resumo da data</h3>
             <small class="text-muted">
                 Indicadores de
                 <span th:text="${#temporals.format(dashboardOperacional.data, 'dd/MM/yyyy')}"></span>
@@ -50,7 +50,7 @@
                         <i class="bi bi-calendar2-check" aria-hidden="true"></i>
                     </div>
                     <div>
-                        <div class="dashboard-operacional-titulo">Agendados</div>
+                        <div class="dashboard-operacional-titulo">Pedidos</div>
                         <div class="dashboard-operacional-valor" th:text="${dashboardOperacional.agendados}">0</div>
                     </div>
                 </div>
@@ -73,15 +73,15 @@
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
-            <a th:href="@{/pedidos(dataAgendada=${dataDashboardIso}, status='CANCELADO')}"
+            <a th:href="@{/pedidos(dataAgendada=${dataDashboardIso}, status='EM_PREPARACAO')}"
                class="card dashboard-operacional-card h-100 border-0 text-decoration-none text-body">
                 <div class="card-body d-flex align-items-center gap-3">
-                    <div class="dashboard-operacional-icone bg-danger-subtle text-danger">
-                        <i class="bi bi-x-circle" aria-hidden="true"></i>
+                    <div class="dashboard-operacional-icone bg-info-subtle text-info-emphasis">
+                        <i class="bi bi-fire" aria-hidden="true"></i>
                     </div>
                     <div>
-                        <div class="dashboard-operacional-titulo">Cancelados</div>
-                        <div class="dashboard-operacional-valor" th:text="${dashboardOperacional.cancelados}">0</div>
+                        <div class="dashboard-operacional-titulo">Em preparação</div>
+                        <div class="dashboard-operacional-valor" th:text="${dashboardOperacional.emPreparacao}">0</div>
                     </div>
                 </div>
             </a>
@@ -103,7 +103,8 @@
             </a>
         </div>
     </div>
-    <div class="card shadow-sm mb-4 resumo-produtos-card">
+    <div class="card shadow-sm mb-4 resumo-produtos-card"
+         th:if="${!#lists.isEmpty(resumoVendasDia.produtos)}">
         <button type="button"
                 class="card-header resumo-produtos-controle collapsed w-100 border-0 p-3 text-start"
                 data-bs-toggle="collapse"
@@ -233,7 +234,7 @@
     <div class="card shadow-sm">
         <div class="card-header bg-white py-3">
             <form th:action="@{/pedidos}" method="get" class="row g-3 align-items-end">
-                <div class="col-lg-5 col-md-12">
+                <div class="col-xl-3 col-md-6">
                     <label for="filtro" class="form-label">Cliente</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
@@ -242,7 +243,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-3 col-md-6">
+                <div class="col-xl-2 col-md-6">
                     <label for="status" class="form-label">Status</label>
                     <select id="status" name="status" class="form-select">
                         <option value="">Todos os status</option>
@@ -253,13 +254,43 @@
                     </select>
                 </div>
 
-                <div class="col-lg-2 col-md-6">
+                <div class="col-xl-2 col-md-6">
                     <label for="dataAgendada" class="form-label">Data agendada</label>
                     <input type="date" id="dataAgendada" name="dataAgendada"
                            class="form-control" th:value="${dataAgendadaIso}">
                 </div>
 
-                <div class="col-lg-2 d-grid">
+                <div class="col-xl-2 col-md-6">
+                    <label for="tipoEntregaFiltro" class="form-label">Entrega</label>
+                    <select id="tipoEntregaFiltro" name="tipoEntrega" class="form-select">
+                        <option value="">Todos</option>
+                        <option th:each="tipo : ${tiposEntrega}" th:value="${tipo}"
+                                th:text="${tipo.name() == 'ENTREGA' ? 'Entrega' : 'Retirada'}"
+                                th:selected="${tipoEntregaSelecionado == tipo}"></option>
+                    </select>
+                </div>
+
+                <div class="col-xl-2 col-md-6">
+                    <label for="formaPagamentoFiltro" class="form-label">Pagamento</label>
+                    <select id="formaPagamentoFiltro" name="formaPagamento" class="form-select">
+                        <option value="">Todos</option>
+                        <option th:each="forma : ${formasPagamento}" th:value="${forma}"
+                                th:text="${forma.descricao}"
+                                th:selected="${formaPagamentoSelecionada == forma}"></option>
+                    </select>
+                </div>
+
+                <div class="col-xl-2 col-md-6">
+                    <label for="situacaoEstoqueFiltro" class="form-label">Estoque</label>
+                    <select id="situacaoEstoqueFiltro" name="situacaoEstoque" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="AGUARDANDO" th:selected="${situacaoEstoqueSelecionada == 'AGUARDANDO'}">Aguardando baixa</option>
+                        <option value="BAIXADO" th:selected="${situacaoEstoqueSelecionada == 'BAIXADO'}">Estoque baixado</option>
+                        <option value="ESTORNADO" th:selected="${situacaoEstoqueSelecionada == 'ESTORNADO'}">Estoque estornado</option>
+                    </select>
+                </div>
+
+                <div class="col-xl-1 col-md-6 d-grid">
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-funnel"></i>
                         Filtrar
@@ -268,7 +299,9 @@
 
                 <div class="col-12"
                      th:if="${(filtro != null and !filtro.isBlank())
-                              or statusSelecionado != null or dataAgendada != null}">
+                              or statusSelecionado != null or dataAgendada != null
+                              or tipoEntregaSelecionado != null or formaPagamentoSelecionada != null
+                              or situacaoEstoqueSelecionada != null}">
                     <a th:href="@{/pedidos}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-x-circle"></i>
                         Limpar filtros
@@ -307,7 +340,7 @@
 
                         <th>
                             <a class="text-decoration-none text-dark"
-                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, situacaoEstoque=${situacaoEstoqueSelecionada},
                                     dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='id',
                                     direcao=${ordenarPor == 'id' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 ID
@@ -318,7 +351,7 @@
 
                         <th>
                             <a class="text-decoration-none text-dark"
-                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, situacaoEstoque=${situacaoEstoqueSelecionada},
                                     dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='dataAgendada',
                                     direcao=${ordenarPor == 'dataAgendada' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 Data agendada
@@ -329,7 +362,7 @@
 
                         <th>
                             <a class="text-decoration-none text-dark"
-                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, situacaoEstoque=${situacaoEstoqueSelecionada},
                                     dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='cliente.nome',
                                     direcao=${ordenarPor == 'cliente.nome' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 Cliente
@@ -339,10 +372,11 @@
                         </th>
 
                         <th>Telefone</th>
+                        <th>Itens</th>
 
                         <th>
                             <a class="text-decoration-none text-dark"
-                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, situacaoEstoque=${situacaoEstoqueSelecionada},
                                     dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='status',
                                     direcao=${ordenarPor == 'status' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 Status
@@ -353,11 +387,11 @@
 
                         <th>Entrega</th>
                         <th>Pagamento</th>
-                        <th class="text-center">Movimentou estoque</th>
+                        <th>Estoque</th>
 
                         <th class="text-end">
                             <a class="text-decoration-none text-dark"
-                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                               th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, situacaoEstoque=${situacaoEstoqueSelecionada},
                                     dataAgendada=${dataAgendadaIso}, pagina=0, tamanho=${tamanho}, ordenarPor='valorTotal',
                                     direcao=${ordenarPor == 'valorTotal' and direcao == 'asc' ? 'desc' : 'asc'})}">
                                 Valor total
@@ -389,6 +423,12 @@
                         <td th:text="${pedido.clienteNome}"></td>
                         <td class="text-nowrap" th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></td>
                         <td>
+                            <span th:each="item, stat : ${pedido.itens}" th:if="${stat.index < 3}"
+                                  th:text="${(stat.index > 0 ? ', ' : '') + @formatacao.formatarQuantidade(item.quantidade, item.unidadeVenda) + ' ' + item.produtoNome}"></span>
+                            <span class="text-muted" th:if="${pedido.itens.size() > 3}"
+                                  th:text="' +' + ${pedido.itens.size() - 3}"></span>
+                        </td>
+                        <td>
                             <div class="dropdown">
                                 <button type="button" class="btn btn-sm dropdown-toggle rounded-pill"
                                         data-bs-toggle="dropdown" data-bs-boundary="viewport"
@@ -409,6 +449,9 @@
                                             <input type="hidden" name="filtro" th:value="${filtro}">
                                             <input type="hidden" name="statusFiltro" th:value="${statusSelecionado}">
                                             <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
+                                            <input type="hidden" name="tipoEntrega" th:value="${tipoEntregaSelecionado}">
+                                            <input type="hidden" name="formaPagamento" th:value="${formaPagamentoSelecionada}">
+                                            <input type="hidden" name="situacaoEstoque" th:value="${situacaoEstoqueSelecionada}">
                                             <input type="hidden" name="pagina" th:value="${paginaPedidos.number}">
                                             <input type="hidden" name="tamanho" th:value="${tamanho}">
                                             <input type="hidden" name="ordenarPor" th:value="${ordenarPor}">
@@ -458,7 +501,7 @@
                                   th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></span>
                         </td>
                         <td th:text="${pedido.formaPagamento.descricao}"></td>
-                        <td class="text-center"><span class="badge" th:classappend="${pedido.estoqueMovimentado}?' text-bg-success':' text-bg-secondary'" th:text="${pedido.estoqueMovimentado}?'Sim':'Não'"></span></td>
+                        <td><span class="badge" th:classappend="${situacoesEstoque[pedido.id] == 'Estoque baixado'} ? ' text-bg-success' : (${situacoesEstoque[pedido.id] == 'Estoque estornado'} ? ' text-bg-info' : ' text-bg-secondary')" th:text="${situacoesEstoque[pedido.id]}"></span></td>
                         <td class="text-end fw-semibold text-nowrap"
                             th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></td>
                         <td class="text-center">
@@ -493,7 +536,7 @@
                     </tr>
 
                     <tr th:if="${paginaPedidos.empty}">
-                        <td colspan="11" class="text-center text-muted py-5">
+                        <td colspan="12" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-1 d-block mb-3"></i>
                             <span th:if="${(filtro == null or filtro.isBlank())
                                           and statusSelecionado == null and dataAgendada == null}">
@@ -531,6 +574,9 @@
                         <input type="hidden" name="filtro" th:value="${filtro}">
                         <input type="hidden" name="status" th:value="${statusSelecionado}">
                         <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
+                        <input type="hidden" name="tipoEntrega" th:value="${tipoEntregaSelecionado}">
+                        <input type="hidden" name="formaPagamento" th:value="${formaPagamentoSelecionada}">
+                        <input type="hidden" name="situacaoEstoque" th:value="${situacaoEstoqueSelecionada}">
                         <input type="hidden" name="pagina" value="0">
                         <input type="hidden" name="ordenarPor" th:value="${ordenarPor}">
                         <input type="hidden" name="direcao" th:value="${direcao}">
@@ -541,7 +587,7 @@
                     <nav aria-label="Paginação de pedidos">
                         <ul class="pagination pagination-sm mb-0">
                             <li class="page-item" th:classappend="${paginaPedidos.first} ? 'disabled'">
-                                <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, situacaoEstoque=${situacaoEstoqueSelecionada},
                                     dataAgendada=${dataAgendadaIso}, pagina=${paginaPedidos.number - 1}, tamanho=${tamanho},
                                     ordenarPor=${ordenarPor}, direcao=${direcao})}">Anterior</a>
                             </li>
@@ -549,14 +595,14 @@
                             <li class="page-item"
                                 th:each="numeroPagina : ${#numbers.sequence(0, paginaPedidos.totalPages - 1)}"
                                 th:classappend="${numeroPagina == paginaPedidos.number} ? 'active'">
-                                <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, situacaoEstoque=${situacaoEstoqueSelecionada},
                                     dataAgendada=${dataAgendadaIso}, pagina=${numeroPagina}, tamanho=${tamanho},
                                     ordenarPor=${ordenarPor}, direcao=${direcao})}"
                                    th:text="${numeroPagina + 1}"></a>
                             </li>
 
                             <li class="page-item" th:classappend="${paginaPedidos.last} ? 'disabled'">
-                                <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado},
+                                <a class="page-link" th:href="@{/pedidos(filtro=${filtro}, status=${statusSelecionado}, tipoEntrega=${tipoEntregaSelecionado}, formaPagamento=${formaPagamentoSelecionada}, situacaoEstoque=${situacaoEstoqueSelecionada},
                                     dataAgendada=${dataAgendadaIso}, pagina=${paginaPedidos.number + 1}, tamanho=${tamanho},
                                     ordenarPor=${ordenarPor}, direcao=${direcao})}">Próxima</a>
                             </li>

@@ -977,10 +977,20 @@ function inicializarFormularioPedido() {
         "[data-resumo-quantidade-container]"
     );
     const resumoQuantidade = formulario.querySelector("[data-resumo-quantidade]");
+    const previaEstoque = formulario.querySelector("[data-previa-estoque]");
+    const previaTitulo = formulario.querySelector("[data-previa-estoque-titulo]");
+    const previaMensagem = formulario.querySelector("[data-previa-estoque-mensagem]");
+    const previaComponentes = formulario.querySelector("[data-previa-componentes]");
+    const previaFinanceira = formulario.querySelector("[data-previa-financeira]");
+    const previaCusto = formulario.querySelector("[data-previa-custo]");
+    const previaLucro = formulario.querySelector("[data-previa-lucro]");
+    const previaMargem = formulario.querySelector("[data-previa-margem]");
     let temporizadorCliente;
     let temporizadorProduto;
     let requisicaoCliente = 0;
     let requisicaoProduto = 0;
+    let temporizadorPrevia;
+    let requisicaoPrevia = 0;
 
     function fecharResultadosClientes() {
         clearTimeout(temporizadorCliente);
@@ -1189,6 +1199,72 @@ function inicializarFormularioPedido() {
         subtotalPedido.textContent = formatarMoeda(subtotal);
         resumoTaxa.textContent = formatarMoeda(taxa);
         totalPedido.textContent = formatarMoeda(subtotal + taxa);
+        agendarPreviaEstoque();
+    }
+
+    function agendarPreviaEstoque() {
+        clearTimeout(temporizadorPrevia);
+        temporizadorPrevia = setTimeout(carregarPreviaEstoque, 300);
+    }
+
+    async function carregarPreviaEstoque() {
+        const itens = Array.from(itensContainer.querySelectorAll(".item-pedido"))
+            .map(item => ({
+                produtoId: Number(item.querySelector("[data-item-produto-id]").value),
+                quantidade: Number(item.querySelector("[data-item-quantidade]").value),
+                observacao: item.querySelector("[data-item-observacao]").value
+            }))
+            .filter(item => item.produtoId && item.quantidade > 0);
+
+        if (itens.length === 0) {
+            previaEstoque.className = "alert alert-secondary py-2";
+            previaTitulo.textContent = "Aguardando itens";
+            previaMensagem.textContent = "O estoque será baixado quando o pedido entrar em preparação.";
+            previaComponentes.replaceChildren();
+            previaComponentes.classList.add("d-none");
+            previaFinanceira?.classList.add("d-none");
+            return;
+        }
+
+        const numeroRequisicao = ++requisicaoPrevia;
+        const csrf = formulario.querySelector('input[name="_csrf"]');
+        const resposta = await fetch("/pedidos/preview-estoque", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(csrf ? {"X-CSRF-TOKEN": csrf.value} : {})
+            },
+            body: JSON.stringify({itens})
+        });
+
+        if (numeroRequisicao !== requisicaoPrevia) return;
+        if (!resposta.ok) {
+            const erro = await resposta.json().catch(() => ({}));
+            previaEstoque.className = "alert alert-warning py-2";
+            previaTitulo.textContent = "Prévia indisponível";
+            previaMensagem.textContent = erro.mensagem || "Confira os produtos e tente novamente.";
+            return;
+        }
+
+        const previa = await resposta.json();
+        previaEstoque.className = `alert py-2 ${previa.estoqueSuficiente ? "alert-success" : "alert-danger"}`;
+        previaTitulo.textContent = previa.estoqueSuficiente ? "Estoque suficiente" : "Existem itens em falta";
+        previaMensagem.textContent = "Nenhuma baixa é feita nesta prévia. A baixa ocorre ao iniciar a preparação.";
+        previaComponentes.replaceChildren();
+        previa.componentes.forEach(componente => {
+            const linha = document.createElement("div");
+            linha.className = `small d-flex justify-content-between gap-2 ${componente.suficiente ? "" : "text-danger fw-semibold"}`;
+            const unidade = componente.unidade === "UNIDADE" ? " un." : ` ${componente.unidade === "QUILOGRAMA" ? "kg" : componente.unidade.toLowerCase()}`;
+            linha.textContent = `${componente.nome}: ${componente.necessario}${unidade} necessário · ${componente.disponivel}${unidade} disponível${componente.suficiente ? "" : ` · falta ${componente.faltante}${unidade}`}`;
+            previaComponentes.appendChild(linha);
+        });
+        previaComponentes.classList.remove("d-none");
+        if (previaFinanceira) {
+            previaFinanceira.classList.remove("d-none");
+            previaCusto.textContent = formatarMoeda(Number(previa.custoEstimado));
+            previaLucro.textContent = formatarMoeda(Number(previa.lucroBrutoEstimado));
+            previaMargem.textContent = `${new Intl.NumberFormat("pt-BR", {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(Number(previa.margemBrutaEstimada))}%`;
+        }
     }
 
     function ativarItem(item) {
@@ -1272,6 +1348,7 @@ function inicializarFormularioPedido() {
         item.dataset.produtoId = produto.id;
         item.dataset.produtoPreco = produto.preco;
         item.dataset.produtoUnidade = produto.unidadeVenda;
+        item.dataset.produtoTipo = produto.tipoProduto;
         item.dataset.permiteAcompanhamento = produto.permiteAcompanhamento;
         const unidade = produto.unidadeVenda === "UNIDADE" ? "Unidade" : "Quilograma";
         const esconderObservacao = produto.permiteAcompanhamento ? "" : " d-none";
@@ -1345,7 +1422,8 @@ function inicializarFormularioPedido() {
             nome.className = "fw-semibold";
             nome.textContent = produto.nome;
             detalhes.className = "text-muted";
-            detalhes.textContent = `${produto.unidadeVenda === "UNIDADE" ? "Unidade" : "Quilograma"} · ${formatarMoeda(Number(produto.preco))}`;
+            const tipo = produto.tipoProduto === "PRODUTO_REVENDA" ? "Revenda" : "Produto comercial";
+            detalhes.textContent = `${tipo} · ${produto.unidadeVenda === "UNIDADE" ? "Unidade" : "Quilograma"} · ${formatarMoeda(Number(produto.preco))}`;
             conteudo.append(nome, detalhes);
             resultadosProdutos.appendChild(
                 criarBotaoResultado(conteudo, () => adicionarProduto(produto))

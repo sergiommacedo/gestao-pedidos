@@ -40,7 +40,7 @@ class ServiceInjectionContextTest {
         assertConstrutorUnico(FichaTecnicaService.class, 4);
         assertConstrutorUnico(ComposicaoProdutoService.class, 4);
         assertConstrutorUnico(ProducaoService.class, 6);
-        assertConstrutorUnico(PedidoService.class, 5);
+        assertConstrutorUnico(PedidoService.class, 6);
         assertConstrutorUnico(DashboardService.class, 8);
     }
 

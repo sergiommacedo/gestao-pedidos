@@ -429,11 +429,21 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             )
             AND (:status IS NULL OR p.status = :status)
             AND (:dataAgendada IS NULL OR p.dataAgendada = :dataAgendada)
+            AND (:tipoEntrega IS NULL OR p.tipoEntrega = :tipoEntrega)
+            AND (:formaPagamento IS NULL OR p.formaPagamento = :formaPagamento)
+            AND (:situacaoEstoque = ''
+                OR (:situacaoEstoque = 'AGUARDANDO' AND p.estoqueMovimentado = false AND p.status <> br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO)
+                OR (:situacaoEstoque = 'BAIXADO' AND p.estoqueMovimentado = true)
+                OR (:situacaoEstoque = 'ESTORNADO' AND p.status = br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO AND EXISTS (SELECT m.id FROM MovimentacaoEstoque m WHERE m.pedido = p AND m.tipo = br.com.sergio.gestaopedidos.enums.TipoMovimentacaoEstoque.ESTORNO_SAIDA))
+                OR (:situacaoEstoque = 'NAO_APLICA' AND p.status = br.com.sergio.gestaopedidos.enums.StatusPedido.CANCELADO AND NOT EXISTS (SELECT m.id FROM MovimentacaoEstoque m WHERE m.pedido = p AND m.tipo = br.com.sergio.gestaopedidos.enums.TipoMovimentacaoEstoque.SAIDA_VENDA)))
             """)
     Page<Pedido> buscarPaginado(
             @Param("filtro") String filtro,
             @Param("status") StatusPedido status,
             @Param("dataAgendada") LocalDate dataAgendada,
+            @Param("tipoEntrega") TipoEntrega tipoEntrega,
+            @Param("formaPagamento") FormaPagamento formaPagamento,
+            @Param("situacaoEstoque") String situacaoEstoque,
             Pageable pageable
     );
 
