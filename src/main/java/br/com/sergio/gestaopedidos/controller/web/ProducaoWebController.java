@@ -55,6 +55,9 @@ public class ProducaoWebController {
     @GetMapping("/{id}")
     public String detalhes(@PathVariable Long id,Model model){var detalhes=producaoService.buscarDetalhes(id);model.addAttribute("detalhes",detalhes);model.addAttribute("resumo",detalhes.resumo());return "producoes/detalhes";}
 
+    @GetMapping("/previa") @ResponseBody
+    public PreviaProducaoResponse previa(@RequestParam Long produtoId,@RequestParam BigDecimal rendimentoReal){return producaoService.prever(produtoId,rendimentoReal);}
+
     @GetMapping("/{id}/editar")
     public String editar(@PathVariable Long id,Model model,RedirectAttributes redirect){var p=producaoService.buscarPorId(id);if(p.status()==br.com.sergio.gestaopedidos.enums.StatusProducao.CONFIRMADA){redirect.addFlashAttribute("mensagemErro","Produção confirmada não pode ser alterada.");return "redirect:/producoes/"+id;}model.addAttribute("producao",ProducaoRequest.builder()
             .dataProducao(p.dataProducao()).valorGasEnergia(p.valorGasEnergia()).valorOutros(p.valorOutros()).observacao(p.observacao())

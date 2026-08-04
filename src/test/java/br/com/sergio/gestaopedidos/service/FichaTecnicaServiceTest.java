@@ -40,6 +40,45 @@ class FichaTecnicaServiceTest {
     }
 
     @Test
+    void validaRendimentoEsperadoObrigatorioPositivoEComAteTresCasas() {
+        Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.QUILOGRAMA, "10");
+        f.insumo(1, UnidadeMedida.QUILOGRAMA, true);
+        assertThatThrownBy(() -> f.service().salvar(f.request(1, (String) null, f.item(null, 1, "1"))))
+                .hasMessageContaining("Informe o rendimento esperado");
+        assertThatThrownBy(() -> f.service().salvar(f.request(1, "0", f.item(null, 1, "1"))))
+                .hasMessageContaining("maior que zero");
+        assertThatThrownBy(() -> f.service().salvar(f.request(1, "-1", f.item(null, 1, "1"))))
+                .hasMessageContaining("maior que zero");
+        assertThatThrownBy(() -> f.service().salvar(f.request(1, "35.0001", f.item(null, 1, "1"))))
+                .hasMessageContaining("três casas decimais");
+    }
+
+    @Test
+    void aceitaRendimentoDecimalParaKgEExigeInteiroParaUnidade() {
+        Fake kg = new Fake(); kg.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.QUILOGRAMA, "10");
+        kg.insumo(1, UnidadeMedida.QUILOGRAMA, true);
+        assertThat(kg.service().salvar(kg.request(1, "35.125", kg.item(null, 1, "10"))).rendimentoEsperado())
+                .isEqualByComparingTo("35.125");
+
+        Fake unidade = new Fake(); unidade.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.UNIDADE, "10");
+        unidade.insumo(1, UnidadeMedida.UNIDADE, true);
+        assertThat(unidade.service().salvar(unidade.request(1, "35", unidade.item(null, 1, "10"))).rendimentoEsperado())
+                .isEqualByComparingTo("35.000");
+        assertThatThrownBy(() -> unidade.service().atualizar(1L, unidade.request(1, "35.5", unidade.item(1L, 1, "10"))))
+                .hasMessageContaining("número inteiro");
+    }
+
+    @Test
+    void calculaCustoDaReceitaDeTrintaECincoKgECustoEstimadoPorKg() {
+        Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.QUILOGRAMA, "0");
+        f.insumo(1, UnidadeMedida.QUILOGRAMA, true); f.insumo(2, UnidadeMedida.LITRO, true);
+        f.saldo(1, "100", "8.500000"); f.saldo(2, "10", "6.000000");
+        var resposta = f.service().salvar(f.request(1, "35.000", f.item(null, 1, "10"), f.item(null, 2, "1")));
+        assertThat(resposta.custoEstimadoTotal()).isEqualByComparingTo("91.00");
+        assertThat(resposta.custoEstimadoPorUnidade()).isEqualByComparingTo("2.600000");
+    }
+
+    @Test
     void rejeitaProdutoRevendaEProdutoInativo() {
         Fake f = new Fake(); f.insumo(1, UnidadeMedida.UNIDADE, true);
         f.produto(1, TipoProduto.PRODUTO_REVENDA, true, UnidadeVenda.UNIDADE, "10");
@@ -137,7 +176,8 @@ class FichaTecnicaServiceTest {
         void produto(long id, TipoProduto tipo, boolean ativo, UnidadeVenda unidade, String preco) { produtos.put(id, Produto.builder().id(id).nome("Produto " + id).tipoProduto(tipo).ativo(ativo).unidadeVenda(unidade).preco(new BigDecimal(preco)).build()); }
         void insumo(long id, UnidadeMedida unidade, boolean ativo) { insumos.put(id, Insumo.builder().id(id).nome("Insumo " + id).unidadeMedida(unidade).ativo(ativo).build()); }
         void saldo(long id, String quantidade, String custo) { saldos.put(id, SaldoEstoque.builder().tipoItem(TipoItemEstoque.INSUMO).insumo(insumos.get(id)).quantidadeAtual(new BigDecimal(quantidade)).custoMedioAtual(new BigDecimal(custo)).build()); }
-        FichaTecnicaRequest request(long produto, ItemFichaTecnicaRequest... itens) { return FichaTecnicaRequest.builder().produtoId(produto).ativa(true).itens(new ArrayList<>(List.of(itens))).build(); }
+        FichaTecnicaRequest request(long produto, ItemFichaTecnicaRequest... itens) { return request(produto, "1", itens); }
+        FichaTecnicaRequest request(long produto, String rendimento, ItemFichaTecnicaRequest... itens) { return FichaTecnicaRequest.builder().produtoId(produto).rendimentoEsperado(rendimento == null ? null : new BigDecimal(rendimento)).ativa(true).itens(new ArrayList<>(List.of(itens))).build(); }
         ItemFichaTecnicaRequest item(Long id, long insumo, String quantidade) { return ItemFichaTecnicaRequest.builder().id(id).insumoId(insumo).quantidade(new BigDecimal(quantidade)).build(); }
         static Object zero(Class<?> type) { if (type == boolean.class) return false; if (type == long.class) return 0L; if (Optional.class.isAssignableFrom(type)) return Optional.empty(); return null; }
     }
