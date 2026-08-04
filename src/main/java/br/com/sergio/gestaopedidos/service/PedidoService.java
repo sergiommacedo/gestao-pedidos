@@ -49,6 +49,7 @@ public class PedidoService {
     private final ClienteRepository clienteRepository;
     private final ProdutoRepository produtoRepository;
     private final PedidoMapper pedidoMapper;
+    private final EstoqueService estoqueService;
 
     @Transactional(readOnly = true)
     public List<PedidoResponse> listarTodos() {
@@ -196,7 +197,7 @@ public class PedidoService {
         Pedido pedido = buscarEntidadePorId(id);
         validarEditavel(pedido);
         boolean estoqueMovimentado = Boolean.TRUE.equals(pedido.getEstoqueMovimentado());
-        if (estoqueMovimentado) validarItensInalterados(pedido, request, itemIds);
+        if (estoqueMovimentado) estoqueService.estornarPedido(pedido);
         Cliente cliente = buscarClientePorId(request.clienteId());
 
         pedido.setCliente(cliente);
@@ -206,7 +207,8 @@ public class PedidoService {
         pedido.setTaxaEntrega(normalizarTaxaEntrega(request.taxaEntrega()));
         pedido.setObservacao(request.observacao());
 
-        if (!estoqueMovimentado) atualizarItensERecalcular(pedido, request, itemIds);
+        atualizarItensERecalcular(pedido, request, itemIds);
+        if (estoqueMovimentado) estoqueService.processarPedido(pedido);
 
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
     }
@@ -264,12 +266,16 @@ public class PedidoService {
             }
 
             pedido.setMotivoCancelamento(motivoTratado);
+            estoqueService.estornarPedido(pedido);
         } else if (motivoCancelamento != null && !motivoCancelamento.isBlank()) {
             throw new BusinessException(
                     "O motivo do cancelamento só pode ser informado ao cancelar o pedido."
             );
         }
 
+        if (pedido.getStatus() == StatusPedido.PENDENTE && novoStatus == StatusPedido.EM_PREPARACAO) {
+            estoqueService.processarPedido(pedido);
+        }
         pedido.setStatus(novoStatus);
         return pedidoMapper.toResponse(pedidoRepository.save(pedido));
     }

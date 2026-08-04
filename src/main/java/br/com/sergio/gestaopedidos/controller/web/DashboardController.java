@@ -1,6 +1,7 @@
 package br.com.sergio.gestaopedidos.controller.web;
 
 import br.com.sergio.gestaopedidos.service.DashboardService;
+import br.com.sergio.gestaopedidos.service.DashboardAnaliticoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 public class DashboardController {
 
     private final DashboardService dashboardService;
+    private final DashboardAnaliticoService dashboardAnaliticoService;
 
     @GetMapping("/")
     public String home(Model model) {
@@ -20,6 +22,7 @@ public class DashboardController {
 
         var dashboard = dashboardService.buscarDashboard(dataReferencia);
         model.addAttribute("dashboard", dashboard);
+        model.addAttribute("analitico", dashboardAnaliticoService.buscar(dataReferencia));
         model.addAttribute("indicadores", dashboard.pedidos());
         model.addAttribute("dataReferencia", dataReferencia);
         model.addAttribute("dataReferenciaIso", dataReferencia.toString());

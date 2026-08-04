@@ -22,7 +22,7 @@ public class PedidoStatusMigration implements ApplicationRunner {
         int pedidosMigrados = jdbcTemplate.update("""
                 UPDATE pedidos
                 SET status = 'PENDENTE'
-                WHERE status = 'CONFIRMADO'
+                WHERE CAST(status AS CHAR) = 'CONFIRMADO'
                 """);
 
         if (pedidosMigrados > 0) {

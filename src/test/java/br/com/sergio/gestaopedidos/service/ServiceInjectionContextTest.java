@@ -36,11 +36,11 @@ class ServiceInjectionContextTest {
     void servicesAlteradosPossuemUmUnicoConstrutorInjetavel() {
         assertConstrutorUnico(ProdutoService.class, 3);
         assertConstrutorUnico(CompraService.class, 4);
-        assertConstrutorUnico(EstoqueService.class, 4);
+        assertConstrutorUnico(EstoqueService.class, 5);
         assertConstrutorUnico(FichaTecnicaService.class, 4);
         assertConstrutorUnico(ComposicaoProdutoService.class, 4);
         assertConstrutorUnico(ProducaoService.class, 6);
-        assertConstrutorUnico(PedidoService.class, 4);
+        assertConstrutorUnico(PedidoService.class, 5);
         assertConstrutorUnico(DashboardService.class, 6);
     }
 

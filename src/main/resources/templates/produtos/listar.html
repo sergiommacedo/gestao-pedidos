@@ -114,7 +114,7 @@
 
                     <tr>
 
-                        <th>
+                        <th scope="col">
                             <a class="text-decoration-none text-dark"
                                th:href="@{/produtos(
                                     filtro=${filtro},
@@ -137,9 +137,9 @@
                             </a>
                         </th>
 
-                        <th>Classificação</th>
+                        <th scope="col">Classificação</th>
 
-                        <th>
+                        <th scope="col">
                             <a class="text-decoration-none text-dark"
                                th:href="@{/produtos(
                                     filtro=${filtro},
@@ -162,7 +162,7 @@
                             </a>
                         </th>
 
-                        <th>
+                        <th scope="col">
                             <a class="text-decoration-none text-dark"
                                th:href="@{/produtos(
                                     filtro=${filtro},
@@ -185,7 +185,7 @@
                             </a>
                         </th>
 
-                        <th>
+                        <th scope="col">
                             <a class="text-decoration-none text-dark"
                                th:href="@{/produtos(
                                     filtro=${filtro},
@@ -208,7 +208,7 @@
                             </a>
                         </th>
 
-                        <th>
+                        <th scope="col">
                             <a class="text-decoration-none text-dark"
                                th:href="@{/produtos(
                                     filtro=${filtro},
@@ -231,15 +231,15 @@
                             </a>
                         </th>
 
-                        <th>
+                        <th scope="col">
                             Descrição
                         </th>
 
-                        <th class="text-center">
+                        <th scope="col" class="text-center">
                             Acompanhamento
                         </th>
 
-                        <th class="text-center">
+                        <th scope="col" class="text-center">
                             Ações
                         </th>
 
@@ -253,12 +253,6 @@
 
                         <td th:text="${produto.id}"></td>
 
-                        <td th:text="${produto.nome}"></td>
-
-                        <td th:text="${produto.preco == null ? 'Não se aplica' : #numbers.formatCurrency(produto.preco)}"></td>
-
-                        <td th:text="${produto.unidadeVenda.descricao}"></td>
-
                         <td>
                             <div class="d-flex flex-column align-items-start gap-1">
                                 <span class="badge text-bg-light border"
@@ -268,6 +262,12 @@
                                       th:text="${produto.vendavel} ? 'Vendável' : 'Não vendável'">Vendável</span>
                             </div>
                         </td>
+
+                        <td th:text="${produto.nome}"></td>
+
+                        <td th:text="${produto.preco == null ? 'Não se aplica' : #numbers.formatCurrency(produto.preco)}"></td>
+
+                        <td th:text="${produto.unidadeVenda.descricao}"></td>
 
                         <td>
 
