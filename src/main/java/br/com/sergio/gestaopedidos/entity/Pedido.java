@@ -60,6 +60,9 @@ public class Pedido {
     @Column(name = "lucro_bruto_estimado", precision = 18, scale = 2)
     private BigDecimal lucroBrutoEstimado;
 
+    @Column(name = "margem_bruta_estimada", precision = 9, scale = 4)
+    private BigDecimal margemBrutaEstimada;
+
     @Column(length = 500)
     private String observacao;
 

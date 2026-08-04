@@ -37,6 +37,8 @@ public record ItemPedidoResponse(
 
         BigDecimal lucroBrutoEstimado,
 
+        BigDecimal margemBrutaHistorica,
+
         @Schema(description = "Observação do item", example = "Sem farofa")
         String observacao
 

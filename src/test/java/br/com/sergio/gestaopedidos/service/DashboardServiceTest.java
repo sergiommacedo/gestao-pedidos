@@ -36,7 +36,8 @@ class DashboardServiceTest {
                         "getFaturamento",BigDecimal.ZERO));
         PedidoRepository pedidoRepository = proxy(PedidoRepository.class, Map.of(
                 "resumirDashboard", pedidos, "buscarPedidosQuePrecisamAtencao", List.of(),
-                "contarPedidosPorStatusNaData", List.of()));
+                "contarPedidosPorStatusNaData", List.of(),
+                "resumirFinanceiroDashboard", financeiro(0,0,"0","0","0")));
         ItemPedidoRepository itens = proxy(ItemPedidoRepository.class,
                 Map.of("resumirProdutosMaisVendidosDashboard", List.of()));
         ProducaoRepository.ResumoDashboard producaoVazia = proxy(ProducaoRepository.ResumoDashboard.class,
@@ -65,6 +66,8 @@ class DashboardServiceTest {
         assertThat(dashboard.producao().existe()).isFalse();
         assertThat(dashboard.estoque().produtosProduzidos()).isEmpty();
         assertThat(dashboard.compras().existe()).isFalse();
+        assertThat(dashboard.resultadoFinanceiro().completo()).isTrue();
+        assertThat(dashboard.resultadoFinanceiro().margemBruta()).isNull();
         assertThat(dashboard.alertas()).isEmpty();
     }
 
@@ -78,6 +81,7 @@ class DashboardServiceTest {
         PedidoRepository.ContagemPedidosPorStatus pendentes = proxy(PedidoRepository.ContagemPedidosPorStatus.class,
                 Map.of("getStatus",StatusPedido.PENDENTE,"getQuantidade",2L));
         PedidoRepository pedidos = proxy(PedidoRepository.class, Map.of("resumirDashboard",pedidosResumo,
+                "resumirFinanceiroDashboard",financeiro(5,5,"450","280","170"),
                 "buscarPedidosQuePrecisamAtencao",List.of(new DashboardPedidoAtencaoResponse(1L,"Cliente",
                         TipoEntrega.ENTREGA,StatusPedido.PENDENTE,new BigDecimal("90"),false)),
                 "contarPedidosPorStatusNaData",List.of(pendentes)));
@@ -107,6 +111,10 @@ class DashboardServiceTest {
                 estoqueService,mock(ProducaoService.class)).buscarDashboard(data);
 
         assertThat(d.pedidos().faturamentoDoDia()).isEqualByComparingTo("480");
+        assertThat(d.resultadoFinanceiro().cmv()).isEqualByComparingTo("280");
+        assertThat(d.resultadoFinanceiro().lucroBruto()).isEqualByComparingTo("170");
+        assertThat(d.resultadoFinanceiro().margemBruta()).isEqualByComparingTo("37.78");
+        assertThat(d.resultadoFinanceiro().completo()).isTrue();
         assertThat(d.pedidosAtencao()).hasSize(1);
         assertThat(d.producao().custoReal()).isEqualByComparingTo("312.40");
         assertThat(d.producao().quantidadeProducoes()).isEqualTo(2);
@@ -125,6 +133,18 @@ class DashboardServiceTest {
         SaldoEstoqueRepository.ResumoDashboard sr=mock(SaldoEstoqueRepository.ResumoDashboard.class);when(saldos.resumirDashboard()).thenReturn(sr);when(saldos.listarAlertasDashboard(any())).thenReturn(List.of());when(saldos.listarProduzidosDisponiveisDashboard(any())).thenReturn(List.of());when(estoqueService.indicadores()).thenReturn(indicadoresEstoque("1481","675","0"));CompraRepository.ResumoDashboard cr=mock(CompraRepository.ResumoDashboard.class);when(compras.resumirDashboard(data)).thenReturn(cr);
         var d=new DashboardService(pedidos,itens,producoes,saldos,compras,fichas,estoqueService,producaoService).buscarDashboard(data);
         assertThat(d.producao().quantidadeProducoes()).isZero();assertThat(d.producao().quantidadeTotal()).isEqualByComparingTo("0");assertThat(d.producao().custoReal()).isEqualByComparingTo("0");assertThat(d.producoesRascunho()).singleElement().satisfies(r->{assertThat(r.custoEstimado()).isEqualByComparingTo("313.90");assertThat(r.preparacoes().getFirst().estoqueAtual()).isEqualByComparingTo("0.000");});assertThat(d.alertas()).extracting(DashboardOperacionalResponse.Alerta::titulo).contains("Produção em rascunho");assertThat(d.estoque().valorTotal()).isEqualByComparingTo("2156");
+    }
+
+    @Test void resultadoFinanceiroFicaIndisponivelQuandoExistePedidoSemCustoConfirmado(){
+        LocalDate data=LocalDate.of(2026,8,4);
+        PedidoRepository pedidos=proxy(PedidoRepository.class,Map.of(
+                "resumirFinanceiroDashboard",financeiro(2,1,"167.93","51.11","116.82")));
+        var resultado=new DashboardService(pedidos,null,null,null,null,null,null,null)
+                .buscarResultadoFinanceiro(data);
+        assertThat(resultado.completo()).isFalse();
+        assertThat(resultado.pedidosSemCusto()).isEqualTo(1);
+        assertThat(resultado.cmv()).isEqualByComparingTo("51.11");
+        assertThat(resultado.lucroBruto()).isEqualByComparingTo("116.82");
     }
 
     private SaldoEstoqueRepository.Visao visao(String tipo,Long id,String nome,String unidade,BigDecimal saldo,BigDecimal minimo) {
@@ -218,4 +238,5 @@ class DashboardServiceTest {
     }
 
     private br.com.sergio.gestaopedidos.dto.estoque.EstoqueIndicadoresResponse indicadoresEstoque(String insumos,String revenda,String produzidos){BigDecimal a=new BigDecimal(insumos),b=new BigDecimal(revenda),c=new BigDecimal(produzidos);return br.com.sergio.gestaopedidos.dto.estoque.EstoqueIndicadoresResponse.builder().valorInsumos(a).valorRevenda(b).valorProduzidos(c).valorTotal(a.add(b).add(c)).build();}
+    private PedidoRepository.ResumoFinanceiroDashboard financeiro(long validos,long comCusto,String receita,String cmv,String lucro){return proxy(PedidoRepository.ResumoFinanceiroDashboard.class,Map.of("getPedidosValidos",validos,"getPedidosComCusto",comCusto,"getReceitaProdutos",new BigDecimal(receita),"getCmv",new BigDecimal(cmv),"getLucroBruto",new BigDecimal(lucro)));}
 }

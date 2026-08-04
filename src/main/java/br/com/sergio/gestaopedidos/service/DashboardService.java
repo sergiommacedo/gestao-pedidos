@@ -52,17 +52,37 @@ public class DashboardService {
     @Transactional(readOnly = true)
     public DashboardOperacionalResponse buscarDashboard(LocalDate data) {
         DashboardIndicadoresResponse pedidos = buscarIndicadores(data);
+        var resultadoFinanceiro = buscarResultadoFinanceiro(data);
         var producao = montarProducao(producaoRepository.resumirConfirmadasDashboard(data));
         var rascunhos = montarRascunhos(data);
         var estoque = montarEstoque();
         var compras = montarCompras(compraRepository.resumirDashboard(data));
         long fichasPendentes = fichaTecnicaRepository.contarAtivasComCustoPendente();
         long produtosSemFicha = fichaTecnicaRepository.contarProdutosProduzidosAtivosSemFicha();
-        return new DashboardOperacionalResponse(data, pedidos, buscarPedidosQuePrecisamAtencao(data),
+        return new DashboardOperacionalResponse(data, pedidos, resultadoFinanceiro, buscarPedidosQuePrecisamAtencao(data),
                 buscarResumoStatus(data), producao, rascunhos, estoque, compras,
                 itemPedidoRepository.resumirProdutosMaisVendidosDashboard(data, StatusPedido.CANCELADO,
                         PageRequest.of(0, LIMITE_LISTAS)),
                 montarAlertas(rascunhos, estoque, fichasPendentes, produtosSemFicha));
+    }
+
+    @Transactional(readOnly = true)
+    public DashboardOperacionalResponse.ResultadoFinanceiro buscarResultadoFinanceiro(LocalDate data) {
+        return montarResultadoFinanceiro(
+                pedidoRepository.resumirFinanceiroDashboard(data, StatusPedido.CANCELADO));
+    }
+
+    private DashboardOperacionalResponse.ResultadoFinanceiro montarResultadoFinanceiro(
+            PedidoRepository.ResumoFinanceiroDashboard resumo) {
+        long validos = resumo == null ? 0 : numero(resumo.getPedidosValidos());
+        long comCusto = resumo == null ? 0 : numero(resumo.getPedidosComCusto());
+        BigDecimal receita = resumo == null ? BigDecimal.ZERO : valorOuZero(resumo.getReceitaProdutos());
+        BigDecimal cmv = resumo == null ? BigDecimal.ZERO : valorOuZero(resumo.getCmv());
+        BigDecimal lucro = resumo == null ? BigDecimal.ZERO : valorOuZero(resumo.getLucroBruto());
+        BigDecimal margem = receita.signum() == 0 ? null
+                : lucro.multiply(BigDecimal.valueOf(100)).divide(receita, 2, RoundingMode.HALF_UP);
+        return new DashboardOperacionalResponse.ResultadoFinanceiro(receita, cmv, lucro, margem,
+                Math.max(0, validos - comCusto), validos == comCusto);
     }
 
     @Transactional(readOnly = true)

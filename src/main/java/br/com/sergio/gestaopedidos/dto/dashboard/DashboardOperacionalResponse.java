@@ -11,6 +11,7 @@ import java.util.List;
 public record DashboardOperacionalResponse(
         LocalDate data,
         DashboardIndicadoresResponse pedidos,
+        ResultadoFinanceiro resultadoFinanceiro,
         List<DashboardPedidoAtencaoResponse> pedidosAtencao,
         List<DashboardStatusResponse> resumoStatus,
         ProducaoDia producao,
@@ -20,6 +21,9 @@ public record DashboardOperacionalResponse(
         List<ResumoProdutoVendidoResponse> produtosVendidos,
         List<Alerta> alertas
 ) {
+    public record ResultadoFinanceiro(BigDecimal receitaProdutos, BigDecimal cmv,
+                                       BigDecimal lucroBruto, BigDecimal margemBruta,
+                                       long pedidosSemCusto, boolean completo) {}
     public record ProducaoDia(long quantidadeProducoes, int produtosDistintos,
                               BigDecimal quantidadeTotal, BigDecimal custoReal) {
         public boolean existe() { return quantidadeProducoes > 0; }

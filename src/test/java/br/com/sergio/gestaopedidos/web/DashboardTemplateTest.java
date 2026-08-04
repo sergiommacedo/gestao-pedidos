@@ -10,10 +10,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DashboardTemplateTest {
     private final Path template = Path.of("src/main/resources/templates/dashboard/dashboard.html");
 
-    @Test void informaLucroIndisponivelSemApresentarZeroComoCalculado() throws Exception {
+    @Test void mostraLucroHistoricoOuAvisoQuandoExistemPedidosSemCusto() throws Exception {
         String html = Files.readString(template);
-        assertThat(html).contains("Lucro bruto estimado", "Indisponível",
-                "Disponível após a integração completa dos custos das vendas.");
+        assertThat(html).contains("Lucro bruto estimado", "dashboard.resultadoFinanceiro.lucroBruto",
+                "dashboard.resultadoFinanceiro.cmv", "dashboard.resultadoFinanceiro.margemBruta",
+                "Existem pedidos ainda sem custo confirmado.");
         assertThat(html).doesNotContain("formatarMoeda(analitico.lucroBrutoEstimado)");
     }
 

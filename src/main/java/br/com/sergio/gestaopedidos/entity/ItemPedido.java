@@ -36,6 +36,12 @@ public class ItemPedido {
     @Column(name = "custo_total_historico", precision = 18, scale = 2)
     private BigDecimal custoTotalHistorico;
 
+    @Column(name = "lucro_bruto_historico", precision = 18, scale = 2)
+    private BigDecimal lucroBrutoHistorico;
+
+    @Column(name = "margem_bruta_historica", precision = 9, scale = 4)
+    private BigDecimal margemBrutaHistorica;
+
     @Column(length = 255)
     private String observacao;
 
@@ -57,6 +63,6 @@ public class ItemPedido {
     }
 
     public BigDecimal lucroBrutoEstimado() {
-        return custoTotalHistorico == null || subtotal == null ? null : subtotal.subtract(custoTotalHistorico);
+        return lucroBrutoHistorico;
     }
 }
