@@ -11,7 +11,7 @@ import java.util.List;
 import br.com.sergio.gestaopedidos.enums.StatusProducao;
 
 @Entity
-@Table(name = "producoes", uniqueConstraints = @UniqueConstraint(name = "uk_producao_data", columnNames = "data_producao"))
+@Table(name = "producoes")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Producao {

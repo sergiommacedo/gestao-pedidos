@@ -5,14 +5,21 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
 
 public interface ProducaoRepository extends JpaRepository<Producao, Long> {
     interface ResumoDashboard {Long getId();br.com.sergio.gestaopedidos.enums.StatusProducao getStatus();Long getProdutos();java.math.BigDecimal getQuantidade();java.math.BigDecimal getCusto();java.time.LocalDateTime getConfirmadaEm();}
-    boolean existsByDataProducao(LocalDate dataProducao);
-    boolean existsByDataProducaoAndIdNot(LocalDate dataProducao, Long id);
-    Optional<Producao> findByDataProducao(LocalDate dataProducao);
+    @Query("""
+            SELECT CASE WHEN COUNT(i)>0 THEN true ELSE false END
+            FROM Producao p JOIN p.itens i
+            WHERE p.status=br.com.sergio.gestaopedidos.enums.StatusProducao.RASCUNHO
+              AND i.produto.id IN :produtoIds
+              AND (:ignorarId IS NULL OR p.id<>:ignorarId)
+            """)
+    boolean existeRascunhoComPreparacao(@Param("produtoIds") Collection<Long> produtoIds,
+                                         @Param("ignorarId") Long ignorarId);
     @Query("""
             SELECT p.id AS id,p.status AS status,COUNT(i.id) AS produtos,
                    COALESCE(SUM(i.quantidade),0) AS quantidade,

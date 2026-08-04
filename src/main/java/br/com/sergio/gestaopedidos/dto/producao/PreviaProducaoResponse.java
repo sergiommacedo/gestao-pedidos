@@ -9,7 +9,8 @@ import java.util.List;
 public record PreviaProducaoResponse(Long produtoId, String produtoNome,
         BigDecimal rendimentoEsperado, BigDecimal rendimentoReal, UnidadeMedida unidade,
         BigDecimal fatorProducao, List<Insumo> insumos,
-        BigDecimal custoTotalEstimado, BigDecimal custoEstimadoPorUnidade) {
+        BigDecimal valorInsumos, BigDecimal gastosAdicionais, BigDecimal custoTotalEstimado,
+        BigDecimal custoEstimadoPorUnidade, boolean custoCompleto, List<String> insumosSemCusto) {
     @Builder
     public record Insumo(Long id, String nome, UnidadeMedida unidade,
             BigDecimal quantidadeNecessaria, BigDecimal estoqueDisponivel,

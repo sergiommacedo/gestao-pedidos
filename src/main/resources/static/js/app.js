@@ -188,20 +188,27 @@ function inicializarPreviaRendimentoProducao() {
         const previa = linha.querySelector("[data-previa-producao]");
         if (!produto || !real || Number(real) <= 0) { previa.classList.add("d-none"); return; }
         try {
-            const resposta = await fetch(`/producoes/previa?produtoId=${encodeURIComponent(produto)}&rendimentoReal=${encodeURIComponent(real)}`);
+            const produtosSelecionados = [...formulario.querySelectorAll("[data-produto-producao]")].map(campo => Number(campo.value)).filter(Number.isFinite);
+            const recebeAdicionais = Number(produto) === Math.max(...produtosSelecionados);
+            const gas = recebeAdicionais ? formulario.querySelector("[data-producao-gas]")?.value || "0" : "0";
+            const outros = recebeAdicionais ? formulario.querySelector("[data-producao-outros]")?.value || "0" : "0";
+            const resposta = await fetch(`/producoes/previa?produtoId=${encodeURIComponent(produto)}&rendimentoReal=${encodeURIComponent(real)}&valorGasEnergia=${encodeURIComponent(gas)}&valorOutros=${encodeURIComponent(outros)}`);
             if (!resposta.ok) throw new Error();
             const dados = await resposta.json(); previa.classList.remove("d-none");
             previa.querySelector("[data-previa-esperado]").textContent = quantidade(dados.rendimentoEsperado,dados.unidade);
             previa.querySelector("[data-previa-fator]").textContent = new Intl.NumberFormat("pt-BR",{minimumFractionDigits:6,maximumFractionDigits:9}).format(dados.fatorProducao);
             previa.querySelector("[data-previa-custo-unitario]").textContent = `${moeda(dados.custoEstimadoPorUnidade)}/${dados.unidade === "UNIDADE" ? "un" : "kg"}`;
+            previa.querySelector("[data-previa-insumos-total]").textContent = moeda(dados.valorInsumos);
+            previa.querySelector("[data-previa-adicionais]").textContent = moeda(dados.gastosAdicionais);
             previa.querySelector("[data-previa-total]").textContent = moeda(dados.custoTotalEstimado);
             const corpo = previa.querySelector("[data-previa-insumos]"); corpo.replaceChildren();
             dados.insumos.forEach(item => { const tr=document.createElement("tr");if(!item.estoqueSuficiente)tr.className="table-warning";[item.nome,quantidade(item.quantidadeNecessaria,item.unidade),quantidade(item.estoqueDisponivel,item.unidade),moeda(item.custoMedio),moeda(item.valorEstimado)].forEach(valor=>{const td=document.createElement("td");td.textContent=valor;tr.append(td);});corpo.append(tr); });
-            const insuficiente = dados.insumos.some(item => !item.estoqueSuficiente);const aviso=previa.querySelector("[data-previa-erro]");aviso.textContent="Um ou mais Insumos não possuem estoque suficiente para esta Produção.";aviso.classList.toggle("d-none",!insuficiente);
+            const insuficiente = dados.insumos.some(item => !item.estoqueSuficiente);const aviso=previa.querySelector("[data-previa-erro]");const mensagens=[];if(insuficiente)mensagens.push("Um ou mais Insumos não possuem estoque suficiente para esta Produção.");if(!dados.custoCompleto)mensagens.push(`Custo incompleto: ${dados.insumosSemCusto.join(", ")}.`);aviso.textContent=mensagens.join(" ");aviso.classList.toggle("d-none",mensagens.length===0);
         } catch { previa.classList.remove("d-none");const aviso=previa.querySelector("[data-previa-erro]");aviso.textContent="Não foi possível calcular a prévia da Produção.";aviso.classList.remove("d-none"); }
     }
     formulario.addEventListener("input", evento => { if(!evento.target.matches("[data-rendimento-real]"))return;clearTimeout(temporizador);temporizador=setTimeout(()=>atualizar(evento.target.closest("[data-item-producao]")),250); });
     formulario.addEventListener("change", evento => { if(evento.target.matches("[data-produto-producao]"))atualizar(evento.target.closest("[data-item-producao]")); });
+    formulario.addEventListener("input", evento => { if(!evento.target.matches("[data-producao-gas],[data-producao-outros]"))return;clearTimeout(temporizador);temporizador=setTimeout(()=>formulario.querySelectorAll("[data-item-producao]").forEach(atualizar),250); });
     formulario.querySelectorAll("[data-item-producao]").forEach(atualizar);
 }
 
