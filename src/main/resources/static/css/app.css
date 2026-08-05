@@ -430,6 +430,21 @@ body {
 .app-sidebar {
     width: var(--sidebar-width);
     background-color: var(--color-sidebar);
+    overflow-x: hidden;
+}
+
+.app-sidebar .offcanvas-body {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.sidebar-menu-scroll {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .app-sidebar-heading {

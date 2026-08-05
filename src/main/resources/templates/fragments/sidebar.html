@@ -33,11 +33,13 @@
 
     <div class="offcanvas-body d-flex flex-column p-0">
 
-        <div class="app-sidebar-heading px-3 pt-3 pb-2">
-            <small class="text-uppercase fw-semibold">Painel Administrativo</small>
-        </div>
+        <div class="sidebar-menu-scroll">
 
-        <nav class="nav nav-pills flex-column gap-1 px-3 pb-3" aria-label="Navegação administrativa">
+            <div class="app-sidebar-heading px-3 pt-3 pb-2">
+                <small class="text-uppercase fw-semibold">Painel Administrativo</small>
+            </div>
+
+            <nav class="nav nav-pills flex-column gap-1 px-3 pb-3" aria-label="Navegação administrativa">
 
             <span class="app-section-title text-uppercase small fw-semibold px-3 mb-1">
 
@@ -157,9 +159,9 @@
 
             </a>
 
-        </nav>
+            </nav>
 
-        <div class="mt-auto border-top p-3">
+            <div class="mt-auto border-top p-3">
 
             <form th:action="@{/logout}"
                   method="post">
@@ -179,6 +181,8 @@
                 </button>
 
             </form>
+
+            </div>
 
         </div>
 
