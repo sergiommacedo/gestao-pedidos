@@ -33,10 +33,7 @@ services:
       - gestao-network
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-
+    image: ghcr.io/sergiommacedo/gestao-pedidos:${APP_VERSION:-latest}
     container_name: gestao-pedidos-app
     restart: unless-stopped
 
@@ -56,7 +53,7 @@ services:
       SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "false"
 
     ports:
-      - "${APP_PORT}:8080"
+      - "${APP_PORT:-8080}:8080"
 
     volumes:
       - uploads_data:/app/uploads
