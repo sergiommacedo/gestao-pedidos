@@ -111,7 +111,7 @@ public class PedidoWebController {
         Page<PedidoResponse> paginaPedidos = pedidoService.listarPaginado(
                 filtroTratado,
                 status,
-                dataAgendada,
+                dataAgendada == null ? LocalDate.now() : dataAgendada,
                 tipoEntrega,
                 formaPagamento,
                 situacaoEstoque,
@@ -139,7 +139,7 @@ public class PedidoWebController {
         model.addAttribute("situacoesEstoque", pedidoService.situacoesEstoque(paginaPedidos.getContent()));
         model.addAttribute(
                 "dataAgendadaIso",
-                dataAgendada == null ? "" : dataAgendada.toString()
+                dataAgendada == null ? LocalDate.now().toString() : dataAgendada.toString()
         );
         model.addAttribute("ordenarPor", campoOrdenacao);
         model.addAttribute("direcao", direcaoOrdenacao.name().toLowerCase());
