@@ -174,15 +174,10 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="mb-3">
-                            <label for="dataAgendadaVisual" class="form-label">Data agendada *</label>
-                            <input type="text" id="dataAgendadaVisual" class="form-control"
-                                   inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10"
-                                   required
-                                   th:value="${pedido.dataAgendada != null
-                                        ? #temporals.format(pedido.dataAgendada, 'dd/MM/yyyy') : ''}"
-                                   data-data-brasileira
+                            <label for="dataAgendada" class="form-label">Data agendada *</label>
+                            <input type="date" id="dataAgendada" class="form-control"
+                                   th:field="*{dataAgendada}" th:min="${dataMinima}" required
                                    th:classappend="${#fields.hasErrors('dataAgendada')} ? 'is-invalid' : ''">
-                            <input type="hidden" id="dataAgendada" th:field="*{dataAgendada}" data-data-iso>
                             <div class="invalid-feedback" th:errors="*{dataAgendada}"></div>
                         </div>
 

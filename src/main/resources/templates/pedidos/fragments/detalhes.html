@@ -83,7 +83,8 @@
                         </div>
                         <div class="col-6 col-sm-auto text-sm-end">
                             <small class="text-muted d-block">Preço unitário</small>
-                            <span th:text="${@formatacao.formatarMoeda(item.valorUnitario)}"></span>
+                            <span th:text="${@formatacao.formatarMoeda(item.valorUnitario)
+                                + (item.unidadeVenda.name() == 'QUILOGRAMA' ? '/kg' : '/un')}"></span>
                         </div>
                         <div class="col-12 col-sm-auto text-sm-end">
                             <small class="text-muted d-block">Subtotal</small>
@@ -92,10 +93,12 @@
                         <div sec:authorize="hasRole('ADMIN')" th:if="${item.custoTotalHistorico != null}"
                              class="col-12 mt-2 pt-2 border-top">
                             <div class="row g-2 small">
-                                <div class="col-6 col-md-3"><span class="text-muted d-block">Receita</span><strong th:text="${@formatacao.formatarMoeda(item.subtotal)}"></strong></div>
-                                <div class="col-6 col-md-3"><span class="text-muted d-block">Custo histórico</span><strong th:text="${@formatacao.formatarMoeda(item.custoTotalHistorico)}"></strong></div>
-                                <div class="col-6 col-md-3"><span class="text-muted d-block">Lucro bruto estimado</span><strong th:text="${@formatacao.formatarMoeda(item.lucroBrutoEstimado)}"></strong></div>
-                                <div class="col-6 col-md-3"><span class="text-muted d-block">Margem estimada</span><strong th:text="${item.margemBrutaHistorica != null ? @formatacao.formatarDecimalBrasileiro(item.margemBrutaHistorica,2)+'%' : 'Indisponível'}"></strong></div>
+                                <div class="col-6 col-lg"><span class="text-muted d-block">Receita</span><strong th:text="${@formatacao.formatarMoeda(item.subtotal)}"></strong></div>
+                                <div class="col-6 col-lg"><span class="text-muted d-block">Custo unitário histórico</span><strong th:text="${@formatacao.formatarMoeda(item.custoUnitarioHistorico)
+                                    + (item.unidadeVenda.name() == 'QUILOGRAMA' ? '/kg' : '/un')}"></strong></div>
+                                <div class="col-6 col-lg"><span class="text-muted d-block">Custo total histórico</span><strong th:text="${@formatacao.formatarMoeda(item.custoTotalHistorico)}"></strong></div>
+                                <div class="col-6 col-lg"><span class="text-muted d-block">Lucro bruto histórico</span><strong th:text="${@formatacao.formatarMoeda(item.lucroBrutoEstimado)}"></strong></div>
+                                <div class="col-6 col-lg"><span class="text-muted d-block">Margem bruta histórica</span><strong th:text="${item.margemBrutaHistorica != null ? @formatacao.formatarDecimalBrasileiro(item.margemBrutaHistorica,2)+'%' : 'Indisponível'}"></strong></div>
                             </div>
                         </div>
                     </div>
@@ -162,13 +165,18 @@
                     <strong th:text="${@formatacao.formatarMoeda(pedido.custoTotalHistorico)}"></strong>
                 </div>
                 <div class="d-flex justify-content-between gap-3 mb-2">
-                    <span class="text-muted">Lucro bruto estimado</span>
+                    <span class="text-muted">Lucro bruto</span>
                     <strong th:text="${@formatacao.formatarMoeda(pedido.lucroBrutoEstimado)}"></strong>
                 </div>
                 <div class="d-flex justify-content-between gap-3" th:if="${pedido.margemBrutaEstimada() != null}">
-                    <span class="text-muted">Margem bruta estimada</span>
+                    <span class="text-muted">Margem bruta</span>
                     <strong th:text="${@formatacao.formatarDecimalBrasileiro(pedido.margemBrutaEstimada(), 2) + '%'}"></strong>
                 </div>
+            </div>
+            <div sec:authorize="hasRole('ADMIN')" th:if="${pedido.custoTotalHistorico == null}"
+                 class="alert alert-secondary small mt-3 mb-0" role="status">
+                <i class="bi bi-hourglass-split me-1"></i>
+                Custo histórico ainda não disponível. Será confirmado ao iniciar a preparação.
             </div>
         </section>
     </div>
