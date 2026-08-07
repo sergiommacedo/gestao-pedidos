@@ -3,15 +3,23 @@ package br.com.sergio.gestaopedidos.web;
 import br.com.sergio.gestaopedidos.controller.web.PedidoWebController;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoRequest;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoResponse;
+import br.com.sergio.gestaopedidos.dto.pedido.ItemPedidoRequest;
 import br.com.sergio.gestaopedidos.entity.ItemPedido;
 import br.com.sergio.gestaopedidos.entity.Pedido;
+import br.com.sergio.gestaopedidos.entity.Produto;
+import br.com.sergio.gestaopedidos.enums.FormaPagamento;
+import br.com.sergio.gestaopedidos.enums.TipoEntrega;
+import br.com.sergio.gestaopedidos.enums.TipoProduto;
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 import br.com.sergio.gestaopedidos.service.ClienteService;
 import br.com.sergio.gestaopedidos.service.DashboardService;
 import br.com.sergio.gestaopedidos.service.EstoqueService;
 import br.com.sergio.gestaopedidos.service.PedidoService;
 import br.com.sergio.gestaopedidos.service.ProdutoService;
 import org.junit.jupiter.api.Test;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.ui.ExtendedModelMap;
+import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import java.math.BigDecimal;
@@ -22,6 +30,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PedidoWebTemplateTest {
@@ -64,12 +73,44 @@ class PedidoWebTemplateTest {
     }
 
     @Test
+    void dataAgendadaDeclaraFormatoIsoExigidoPeloInputDate() throws Exception {
+        DateTimeFormat formato = PedidoRequest.class.getDeclaredMethod("dataAgendada")
+                .getAnnotation(DateTimeFormat.class);
+
+        assertThat(formato).isNotNull();
+        assertThat(formato.iso()).isEqualTo(DateTimeFormat.ISO.DATE);
+        assertThat(LocalDate.of(2026, 8, 7).toString()).isEqualTo("2026-08-07");
+    }
+
+    @Test
+    void submitPreservaDataEscolhida() {
+        PedidoService pedidoService = mock(PedidoService.class);
+        LocalDate escolhida = LocalDate.now().plusDays(5);
+        PedidoRequest request = requestValido(escolhida);
+        when(pedidoService.salvar(request)).thenReturn(PedidoResponse.builder().id(11L).build());
+
+        String view = controller(pedidoService).salvar(
+                request,
+                new BeanPropertyBindingResult(request, "pedido"),
+                "salvar",
+                List.of(""),
+                new ExtendedModelMap(),
+                new RedirectAttributesModelMap()
+        );
+
+        assertThat(view).isEqualTo("redirect:/pedidos");
+        verify(pedidoService).salvar(request);
+        assertThat(request.dataAgendada()).isEqualTo(escolhida);
+    }
+
+    @Test
     void detalhesAdminMostramHistoricoOuAvisoSemApresentarZeroComoConfirmado() throws Exception {
         String html = Files.readString(DETALHES);
 
         assertThat(html).contains("sec:authorize=\"hasRole('ADMIN')\"",
                 "item.custoUnitarioHistorico", "item.custoTotalHistorico",
                 "item.lucroBrutoEstimado", "item.margemBrutaHistorica",
+                "Custo ainda não confirmado",
                 "Custo histórico ainda não disponível",
                 "Será confirmado ao iniciar a preparação");
         assertThat(html).contains("pedido.custoTotalHistorico == null");
@@ -106,6 +147,44 @@ class PedidoWebTemplateTest {
     }
 
     @Test
+    void produtoComercialMantemFotografiaFinanceiraDoItem() {
+        Produto produtoComercial = Produto.builder()
+                .nome("Feijoada Grande")
+                .tipoProduto(TipoProduto.PRODUTO_COMERCIAL)
+                .unidadeVenda(UnidadeVenda.UNIDADE)
+                .build();
+        ItemPedido item = ItemPedido.builder()
+                .produto(produtoComercial)
+                .quantidade(new BigDecimal("1.000"))
+                .subtotal(new BigDecimal("80.00"))
+                .build();
+
+        item.aplicarCustoHistorico(new BigDecimal("31.40"));
+
+        assertThat(item.getProduto().getTipoProduto()).isEqualTo(TipoProduto.PRODUTO_COMERCIAL);
+        assertThat(item.getCustoTotalHistorico()).isEqualByComparingTo("31.40");
+        assertThat(item.getLucroBrutoHistorico()).isEqualByComparingTo("48.60");
+    }
+
+    @Test
+    void somaDosResultadosDosItensBateComResumoDoPedido() {
+        ItemPedido primeiro = itemComHistorico("1.235", "67.93", "32.11");
+        ItemPedido segundo = itemComHistorico("1.000", "50.00", "19.00");
+        BigDecimal custoItens = primeiro.getCustoTotalHistorico().add(segundo.getCustoTotalHistorico());
+        BigDecimal lucroItens = primeiro.getLucroBrutoHistorico().add(segundo.getLucroBrutoHistorico());
+        Pedido pedido = Pedido.builder()
+                .subtotal(new BigDecimal("117.93"))
+                .taxaEntrega(new BigDecimal("10.00"))
+                .valorTotal(new BigDecimal("127.93"))
+                .build();
+
+        pedido.aplicarResultadoHistorico(custoItens);
+
+        assertThat(pedido.getCustoTotalHistorico()).isEqualByComparingTo(custoItens);
+        assertThat(pedido.getLucroBrutoEstimado()).isEqualByComparingTo(lucroItens);
+    }
+
+    @Test
     void resumoHistoricoExcluiTaxaDeEntregaDoLucro() {
         Pedido pedido = Pedido.builder()
                 .subtotal(new BigDecimal("100.00"))
@@ -136,5 +215,28 @@ class PedidoWebTemplateTest {
                 mock(ClienteService.class),
                 mock(ProdutoService.class)
         );
+    }
+
+    private PedidoRequest requestValido(LocalDate data) {
+        return PedidoRequest.builder()
+                .clienteId(1L)
+                .dataAgendada(data)
+                .formaPagamento(FormaPagamento.PIX)
+                .tipoEntrega(TipoEntrega.RETIRADA)
+                .taxaEntrega(BigDecimal.ZERO)
+                .itens(List.of(ItemPedidoRequest.builder()
+                        .produtoId(2L)
+                        .quantidade(BigDecimal.ONE)
+                        .build()))
+                .build();
+    }
+
+    private ItemPedido itemComHistorico(String quantidade, String subtotal, String custo) {
+        ItemPedido item = ItemPedido.builder()
+                .quantidade(new BigDecimal(quantidade))
+                .subtotal(new BigDecimal(subtotal))
+                .build();
+        item.aplicarCustoHistorico(new BigDecimal(custo));
+        return item;
     }
 }

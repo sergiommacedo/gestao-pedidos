@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -34,6 +35,7 @@ public record PedidoRequest(
         )
         @NotNull(message = "Data agendada é obrigatória.")
         @FutureOrPresent(message = "Data agendada não pode ser anterior à data atual.")
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         LocalDate dataAgendada,
 
         @Schema(

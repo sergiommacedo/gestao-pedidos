@@ -91,15 +91,20 @@
                             <strong th:text="${@formatacao.formatarMoeda(item.subtotal)}"></strong>
                         </div>
                         <div sec:authorize="hasRole('ADMIN')" th:if="${item.custoTotalHistorico != null}"
-                             class="col-12 mt-2 pt-2 border-top">
-                            <div class="row g-2 small">
-                                <div class="col-6 col-lg"><span class="text-muted d-block">Receita</span><strong th:text="${@formatacao.formatarMoeda(item.subtotal)}"></strong></div>
+                             class="col-12 mt-3 pt-3 border-top" aria-label="Resultado histórico do item">
+                            <div class="small text-muted fw-semibold mb-2">Resultado histórico confirmado</div>
+                            <div class="row g-3 small">
+                                <div class="col-6 col-lg"><span class="text-muted d-block">Receita / subtotal</span><strong th:text="${@formatacao.formatarMoeda(item.subtotal)}"></strong></div>
                                 <div class="col-6 col-lg"><span class="text-muted d-block">Custo unitário histórico</span><strong th:text="${@formatacao.formatarMoeda(item.custoUnitarioHistorico)
                                     + (item.unidadeVenda.name() == 'QUILOGRAMA' ? '/kg' : '/un')}"></strong></div>
                                 <div class="col-6 col-lg"><span class="text-muted d-block">Custo total histórico</span><strong th:text="${@formatacao.formatarMoeda(item.custoTotalHistorico)}"></strong></div>
-                                <div class="col-6 col-lg"><span class="text-muted d-block">Lucro bruto histórico</span><strong th:text="${@formatacao.formatarMoeda(item.lucroBrutoEstimado)}"></strong></div>
-                                <div class="col-6 col-lg"><span class="text-muted d-block">Margem bruta histórica</span><strong th:text="${item.margemBrutaHistorica != null ? @formatacao.formatarDecimalBrasileiro(item.margemBrutaHistorica,2)+'%' : 'Indisponível'}"></strong></div>
+                                <div class="col-6 col-lg"><span class="text-muted d-block">Lucro bruto</span><strong th:text="${@formatacao.formatarMoeda(item.lucroBrutoEstimado)}"></strong></div>
+                                <div class="col-6 col-lg"><span class="text-muted d-block">Margem</span><strong th:text="${item.margemBrutaHistorica != null ? @formatacao.formatarDecimalBrasileiro(item.margemBrutaHistorica,2)+'%' : 'Indisponível'}"></strong></div>
                             </div>
+                        </div>
+                        <div sec:authorize="hasRole('ADMIN')" th:if="${item.custoTotalHistorico == null}"
+                             class="col-12 mt-3 pt-3 border-top small text-muted" role="status">
+                            <i class="bi bi-hourglass-split me-1"></i> Custo ainda não confirmado.
                         </div>
                     </div>
                 </div>
