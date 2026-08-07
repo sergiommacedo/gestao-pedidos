@@ -3,45 +3,57 @@
 set -Eeuo pipefail
 
 REPOSITORIO="https://github.com/sergiommacedo/gestao-pedidos.git"
-PASTA_INSTALACAO="/opt/gestao-pedidos"
+PASTA="/opt/gestao-pedidos"
 USUARIO_REAL="${SUDO_USER:-$USER}"
 
-verificar_root() {
-    if [[ "${EUID}" -ne 0 ]]; then
-        echo "Execute este instalador com sudo:"
-        echo "sudo ./instalar.sh"
-        exit 1
-    fi
-}
+echo "========================================"
+echo " Instalador - Gestão Pedidos"
+echo "========================================"
+echo
 
-verificar_ubuntu() {
-    if [[ ! -f /etc/os-release ]]; then
-        echo "Não foi possível identificar o sistema operacional."
-        exit 1
-    fi
+if [[ "$EUID" -ne 0 ]]; then
+    echo "Execute com:"
+    echo "sudo ./instalar.sh"
+    exit 1
+fi
 
-    source /etc/os-release
+if [[ ! -f /etc/os-release ]]; then
+    echo "Erro: não foi possível identificar o Ubuntu."
+    exit 1
+fi
 
-    if [[ "${ID}" != "ubuntu" ]]; then
-        echo "Este instalador foi preparado para Ubuntu."
-        exit 1
-    fi
+source /etc/os-release
 
-    echo "Ubuntu detectado: ${PRETTY_NAME}"
-}
+if [[ "${ID}" != "ubuntu" ]]; then
+    echo "Erro: este instalador foi preparado para Ubuntu."
+    exit 1
+fi
 
-instalar_dependencias() {
-    apt-get update
-    apt-get install -y ca-certificates curl git gnupg openssl
-}
+echo "Sistema: ${PRETTY_NAME}"
+echo
 
-instalar_docker() {
-    if command -v docker >/dev/null 2>&1; then
-        echo "Docker já está instalado."
-        return
-    fi
+# ------------------------------------------------
+# Dependências básicas
+# ------------------------------------------------
 
-    echo "Instalando Docker..."
+echo "[1/8] Instalando dependências..."
+
+apt-get update
+apt-get install -y \
+    ca-certificates \
+    curl \
+    git \
+    gnupg \
+    openssl
+
+# ------------------------------------------------
+# Docker
+# ------------------------------------------------
+
+if command -v docker >/dev/null 2>&1; then
+    echo "[2/8] Docker já está instalado."
+else
+    echo "[2/8] Instalando Docker..."
 
     install -m 0755 -d /etc/apt/keyrings
 
@@ -49,8 +61,6 @@ instalar_docker() {
         -o /etc/apt/keyrings/docker.asc
 
     chmod a+r /etc/apt/keyrings/docker.asc
-
-    source /etc/os-release
 
     echo \
       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
@@ -66,46 +76,56 @@ instalar_docker() {
         docker-buildx-plugin \
         docker-compose-plugin
 
-    systemctl enable --now docker
-}
+    systemctl enable docker
+    systemctl start docker
+fi
 
-configurar_usuario_docker() {
-    usermod -aG docker "${USUARIO_REAL}" || true
-}
+# ------------------------------------------------
+# Usuário Docker
+# ------------------------------------------------
 
-baixar_projeto() {
-    if [[ -d "${PASTA_INSTALACAO}/.git" ]]; then
-        echo "Projeto já existe. Atualizando..."
-        git -C "${PASTA_INSTALACAO}" pull --ff-only origin main
-    else
-        rm -rf "${PASTA_INSTALACAO}"
-        git clone --branch main "${REPOSITORIO}" "${PASTA_INSTALACAO}"
-    fi
+echo "[3/8] Configurando usuário..."
 
-    chown -R "${USUARIO_REAL}:${USUARIO_REAL}" "${PASTA_INSTALACAO}"
-}
+usermod -aG docker "${USUARIO_REAL}" || true
 
-gerar_segredo() {
-    openssl rand -hex 32
-}
+# ------------------------------------------------
+# Projeto
+# ------------------------------------------------
 
-configurar_env() {
-    local ENV_FILE="${PASTA_INSTALACAO}/.env"
+echo "[4/8] Baixando Gestão Pedidos..."
 
-    if [[ -f "${ENV_FILE}" ]]; then
-        echo ".env já existe. Mantendo configuração atual."
-        return
-    fi
+if [[ -d "${PASTA}/.git" ]]; then
 
-    local MYSQL_PASSWORD
-    local MYSQL_ROOT_PASSWORD
-    local JWT_SECRET
+    git -C "${PASTA}" fetch origin main
+    git -C "${PASTA}" reset --hard origin/main
 
-    MYSQL_PASSWORD="$(gerar_segredo)"
-    MYSQL_ROOT_PASSWORD="$(gerar_segredo)"
-    JWT_SECRET="$(gerar_segredo)"
+else
 
-    cat > "${ENV_FILE}" <<EOF
+    rm -rf "${PASTA}"
+
+    git clone \
+        --branch main \
+        "${REPOSITORIO}" \
+        "${PASTA}"
+fi
+
+mkdir -p "${PASTA}/backups"
+
+chown -R "${USUARIO_REAL}:${USUARIO_REAL}" "${PASTA}"
+
+# ------------------------------------------------
+# .env
+# ------------------------------------------------
+
+echo "[5/8] Configurando banco e aplicação..."
+
+if [[ ! -f "${PASTA}/.env" ]]; then
+
+    MYSQL_PASSWORD="$(openssl rand -hex 24)"
+    MYSQL_ROOT_PASSWORD="$(openssl rand -hex 24)"
+    JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
+
+    cat > "${PASTA}/.env" <<EOF
 MYSQL_DATABASE=gestao_pedidos
 MYSQL_USER=gestao_user
 MYSQL_PASSWORD=${MYSQL_PASSWORD}
@@ -113,97 +133,125 @@ MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
 
 APP_PORT=8080
 APP_VERSION=latest
+
 JWT_SECRET=${JWT_SECRET}
+
 TZ=America/Sao_Paulo
 EOF
 
-    chmod 600 "${ENV_FILE}"
-    chown "${USUARIO_REAL}:${USUARIO_REAL}" "${ENV_FILE}"
-}
+    chmod 600 "${PASTA}/.env"
+    chown "${USUARIO_REAL}:${USUARIO_REAL}" "${PASTA}/.env"
 
-preparar_pastas() {
-    mkdir -p \
-        "${PASTA_INSTALACAO}/backups" \
-        "${PASTA_INSTALACAO}/uploads"
+else
+    echo ".env existente será preservado."
+fi
 
-    chmod +x \
-        "${PASTA_INSTALACAO}/gestao.sh" \
-        "${PASTA_INSTALACAO}/scripts/"*.sh \
-        "${PASTA_INSTALACAO}/instalar.sh"
+# ------------------------------------------------
+# Permissões dos scripts
+# ------------------------------------------------
 
-    chown -R "${USUARIO_REAL}:${USUARIO_REAL}" "${PASTA_INSTALACAO}"
-}
+echo "[6/8] Preparando scripts..."
 
-iniciar_sistema() {
-    cd "${PASTA_INSTALACAO}"
+chmod +x "${PASTA}/gestao.sh" 2>/dev/null || true
+chmod +x "${PASTA}/scripts/"*.sh 2>/dev/null || true
+chmod +x "${PASTA}/instalar.sh"
 
-    docker compose pull
-    docker compose up -d
+# ------------------------------------------------
+# Docker
+# ------------------------------------------------
 
-    echo "Aguardando inicialização..."
+echo "[7/8] Baixando containers..."
 
-    for tentativa in {1..90}; do
-        if curl -fsS "http://localhost:8080" >/dev/null 2>&1; then
-            return
-        fi
+cd "${PASTA}"
 
-        sleep 2
-    done
+docker compose pull
 
-    echo "A aplicação não respondeu no tempo esperado."
-    docker compose ps
-    docker compose logs --tail=150 app
-    exit 1
-}
+echo
+echo "Iniciando MySQL e aplicação..."
 
-configurar_backup_automatico() {
-    local CRON_FILE="/etc/cron.d/gestao-pedidos"
+docker compose up -d
 
-    cat > "${CRON_FILE}" <<EOF
+# ------------------------------------------------
+# Backup automático
+# ------------------------------------------------
+
+echo "[8/8] Configurando backup automático..."
+
+cat > /etc/cron.d/gestao-pedidos <<EOF
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-0 22 * * * ${USUARIO_REAL} ${PASTA_INSTALACAO}/scripts/backup.sh >> ${PASTA_INSTALACAO}/backups/backup.log 2>&1
-30 7 * * 6 ${USUARIO_REAL} ${PASTA_INSTALACAO}/scripts/backup.sh >> ${PASTA_INSTALACAO}/backups/backup.log 2>&1
+0 22 * * * root cd ${PASTA} && ./scripts/backup.sh >> ${PASTA}/backups/backup.log 2>&1
 EOF
 
-    chmod 644 "${CRON_FILE}"
-}
+chmod 644 /etc/cron.d/gestao-pedidos
 
-mostrar_resultado() {
-    local IP_LOCAL
+# ------------------------------------------------
+# Aguarda aplicação
+# ------------------------------------------------
+
+echo
+echo "Aguardando inicialização..."
+
+SUCESSO=false
+
+for tentativa in {1..90}; do
+
+    if curl -fsS http://localhost:8080 >/dev/null 2>&1; then
+        SUCESSO=true
+        break
+    fi
+
+    sleep 2
+
+done
+
+echo
+
+if [[ "${SUCESSO}" == "true" ]]; then
+
     IP_LOCAL="$(hostname -I | awk '{print $1}')"
 
-    echo
     echo "========================================"
-    echo "Instalação concluída"
+    echo " INSTALAÇÃO CONCLUÍDA"
     echo "========================================"
     echo
-    echo "Acesso nesta máquina:"
+    echo "Sistema:"
     echo "http://localhost:8080"
     echo
-    echo "Acesso em outro aparelho da mesma rede:"
+    echo "Pela rede local:"
     echo "http://${IP_LOCAL}:8080"
     echo
-    echo "Pasta instalada:"
-    echo "${PASTA_INSTALACAO}"
+    echo "Pasta:"
+    echo "${PASTA}"
     echo
-    echo "Menu administrativo:"
-    echo "cd ${PASTA_INSTALACAO}"
+    echo "Banco criado automaticamente:"
+    echo "gestao_pedidos"
+    echo
+    echo "Usuário MySQL:"
+    echo "gestao_user"
+    echo
+    echo "Backup automático:"
+    echo "Todos os dias às 22:00"
+    echo
+    echo "Administração:"
+    echo "cd ${PASTA}"
     echo "./gestao.sh"
     echo
-    echo "Importante:"
-    echo "Saia da sessão e entre novamente para usar Docker sem sudo."
-}
+    echo "IMPORTANTE:"
+    echo "As senhas do banco estão armazenadas em:"
+    echo "${PASTA}/.env"
+    echo
+    echo "Não apague este arquivo."
+    echo "========================================"
 
-verificar_root
-verificar_ubuntu
-instalar_dependencias
-instalar_docker
-configurar_usuario_docker
-baixar_projeto
-configurar_env
-preparar_pastas
-iniciar_sistema
-configurar_backup_automatico
-mostrar_resultado
+else
+
+    echo "A aplicação não respondeu."
+    echo
+    docker compose ps
+    echo
+    docker compose logs --tail=100 app
+
+    exit 1
+fi

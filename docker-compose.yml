@@ -29,9 +29,6 @@ services:
       retries: 15
       start_period: 30s
 
-    networks:
-      - gestao-network
-
   app:
     image: ghcr.io/sergiommacedo/gestao-pedidos:${APP_VERSION:-latest}
     container_name: gestao-pedidos-app
@@ -58,13 +55,6 @@ services:
     volumes:
       - uploads_data:/app/uploads
 
-    networks:
-      - gestao-network
-
 volumes:
   mysql_data:
   uploads_data:
-
-networks:
-  gestao-network:
-    driver: bridge
