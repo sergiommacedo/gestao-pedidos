@@ -51,10 +51,7 @@ class DashboardServiceTest {
         SaldoEstoqueRepository estoque = proxy(SaldoEstoqueRepository.class, Map.of(
                 "resumirDashboard", estoqueResumo, "listarAlertasDashboard", List.of(),
                 "listarProduzidosDisponiveisDashboard", List.of()));
-        CompraRepository.ResumoDashboard comprasResumo = proxy(CompraRepository.ResumoDashboard.class,
-                Map.of("getQuantidade",0L,"getValorTotal",BigDecimal.ZERO,"getComprasInsumos",0L,
-                        "getValorInsumos",BigDecimal.ZERO,"getComprasRevenda",0L,"getValorRevenda",BigDecimal.ZERO));
-        CompraRepository compras = proxy(CompraRepository.class, Map.of("resumirDashboard", comprasResumo));
+        CompraRepository compras = proxy(CompraRepository.class, Map.of("buscarUltimasAtivas", List.of()));
         FichaTecnicaRepository fichas = proxy(FichaTecnicaRepository.class,
                 Map.of("contarAtivasComCustoPendente",0L,"contarProdutosProduzidosAtivosSemFicha",0L));
 
@@ -65,7 +62,7 @@ class DashboardServiceTest {
         assertThat(dashboard.pedidos().agendadosHoje()).isZero();
         assertThat(dashboard.producao().existe()).isFalse();
         assertThat(dashboard.estoque().produtosProduzidos()).isEmpty();
-        assertThat(dashboard.compras().existe()).isFalse();
+        assertThat(dashboard.compras()).isEmpty();
         assertThat(dashboard.resultadoFinanceiro().completo()).isTrue();
         assertThat(dashboard.resultadoFinanceiro().margemBruta()).isNull();
         assertThat(dashboard.alertas()).isEmpty();
@@ -99,10 +96,10 @@ class DashboardServiceTest {
         SaldoEstoqueRepository.Visao feijoada = visao("PREPARACAO_PRODUZIDA",2L,"Feijoada","UNIDADE",new BigDecimal("20"),BigDecimal.ZERO);
         SaldoEstoqueRepository estoque = proxy(SaldoEstoqueRepository.class,Map.of("resumirDashboard",estoqueResumo,
                 "listarAlertasDashboard",List.of(feijao),"listarProduzidosDisponiveisDashboard",List.of(feijoada)));
-        CompraRepository.ResumoDashboard compraResumo = proxy(CompraRepository.ResumoDashboard.class,
-                Map.of("getQuantidade",2L,"getValorTotal",new BigDecimal("200"),"getComprasInsumos",1L,
-                        "getValorInsumos",new BigDecimal("150"),"getComprasRevenda",1L,"getValorRevenda",new BigDecimal("50")));
-        CompraRepository compras = proxy(CompraRepository.class,Map.of("resumirDashboard",compraResumo));
+        CompraRepository.CompraRecente compra = proxy(CompraRepository.CompraRecente.class,
+                Map.of("getId",7L,"getTipoCompra",TipoCompra.MISTA,"getDataCompra",data,
+                        "getFornecedor","Rio Verde","getValorTotal",new BigDecimal("200"),"getQuantidadeItens",4L));
+        CompraRepository compras = proxy(CompraRepository.class,Map.of("buscarUltimasAtivas",List.of(compra)));
         FichaTecnicaRepository fichas = proxy(FichaTecnicaRepository.class,
                 Map.of("contarAtivasComCustoPendente",2L,"contarProdutosProduzidosAtivosSemFicha",1L));
 
@@ -120,7 +117,12 @@ class DashboardServiceTest {
         assertThat(d.producao().quantidadeProducoes()).isEqualTo(2);
         assertThat(d.estoque().valorTotal()).isEqualByComparingTo("900");
         assertThat(d.estoque().produtosProduzidos()).extracting(DashboardOperacionalResponse.ItemEstoque::nome).containsExactly("Feijoada");
-        assertThat(d.compras().valorInsumos()).isEqualByComparingTo("150");
+        assertThat(d.compras()).singleElement().satisfies(c -> {
+            assertThat(c.fornecedor()).isEqualTo("Rio Verde");
+            assertThat(c.quantidadeItens()).isEqualTo(4);
+            assertThat(c.valorTotal()).isEqualByComparingTo("200");
+            assertThat(c.classificacao()).isEqualTo("Mista");
+        });
         assertThat(d.alertas()).extracting(DashboardOperacionalResponse.Alerta::titulo)
                 .containsExactly("Itens sem estoque","Estoque abaixo do mínimo","Custo de ficha pendente","Produtos sem Ficha Técnica");
     }
@@ -130,7 +132,7 @@ class DashboardServiceTest {
         PedidoRepository.ResumoDashboard pr=mock(PedidoRepository.ResumoDashboard.class);when(pedidos.resumirDashboard(any(),any(),any(),any())).thenReturn(pr);when(pedidos.buscarPedidosQuePrecisamAtencao(any(),any(),any(),any(),any(),any(),any())).thenReturn(List.of());when(pedidos.contarPedidosPorStatusNaData(data)).thenReturn(List.of());when(itens.resumirProdutosMaisVendidosDashboard(any(),any(),any())).thenReturn(List.of());
         ProducaoRepository.ResumoDashboard confirmadas=mock(ProducaoRepository.ResumoDashboard.class);when(producoes.resumirConfirmadasDashboard(data)).thenReturn(confirmadas);Producao rascunho=Producao.builder().id(9L).dataProducao(data).status(StatusProducao.RASCUNHO).build();when(producoes.buscarRascunhosDashboard(data)).thenReturn(List.of(rascunho));
         var estoquePreparacao=EstoquePreparacaoProducaoResponse.builder().produtoNome("Feijoada Pronta").unidade(UnidadeMedida.QUILOGRAMA).producaoAdicionada(new BigDecimal("35.000")).estoqueAntes(new BigDecimal("0.000")).build();var resposta=ProducaoResponse.builder().custoTotal(new BigDecimal("313.90")).build();when(producaoService.buscarDetalhes(9L)).thenReturn(ProducaoDetalhesResponse.builder().resumo(new ProducaoResumoResponse(resposta,new BigDecimal("313.90"))).estoquesPreparacoes(List.of(estoquePreparacao)).build());
-        SaldoEstoqueRepository.ResumoDashboard sr=mock(SaldoEstoqueRepository.ResumoDashboard.class);when(saldos.resumirDashboard()).thenReturn(sr);when(saldos.listarAlertasDashboard(any())).thenReturn(List.of());when(saldos.listarProduzidosDisponiveisDashboard(any())).thenReturn(List.of());when(estoqueService.indicadores()).thenReturn(indicadoresEstoque("1481","675","0"));CompraRepository.ResumoDashboard cr=mock(CompraRepository.ResumoDashboard.class);when(compras.resumirDashboard(data)).thenReturn(cr);
+        SaldoEstoqueRepository.ResumoDashboard sr=mock(SaldoEstoqueRepository.ResumoDashboard.class);when(saldos.resumirDashboard()).thenReturn(sr);when(saldos.listarAlertasDashboard(any())).thenReturn(List.of());when(saldos.listarProduzidosDisponiveisDashboard(any())).thenReturn(List.of());when(estoqueService.indicadores()).thenReturn(indicadoresEstoque("1481","675","0"));when(compras.buscarUltimasAtivas(any())).thenReturn(List.of());
         var d=new DashboardService(pedidos,itens,producoes,saldos,compras,fichas,estoqueService,producaoService).buscarDashboard(data);
         assertThat(d.producao().quantidadeProducoes()).isZero();assertThat(d.producao().quantidadeTotal()).isEqualByComparingTo("0");assertThat(d.producao().custoReal()).isEqualByComparingTo("0");assertThat(d.producoesRascunho()).singleElement().satisfies(r->{assertThat(r.custoEstimado()).isEqualByComparingTo("313.90");assertThat(r.preparacoes().getFirst().estoqueAtual()).isEqualByComparingTo("0.000");});assertThat(d.alertas()).extracting(DashboardOperacionalResponse.Alerta::titulo).contains("Produção em rascunho");assertThat(d.estoque().valorTotal()).isEqualByComparingTo("2156");
     }

@@ -30,6 +30,31 @@ public class CompraService {
                 .valorTotal(moeda(r.getValorTotal())).quantidadeItens(r.getQuantidadeItens().intValue())
                 .atualizadoEm(r.getAtualizadoEm()).status(r.getStatus()).itens(List.of()).build());
     }
+    @Transactional(readOnly=true)
+    public ResumoComprasResponse resumir(LocalDate inicio,LocalDate fim,LocalDate hoje){
+        validarPeriodo(inicio,fim);LocalDate referencia=hoje==null?LocalDate.now():hoje;
+        CompraRepository.ResumoOperacional r=compraRepository.resumirOperacao(referencia,referencia.withDayOfMonth(1),
+                referencia.withDayOfMonth(referencia.lengthOfMonth()),inicio,fim);
+        return new ResumoComprasResponse(numero(r==null?null:r.getComprasHoje()),moeda(r==null?null:r.getTotalHoje()),
+                moeda(r==null?null:r.getTotalMes()),moeda(r==null?null:r.getTotalPeriodo()),inicio!=null||fim!=null);
+    }
+    @Transactional(readOnly=true)
+    public AnalisePrecosCompraResponse analisarPrecos(String item,String fornecedor,TipoItemEstoque categoria,
+            LocalDate inicio,LocalDate fim,TipoItemEstoque historicoCategoria,Long referenciaId,UnidadeMedida unidade){
+        validarPeriodo(inicio,fim);validarCategoria(categoria);validarCategoria(historicoCategoria);
+        String itemNormalizado=normalizar(item),fornecedorNormalizado=normalizar(fornecedor);
+        List<AnalisePrecosCompraResponse.FornecedorItem> linhas=compraRepository.analisarPrecos(itemNormalizado,
+                fornecedorNormalizado,categoria==null?"":categoria.name(),inicio,fim).stream().map(this::mapearAnalise).toList();
+        Map<ChaveAnalise,List<AnalisePrecosCompraResponse.FornecedorItem>> grupos=linhas.stream()
+                .collect(Collectors.groupingBy(l->new ChaveAnalise(l.categoria(),l.referenciaId(),l.item(),l.unidade()),LinkedHashMap::new,Collectors.toList()));
+        List<AnalisePrecosCompraResponse.ComparativoItem> comparativos=grupos.entrySet().stream()
+                .map(e->comparar(e.getKey(),e.getValue())).toList();
+        List<AnalisePrecosCompraResponse.HistoricoItem> historico=referenciaId==null||historicoCategoria==null||unidade==null
+                ?List.of():compraRepository.buscarHistoricoPrecos(historicoCategoria.name(),referenciaId,unidade.name(),
+                        fornecedorNormalizado,inicio,fim).stream().map(h->new AnalisePrecosCompraResponse.HistoricoItem(
+                        h.getDataCompra(),h.getFornecedor(),h.getQuantidade(),h.getValorPago(),h.getPrecoUnitario())).toList();
+        return new AnalisePrecosCompraResponse(linhas,comparativos,historico);
+    }
     @Transactional(readOnly=true) public CompraResponse buscarPorId(Long id){return mapear(buscarEntidade(id));}
 
     public CompraResponse salvar(CompraRequest request){
@@ -79,5 +104,25 @@ public class CompraService {
     private BigDecimal quantidade(BigDecimal q,UnidadeMedida u){if(q==null||q.signum()<=0)throw new BusinessException("Quantidade deve ser maior que zero.");if(q.stripTrailingZeros().scale()>3)throw new BusinessException("Quantidade deve ter no máximo três casas decimais.");if(u==UnidadeMedida.UNIDADE&&q.stripTrailingZeros().scale()>0)throw new BusinessException("Quantidade em unidade deve ser inteira.");return q.setScale(3,RoundingMode.UNNECESSARY);}
     private BigDecimal valor(BigDecimal v){if(v==null||v.signum()<=0)throw new BusinessException("Valor pago deve ser maior que zero.");if(v.stripTrailingZeros().scale()>2)throw new BusinessException("Valor pago deve ter no máximo duas casas decimais.");return v.setScale(2,RoundingMode.UNNECESSARY);}
     private void validarPeriodo(LocalDate i,LocalDate f){if(i!=null&&f!=null&&i.isAfter(f))throw new BusinessException("A data inicial não pode ser posterior à data final.");}
+    private void validarCategoria(TipoItemEstoque tipo){if(tipo!=null&&tipo==TipoItemEstoque.PREPARACAO_PRODUZIDA)throw new BusinessException("A análise aceita somente Insumos e Produtos de revenda.");}
+    private AnalisePrecosCompraResponse.FornecedorItem mapearAnalise(CompraRepository.AnaliseFornecedor r){
+        BigDecimal quantidade=r.getQuantidadeTotal()==null?BigDecimal.ZERO:r.getQuantidadeTotal();
+        BigDecimal media=quantidade.signum()==0?BigDecimal.ZERO.setScale(6):r.getValorPago().divide(quantidade,6,RoundingMode.HALF_UP);
+        return new AnalisePrecosCompraResponse.FornecedorItem(TipoItemEstoque.valueOf(r.getTipoItem()),r.getReferenciaId(),
+                r.getItemNome(),r.getFornecedor(),UnidadeMedida.valueOf(r.getUnidade()),r.getUltimaCompra(),r.getUltimoPreco(),
+                r.getMenorPreco(),r.getMaiorPreco(),media,quantidade);
+    }
+    private AnalisePrecosCompraResponse.ComparativoItem comparar(ChaveAnalise chave,List<AnalisePrecosCompraResponse.FornecedorItem> linhas){
+        BigDecimal menor=linhas.stream().map(AnalisePrecosCompraResponse.FornecedorItem::menorPreco).min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+        BigDecimal maior=linhas.stream().map(AnalisePrecosCompraResponse.FornecedorItem::maiorPreco).max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+        List<AnalisePrecosCompraResponse.PrecoFornecedor> melhores=linhas.stream().filter(l->l.menorPreco().compareTo(menor)==0)
+                .map(l->new AnalisePrecosCompraResponse.PrecoFornecedor(l.fornecedor(),l.menorPreco())).toList();
+        List<AnalisePrecosCompraResponse.PrecoFornecedor> piores=linhas.stream().filter(l->l.maiorPreco().compareTo(maior)==0)
+                .map(l->new AnalisePrecosCompraResponse.PrecoFornecedor(l.fornecedor(),l.maiorPreco())).toList();
+        return new AnalisePrecosCompraResponse.ComparativoItem(chave.categoria,chave.referenciaId,chave.item,chave.unidade,
+                melhores,piores,maior.subtract(menor));
+    }
+    private long numero(Long valor){return valor==null?0:valor;}
     private String normalizar(String v){return v==null?"":v.trim();}private String normalizarOpcional(String v){String n=normalizar(v);return n.isEmpty()?null:n;}private BigDecimal moeda(BigDecimal v){return(v==null?BigDecimal.ZERO:v).setScale(2,RoundingMode.HALF_UP);}
+    private record ChaveAnalise(TipoItemEstoque categoria,Long referenciaId,String item,UnidadeMedida unidade){}
 }

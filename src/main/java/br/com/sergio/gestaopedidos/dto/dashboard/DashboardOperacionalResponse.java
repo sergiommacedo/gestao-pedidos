@@ -17,7 +17,7 @@ public record DashboardOperacionalResponse(
         ProducaoDia producao,
         List<ProducaoRascunho> producoesRascunho,
         EstoqueResumo estoque,
-        ComprasDia compras,
+        List<CompraRecente> compras,
         List<ResumoProdutoVendidoResponse> produtosVendidos,
         List<Alerta> alertas
 ) {
@@ -45,11 +45,8 @@ public record DashboardOperacionalResponse(
                               UnidadeMedida unidade, BigDecimal saldo, BigDecimal minimo,
                               String situacao) {}
 
-    public record ComprasDia(long quantidade, BigDecimal valorTotal, long comprasInsumos,
-                             BigDecimal valorInsumos, long comprasRevenda,
-                             BigDecimal valorRevenda) {
-        public boolean existe() { return quantidade > 0; }
-    }
+    public record CompraRecente(Long id, LocalDate data, String fornecedor, long quantidadeItens,
+                                BigDecimal valorTotal, String classificacao) {}
 
     public record Alerta(String icone, String nivel, String titulo, String descricao,
                          String url, boolean somenteAdmin) {}

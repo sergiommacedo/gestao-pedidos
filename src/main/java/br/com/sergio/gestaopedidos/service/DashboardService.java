@@ -4,6 +4,7 @@ import br.com.sergio.gestaopedidos.dto.dashboard.*;
 import br.com.sergio.gestaopedidos.dto.resumo.ResumoProdutoVendidoResponse;
 import br.com.sergio.gestaopedidos.dto.resumo.ResumoVendasDiaResponse;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
+import br.com.sergio.gestaopedidos.enums.TipoCompra;
 import br.com.sergio.gestaopedidos.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,7 +57,8 @@ public class DashboardService {
         var producao = montarProducao(producaoRepository.resumirConfirmadasDashboard(data));
         var rascunhos = montarRascunhos(data);
         var estoque = montarEstoque();
-        var compras = montarCompras(compraRepository.resumirDashboard(data));
+        var compras = compraRepository.buscarUltimasAtivas(PageRequest.of(0, LIMITE_LISTAS)).stream()
+                .map(this::mapearCompra).toList();
         long fichasPendentes = fichaTecnicaRepository.contarAtivasComCustoPendente();
         long produtosSemFicha = fichaTecnicaRepository.contarProdutosProduzidosAtivosSemFicha();
         return new DashboardOperacionalResponse(data, pedidos, resultadoFinanceiro, buscarPedidosQuePrecisamAtencao(data),
@@ -198,24 +200,33 @@ public class DashboardService {
 
     private DashboardOperacionalResponse.ItemEstoque mapearEstoque(SaldoEstoqueRepository.Visao v) {
         BigDecimal saldo = valorOuZero(v.getQuantidadeAtual()), minimo = valorOuZero(v.getEstoqueMinimo());
-        String situacao = saldo.signum() == 0 ? "Sem estoque" : minimo.signum() > 0 && saldo.compareTo(minimo) <= 0
+        String situacao = saldo.signum() <= 0 ? "Sem estoque" : minimo.signum() > 0 && saldo.compareTo(minimo) < 0
                 ? "Estoque baixo" : "Normal";
         return new DashboardOperacionalResponse.ItemEstoque(br.com.sergio.gestaopedidos.enums.TipoItemEstoque.valueOf(v.getTipoItem()),
                 v.getReferenciaId(), v.getItemNome(), br.com.sergio.gestaopedidos.enums.UnidadeMedida.valueOf(v.getUnidade()),
                 saldo, minimo, situacao);
     }
 
-    private DashboardOperacionalResponse.ComprasDia montarCompras(CompraRepository.ResumoDashboard r) {
-        return new DashboardOperacionalResponse.ComprasDia(numero(r.getQuantidade()), valorOuZero(r.getValorTotal()),
-                numero(r.getComprasInsumos()), valorOuZero(r.getValorInsumos()), numero(r.getComprasRevenda()),
-                valorOuZero(r.getValorRevenda()));
+    private DashboardOperacionalResponse.CompraRecente mapearCompra(CompraRepository.CompraRecente compra) {
+        return new DashboardOperacionalResponse.CompraRecente(compra.getId(), compra.getDataCompra(),
+                compra.getFornecedor(), numero(compra.getQuantidadeItens()), valorOuZero(compra.getValorTotal()),
+                classificacaoCompra(compra.getTipoCompra()));
+    }
+
+    private String classificacaoCompra(TipoCompra tipo) {
+        if (tipo == null) return null;
+        return switch (tipo) {
+            case INSUMO -> "Insumos";
+            case PRODUTO_REVENDA -> "Produtos de revenda";
+            case MISTA -> "Mista";
+        };
     }
 
     private List<DashboardOperacionalResponse.Alerta> montarAlertas(List<DashboardOperacionalResponse.ProducaoRascunho> rascunhos,
             DashboardOperacionalResponse.EstoqueResumo estoque, long fichasPendentes, long produtosSemFicha) {
         List<DashboardOperacionalResponse.Alerta> alertas = new java.util.ArrayList<>();
-        if (estoque.semEstoque() > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-x-circle", "danger", "Itens sem estoque", estoque.semEstoque()+" item(ns) estão sem estoque.", "/estoque?situacao=SEM_ESTOQUE", true));
-        if (estoque.abaixoDoMinimo() > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-exclamation-triangle", "warning", "Estoque abaixo do mínimo", estoque.abaixoDoMinimo()+" item(ns) precisam de atenção.", "/estoque?situacao=BAIXO", true));
+        if (estoque.semEstoque() > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-x-circle", "danger", "Itens sem estoque", estoque.semEstoque()+" item(ns) estão sem estoque.", "/estoque?situacao=SEM_ESTOQUE&ativo=true", true));
+        if (estoque.abaixoDoMinimo() > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-exclamation-triangle", "warning", "Estoque abaixo do mínimo", estoque.abaixoDoMinimo()+" item(ns) precisam de atenção.", "/estoque?situacao=BAIXO&ativo=true", true));
         if (fichasPendentes > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-calculator", "warning", "Custo de ficha pendente", fichasPendentes+" Ficha(s) Técnica(s) possuem custo incompleto.", "/fichas-tecnicas?custo=PENDENTE", true));
         if (produtosSemFicha > 0) alertas.add(new DashboardOperacionalResponse.Alerta("bi-journal-x", "warning", "Produtos sem Ficha Técnica", produtosSemFicha+" Produto(s) Produzido(s) ativo(s) ainda não possuem ficha.", "/fichas-tecnicas/nova", true));
         if (!rascunhos.isEmpty()) alertas.add(new DashboardOperacionalResponse.Alerta("bi-hourglass-split", "info", "Produção em rascunho", rascunhos.size()+" Produção(ões) aguardam confirmação.", "/producoes", true));

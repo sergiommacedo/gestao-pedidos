@@ -38,4 +38,17 @@ class CompraWebControllerTest {
         assertThat(html).contains("formatarDecimalBrasileiro(item.custoUnitario,2)");
         assertThat(html).doesNotContain("formatarDecimalBrasileiro(item.custoUnitario,6)");
     }
+
+    @Test void listagemSeparaResumoDaAnaliseEExibeCardsCalculadosNoBackend()throws Exception{
+        String html=Files.readString(Path.of("src/main/resources/templates/compras/listar.html"));
+        assertThat(html).contains("Compras de hoje","Total comprado hoje","Total comprado no mês",
+                "Total no período filtrado","/compras/analise-precos","Análise de preços","resumo.totalHoje");
+        assertThat(html).doesNotContain("#aggregates");
+    }
+
+    @Test void analiseExibeFiltrosComparativosEmpatesMediaEHistorico()throws Exception{
+        String html=Files.readString(Path.of("src/main/resources/templates/compras/analise-precos.html"));
+        assertThat(html).contains("Preços por item e fornecedor","Média ponderada","Melhor preço","Maior preço",
+                "Empate no menor preço","Histórico do item","Preço unitário","dataInicial","dataFinal");
+    }
 }

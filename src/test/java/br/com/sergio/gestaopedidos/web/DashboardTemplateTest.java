@@ -31,4 +31,11 @@ class DashboardTemplateTest {
                 "ainda não fazem parte do Estoque", "Confirmar Produção");
         assertThat(html).doesNotContain("Produtos fabricados hoje");
     }
+
+    @Test void mostraUltimasComprasCompactasEEstadoVazio() throws Exception {
+        String html = Files.readString(template);
+        assertThat(html).contains("Últimas compras", "dashboard.compras", "compra.quantidadeItens",
+                "compra.valorTotal", "compra.classificacao", "Ver Compras", "Nenhuma compra cadastrada.");
+        assertThat(html).doesNotContain("Compras do dia", "Nenhuma compra registrada hoje.");
+    }
 }
