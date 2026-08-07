@@ -24,6 +24,11 @@ public class Compra {
 
     public void adicionarItem(ItemCompra item){item.setCompra(this);itens.add(item);}
     public void recalcularTotal(){valorTotal=itens.stream().map(ItemCompra::getValorTotalItem).filter(Objects::nonNull).reduce(BigDecimal.ZERO,BigDecimal::add).setScale(2,RoundingMode.HALF_UP);}
-    @PrePersist void criar(){if(status==null)status=StatusCompra.ATIVA;recalcularTotal();criadoEm=LocalDateTime.now();atualizadoEm=criadoEm;}
-    @PreUpdate void atualizar(){recalcularTotal();atualizadoEm=LocalDateTime.now();}
+    public void recalcularTipoCompra(){
+        boolean insumo=itens.stream().anyMatch(i->i.getTipoItem()==TipoItemEstoque.INSUMO);
+        boolean revenda=itens.stream().anyMatch(i->i.getTipoItem()==TipoItemEstoque.PRODUTO_REVENDA);
+        tipoCompra=insumo&&revenda?TipoCompra.MISTA:insumo?TipoCompra.INSUMO:revenda?TipoCompra.PRODUTO_REVENDA:null;
+    }
+    @PrePersist void criar(){if(status==null)status=StatusCompra.ATIVA;recalcularTipoCompra();recalcularTotal();criadoEm=LocalDateTime.now();atualizadoEm=criadoEm;}
+    @PreUpdate void atualizar(){recalcularTipoCompra();recalcularTotal();atualizadoEm=LocalDateTime.now();}
 }
