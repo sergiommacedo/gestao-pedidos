@@ -18,4 +18,5 @@ public interface InsumoRepository extends JpaRepository<Insumo, Long> {
             """)
     Page<Insumo> buscar(@Param("filtro") String filtro, @Param("ativo") Boolean ativo, Pageable pageable);
     List<Insumo> findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(String nome);
+    List<Insumo> findByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(String nome);
 }
