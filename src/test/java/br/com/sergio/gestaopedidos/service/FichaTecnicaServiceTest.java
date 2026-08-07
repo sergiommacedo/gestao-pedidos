@@ -40,6 +40,21 @@ class FichaTecnicaServiceTest {
     }
 
     @Test
+    void saldoZeroComUltimoCustoConhecidoMantemEstimativaSemOcultarFaltaFisica() {
+        Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.UNIDADE, "50");
+        f.insumo(1, UnidadeMedida.QUILOGRAMA, true);
+        f.saldo(1, "0.000", "38.310000");
+        var resposta = f.service().salvar(f.request(1, f.item(null, 1, "1.000")));
+        var item = resposta.itens().getFirst();
+        assertThat(item.estoqueAtual()).isEqualByComparingTo("0.000");
+        assertThat(item.possuiCusto()).isTrue();
+        assertThat(item.custoMedioAtual()).isEqualByComparingTo("38.310000");
+        assertThat(item.custoEstimado()).isEqualByComparingTo("38.31");
+        assertThat(resposta.custoCompleto()).isTrue();
+        assertThat(resposta.quantidadeItensSemCusto()).isZero();
+    }
+
+    @Test
     void validaRendimentoEsperadoObrigatorioPositivoEComAteTresCasas() {
         Fake f = new Fake(); f.produto(1, TipoProduto.PREPARACAO_PRODUZIDA, true, UnidadeVenda.QUILOGRAMA, "10");
         f.insumo(1, UnidadeMedida.QUILOGRAMA, true);

@@ -23,7 +23,8 @@ class FichaTecnicaTemplateTest {
     void detalhesExibemReceitaCompletaEAvisoSobreCustoReal() throws IOException {
         String html = ler("detalhes.html");
         assertThat(html).contains("Rendimento esperado", "Itens totais da receita",
-                "Custo estimado da receita", "O custo real por kg será calculado");
+                "Custo estimado da receita", "O custo real por kg será calculado",
+                "Custo médio/referência", "Sem estoque", "Estoque insuficiente", "Custo pendente");
     }
 
     @Test
