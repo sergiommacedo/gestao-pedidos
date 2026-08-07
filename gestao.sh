@@ -3,6 +3,20 @@
 set -u
 
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${BASE_DIR}"
+
+# ------------------------------------------------
+# Detectar Docker Compose
+# ------------------------------------------------
+
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE=(docker-compose)
+else
+    echo "Erro: Docker Compose não encontrado."
+    exit 1
+fi
 
 while true; do
     clear
@@ -10,6 +24,8 @@ while true; do
     echo "========================================"
     echo "       GESTÃO PEDIDOS — VOVÓ DAN"
     echo "========================================"
+    echo
+    echo "Docker Compose: ${COMPOSE[*]}"
     echo
     echo "1 - Iniciar sistema"
     echo "2 - Parar sistema"
@@ -34,7 +50,7 @@ while true; do
             "${BASE_DIR}/scripts/parar-sistema.sh"
             ;;
         3)
-            docker compose -f "${BASE_DIR}/docker-compose.yml" restart
+            "${COMPOSE[@]}" restart
             ;;
         4)
             "${BASE_DIR}/scripts/backup.sh"
@@ -46,13 +62,13 @@ while true; do
             "${BASE_DIR}/scripts/atualizar-sistema.sh"
             ;;
         7)
-            cd "${BASE_DIR}" && docker compose ps
+            "${COMPOSE[@]}" ps
             ;;
         8)
-            cd "${BASE_DIR}" && docker compose logs --tail=150 app
+            "${COMPOSE[@]}" logs --tail=150 app
             ;;
         9)
-            cd "${BASE_DIR}" && docker compose logs --tail=150 mysql
+            "${COMPOSE[@]}" logs --tail=150 mysql
             ;;
         0)
             echo "Até mais."

@@ -1,6 +1,6 @@
 package br.com.sergio.gestaopedidos.entity;
 
-import br.com.sergio.gestaopedidos.enums.UnidadeMedida;
+import br.com.sergio.gestaopedidos.enums.*;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Check;
@@ -22,4 +22,11 @@ public class ItemCompra {
     @Column(nullable=false,precision=15,scale=3) private BigDecimal quantidade;
     @Column(name="valor_total_item",nullable=false,precision=15,scale=2) private BigDecimal valorTotalItem;
     @Column(name="custo_unitario",nullable=false,precision=18,scale=6) private BigDecimal custoUnitario;
+
+    @Transient
+    public TipoItemEstoque getTipoItem(){
+        if(insumo!=null&&produto==null)return TipoItemEstoque.INSUMO;
+        if(produto!=null&&insumo==null&&produto.getTipoProduto()==TipoProduto.PRODUTO_REVENDA)return TipoItemEstoque.PRODUTO_REVENDA;
+        throw new IllegalStateException("Origem do item da compra inválida.");
+    }
 }

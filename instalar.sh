@@ -11,34 +11,59 @@ echo " Instalador - Gestão Pedidos"
 echo "========================================"
 echo
 
+# ------------------------------------------------
+# Root
+# ------------------------------------------------
+
 if [[ "$EUID" -ne 0 ]]; then
     echo "Execute com:"
     echo "sudo ./instalar.sh"
     exit 1
 fi
 
+# ------------------------------------------------
+# Sistema operacional
+# ------------------------------------------------
+
 if [[ ! -f /etc/os-release ]]; then
-    echo "Erro: não foi possível identificar o Ubuntu."
+    echo "Erro: não foi possível identificar o sistema operacional."
     exit 1
 fi
 
 source /etc/os-release
 
-if [[ "${ID}" != "ubuntu" ]]; then
-    echo "Erro: este instalador foi preparado para Ubuntu."
+if [[ "${ID}" == "ubuntu" ]]; then
+
+    DOCKER_CODENAME="${UBUNTU_CODENAME:-$VERSION_CODENAME}"
+
+elif [[ "${ID}" == "linuxmint" ]]; then
+
+    DOCKER_CODENAME="${UBUNTU_CODENAME:-}"
+
+    if [[ -z "${DOCKER_CODENAME}" ]]; then
+        echo "Erro: não foi possível identificar a base Ubuntu do Linux Mint."
+        exit 1
+    fi
+
+else
+
+    echo "Erro: distribuição não suportada:"
+    echo "${PRETTY_NAME}"
     exit 1
 fi
 
 echo "Sistema: ${PRETTY_NAME}"
+echo "Base Ubuntu: ${DOCKER_CODENAME}"
 echo
 
 # ------------------------------------------------
-# Dependências básicas
+# Dependências
 # ------------------------------------------------
 
 echo "[1/8] Instalando dependências..."
 
-apt-get update
+apt-get update || true
+
 apt-get install -y \
     ca-certificates \
     curl \
@@ -51,8 +76,11 @@ apt-get install -y \
 # ------------------------------------------------
 
 if command -v docker >/dev/null 2>&1; then
+
     echo "[2/8] Docker já está instalado."
+
 else
+
     echo "[2/8] Instalando Docker..."
 
     install -m 0755 -d /etc/apt/keyrings
@@ -64,7 +92,7 @@ else
 
     echo \
       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-      ${UBUNTU_CODENAME:-$VERSION_CODENAME} stable" \
+      ${DOCKER_CODENAME} stable" \
       > /etc/apt/sources.list.d/docker.list
 
     apt-get update
@@ -79,6 +107,26 @@ else
     systemctl enable docker
     systemctl start docker
 fi
+
+# ------------------------------------------------
+# Detectar Docker Compose
+# ------------------------------------------------
+
+if docker compose version >/dev/null 2>&1; then
+
+    COMPOSE=(docker compose)
+
+elif command -v docker-compose >/dev/null 2>&1; then
+
+    COMPOSE=(docker-compose)
+
+else
+
+    echo "Erro: Docker Compose não está disponível."
+    exit 1
+fi
+
+echo "Docker Compose detectado: ${COMPOSE[*]}"
 
 # ------------------------------------------------
 # Usuário Docker
@@ -109,7 +157,9 @@ else
         "${PASTA}"
 fi
 
-mkdir -p "${PASTA}/backups"
+mkdir -p \
+    "${PASTA}/backups" \
+    "${PASTA}/uploads"
 
 chown -R "${USUARIO_REAL}:${USUARIO_REAL}" "${PASTA}"
 
@@ -143,11 +193,12 @@ EOF
     chown "${USUARIO_REAL}:${USUARIO_REAL}" "${PASTA}/.env"
 
 else
+
     echo ".env existente será preservado."
 fi
 
 # ------------------------------------------------
-# Permissões dos scripts
+# Permissões
 # ------------------------------------------------
 
 echo "[6/8] Preparando scripts..."
@@ -157,19 +208,19 @@ chmod +x "${PASTA}/scripts/"*.sh 2>/dev/null || true
 chmod +x "${PASTA}/instalar.sh"
 
 # ------------------------------------------------
-# Docker
+# Containers
 # ------------------------------------------------
 
 echo "[7/8] Baixando containers..."
 
 cd "${PASTA}"
 
-docker compose pull
+"${COMPOSE[@]}" pull
 
 echo
 echo "Iniciando MySQL e aplicação..."
 
-docker compose up -d
+"${COMPOSE[@]}" up -d
 
 # ------------------------------------------------
 # Backup automático
@@ -203,7 +254,6 @@ for tentativa in {1..90}; do
     fi
 
     sleep 2
-
 done
 
 echo
@@ -225,7 +275,7 @@ if [[ "${SUCESSO}" == "true" ]]; then
     echo "Pasta:"
     echo "${PASTA}"
     echo
-    echo "Banco criado automaticamente:"
+    echo "Banco:"
     echo "gestao_pedidos"
     echo
     echo "Usuário MySQL:"
@@ -239,7 +289,7 @@ if [[ "${SUCESSO}" == "true" ]]; then
     echo "./gestao.sh"
     echo
     echo "IMPORTANTE:"
-    echo "As senhas do banco estão armazenadas em:"
+    echo "As senhas estão armazenadas em:"
     echo "${PASTA}/.env"
     echo
     echo "Não apague este arquivo."
@@ -249,9 +299,9 @@ else
 
     echo "A aplicação não respondeu."
     echo
-    docker compose ps
+    "${COMPOSE[@]}" ps
     echo
-    docker compose logs --tail=100 app
+    "${COMPOSE[@]}" logs --tail=100 app
 
     exit 1
 fi
