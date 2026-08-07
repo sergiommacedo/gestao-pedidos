@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarPreviewProducao();
     inicializarFormularioInsumo();
     inicializarFormularioCompra();
+    inicializarAnalisePrecosCompra();
     inicializarFormularioProduto();
     inicializarFormularioEstoque();
     inicializarFormularioFichaTecnica();
@@ -420,6 +421,74 @@ function inicializarFormularioCompra() {
     formulario.addEventListener("keydown", evento => {if(evento.key==="Enter"&&evento.target instanceof HTMLInputElement&&evento.target!==busca)evento.preventDefault();});
     formulario.addEventListener("submit", evento => { reindexar(); if (evento.submitter?.matches("[data-salvar-compra]")!==true||!container.querySelector("[data-item-compra]")) { evento.preventDefault();if(!container.querySelector("[data-item-compra]"))avisar("Adicione ao menos um item à compra.");return;}evento.submitter.disabled=true; });
     reindexar();
+}
+
+function inicializarAnalisePrecosCompra() {
+    const area = document.querySelector("[data-analise-precos]");
+    if (!area) return;
+    const formulario = area.querySelector("[data-filtros-analise-precos]");
+    const itemBusca = formulario.querySelector("[data-item-analise-busca]");
+    const itemResultados = formulario.querySelector("[data-item-analise-resultados]");
+    const itemNome = formulario.querySelector("[data-item-analise-nome]");
+    const itemTipo = formulario.querySelector("[data-item-analise-tipo]");
+    const itemId = formulario.querySelector("[data-item-analise-id]");
+    const itemUnidade = formulario.querySelector("[data-item-analise-unidade]");
+    const fornecedorBusca = formulario.querySelector("[data-fornecedor-analise-busca]");
+    const fornecedorValor = formulario.querySelector("[data-fornecedor-analise-valor]");
+    const fornecedorResultados = formulario.querySelector("[data-fornecedor-analise-resultados]");
+    let temporizadorItem, temporizadorFornecedor, requisicaoItem = 0, requisicaoFornecedor = 0;
+    const fechar = elemento => { elemento.replaceChildren(); elemento.classList.add("d-none"); };
+    const opcao = (titulo, detalhe, escolher) => { const botao=document.createElement("button");botao.type="button";botao.className="list-group-item list-group-item-action";const nome=document.createElement("div");nome.textContent=titulo;botao.append(nome);if(detalhe){const small=document.createElement("small");small.className="text-body-secondary";small.textContent=detalhe;botao.append(small);}botao.addEventListener("click",escolher);return botao; };
+
+    async function pesquisarItens() {
+        const termo=itemBusca.value.trim(), numero=++requisicaoItem;
+        const resposta=await fetch(`/compras/analise-precos/itens?termo=${encodeURIComponent(termo)}`);
+        const dados=resposta.ok?await resposta.json():[];
+        if(numero!==requisicaoItem)return;itemResultados.replaceChildren();
+        dados.forEach(item => itemResultados.append(opcao(
+            item.nome,
+            `${item.categoria} • ${item.simbolo}`,
+            () => {
+                itemBusca.value = item.nome;
+                itemNome.value = item.nome;
+                itemTipo.value = item.tipoItem;
+                itemId.value = item.referenciaId;
+                itemUnidade.value = item.unidade;
+                fechar(itemResultados);
+            }
+        )));
+        if(!dados.length)itemResultados.append(opcao("Nenhum item com Compra ativa encontrado.","",()=>{}));itemResultados.classList.remove("d-none");
+    }
+    itemBusca.addEventListener("focus",pesquisarItens);
+    itemBusca.addEventListener("input",()=>{itemNome.value="";itemTipo.value="";itemId.value="";itemUnidade.value="";clearTimeout(temporizadorItem);temporizadorItem=setTimeout(pesquisarItens,250);});
+
+    async function pesquisarFornecedores() {
+        const termo=fornecedorBusca.value.trim(),numero=++requisicaoFornecedor;
+        const resposta=await fetch(`/compras/analise-precos/fornecedores?termo=${encodeURIComponent(termo)}`);
+        const dados=resposta.ok?await resposta.json():[];if(numero!==requisicaoFornecedor)return;fornecedorResultados.replaceChildren();
+        dados.forEach(nome=>fornecedorResultados.append(opcao(nome,"",()=>{fornecedorBusca.value=nome;fornecedorValor.value=nome;fechar(fornecedorResultados);})));if(!dados.length)fornecedorResultados.append(opcao("Nenhum fornecedor encontrado.","",()=>{}));fornecedorResultados.classList.remove("d-none");
+    }
+    fornecedorBusca.addEventListener("focus",pesquisarFornecedores);
+    fornecedorBusca.addEventListener("input",()=>{fornecedorValor.value="";clearTimeout(temporizadorFornecedor);temporizadorFornecedor=setTimeout(pesquisarFornecedores,250);});
+    document.addEventListener("click",evento=>{if(!itemBusca.parentElement.contains(evento.target))fechar(itemResultados);if(!fornecedorBusca.parentElement.contains(evento.target))fechar(fornecedorResultados);});
+
+    const modal=area.querySelector("#modalHistoricoPrecos");if(!modal)return;
+    const titulo=modal.querySelector("[data-historico-titulo]"),subtitulo=modal.querySelector("[data-historico-subtitulo]"),conteudo=modal.querySelector("[data-historico-conteudo]"),paginaTexto=modal.querySelector("[data-historico-pagina]"),anterior=modal.querySelector("[data-historico-anterior]"),proxima=modal.querySelector("[data-historico-proxima]");
+    let identidade=null,paginaAtual=0;
+    const moeda=valor=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(valor)||0);
+    const decimal=(valor,unidade)=>new Intl.NumberFormat("pt-BR",{minimumFractionDigits:unidade==="UNIDADE"?0:3,maximumFractionDigits:unidade==="UNIDADE"?0:3}).format(Number(valor)||0);
+    async function carregarHistorico(pagina) {
+        if(!identidade)return;conteudo.innerHTML='<div class="text-center text-body-secondary py-5">Carregando histórico…</div>';
+        const params=new URLSearchParams({tipoItem:identidade.tipo,referenciaId:identidade.id,unidade:identidade.unidade,pagina:String(pagina),fornecedor:fornecedorValor.value});
+        const inicial=formulario.querySelector('[name="dataInicial"]').value,final=formulario.querySelector('[name="dataFinal"]').value;if(inicial)params.set("dataInicial",inicial);if(final)params.set("dataFinal",final);
+        const resposta=await fetch(`/compras/analise-precos/historico?${params}`);if(!resposta.ok){conteudo.innerHTML='<div class="alert alert-danger mb-0">Não foi possível carregar o histórico.</div>';return;}
+        const dados=await resposta.json();paginaAtual=dados.pagina;titulo.textContent=dados.item;subtitulo.textContent=`${dados.categoria==="INSUMO"?"Insumo":"Produto de revenda"} • ${dados.unidade}`;
+        const tabela=document.createElement("table");tabela.className="table align-middle mb-0";tabela.innerHTML="<thead class=\"table-light\"><tr><th>Data</th><th>Fornecedor</th><th>Quantidade</th><th>Valor pago</th><th>Preço unitário</th></tr></thead>";const corpo=document.createElement("tbody");
+        dados.conteudo.forEach(h=>{const linha=document.createElement("tr");const data=new Date(`${h.data}T12:00:00`).toLocaleDateString("pt-BR");[data,h.fornecedor,`${decimal(h.quantidade,dados.unidade)} ${identidade.simbolo}`,moeda(h.valorPago),`${moeda(h.precoUnitario)}/${identidade.simbolo}`].forEach(texto=>{const td=document.createElement("td");td.textContent=texto;linha.append(td);});corpo.append(linha);});
+        if(!dados.conteudo.length){const linha=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="text-center text-body-secondary py-4";td.textContent="Nenhum histórico encontrado.";linha.append(td);corpo.append(linha);}tabela.append(corpo);conteudo.replaceChildren(tabela);paginaTexto.textContent=`Página ${dados.totalPaginas?dados.pagina+1:0} de ${dados.totalPaginas}`;anterior.disabled=dados.primeira;proxima.disabled=dados.ultima;
+    }
+    modal.addEventListener("show.bs.modal",evento=>{const botao=evento.relatedTarget;identidade={tipo:botao.dataset.historicoTipo,id:botao.dataset.historicoId,unidade:botao.dataset.historicoUnidade,simbolo:botao.dataset.historicoUnidade==="UNIDADE"?"un":botao.dataset.historicoUnidade==="QUILOGRAMA"?"kg":botao.dataset.historicoUnidade==="LITRO"?"L":botao.dataset.historicoUnidade==="GRAMA"?"g":"ml"};carregarHistorico(0);});
+    anterior.addEventListener("click",()=>carregarHistorico(Math.max(0,paginaAtual-1)));proxima.addEventListener("click",()=>carregarHistorico(paginaAtual+1));modal.addEventListener("hidden.bs.modal",()=>{identidade=null;conteudo.replaceChildren();});
 }
 
 function inicializarPreviewProducao() {

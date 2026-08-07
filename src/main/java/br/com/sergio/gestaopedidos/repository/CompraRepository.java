@@ -12,6 +12,7 @@ public interface CompraRepository extends JpaRepository<Compra,Long> {
     interface ResumoOperacional {Long getComprasHoje();java.math.BigDecimal getTotalHoje();java.math.BigDecimal getTotalMes();java.math.BigDecimal getTotalPeriodo();}
     interface AnaliseFornecedor {String getTipoItem();Long getReferenciaId();String getItemNome();String getUnidade();String getFornecedor();LocalDate getUltimaCompra();java.math.BigDecimal getUltimoPreco();java.math.BigDecimal getMenorPreco();java.math.BigDecimal getMaiorPreco();java.math.BigDecimal getValorPago();java.math.BigDecimal getQuantidadeTotal();}
     interface HistoricoPreco {LocalDate getDataCompra();String getFornecedor();java.math.BigDecimal getQuantidade();java.math.BigDecimal getValorPago();java.math.BigDecimal getPrecoUnitario();}
+    interface OpcaoItemAnalise {String getTipoItem();Long getReferenciaId();String getItemNome();String getUnidade();}
     interface ResumoDashboard {Long getQuantidade();java.math.BigDecimal getValorTotal();Long getComprasInsumos();java.math.BigDecimal getValorInsumos();Long getComprasRevenda();java.math.BigDecimal getValorRevenda();}
     interface CompraRecente {Long getId();TipoCompra getTipoCompra();LocalDate getDataCompra();String getFornecedor();java.math.BigDecimal getValorTotal();Long getQuantidadeItens();}
     interface Resumo {Long getId();TipoCompra getTipoCompra();LocalDate getDataCompra();String getFornecedor();java.math.BigDecimal getValorTotal();LocalDateTime getAtualizadoEm();Long getQuantidadeItens();StatusCompra getStatus();}
@@ -47,7 +48,9 @@ public interface CompraRepository extends JpaRepository<Compra,Long> {
                  c.data_compra,ic.custo_unitario,ic.valor_total_item,ic.quantidade,ic.id item_id
             FROM itens_compra ic JOIN compras c ON c.id=ic.compra_id
            WHERE c.status='ATIVA'
-             AND (:item='' OR LOWER(ic.nome_historico) LIKE LOWER(CONCAT('%',:item,'%')))
+             AND (:tipoItem='' OR (CASE WHEN ic.insumo_id IS NOT NULL THEN 'INSUMO' ELSE 'PRODUTO_REVENDA' END)=:tipoItem)
+             AND (:referenciaId IS NULL OR COALESCE(ic.insumo_id,ic.produto_id)=:referenciaId)
+             AND (:unidade='' OR ic.unidade_historica=:unidade)
              AND (:fornecedor='' OR LOWER(COALESCE(c.fornecedor,'')) LIKE LOWER(CONCAT('%',:fornecedor,'%')))
              AND (:categoria='' OR CASE WHEN ic.insumo_id IS NOT NULL THEN 'INSUMO' ELSE 'PRODUTO_REVENDA' END=:categoria)
              AND (:inicio IS NULL OR c.data_compra>=:inicio) AND (:fim IS NULL OR c.data_compra<=:fim)
@@ -62,8 +65,9 @@ public interface CompraRepository extends JpaRepository<Compra,Long> {
           FROM ordenada GROUP BY tipo_item,referencia_id,unidade,fornecedor
          ORDER BY item_nome,unidade,fornecedor
         """,nativeQuery=true)
-    java.util.List<AnaliseFornecedor> analisarPrecos(@Param("item")String item,@Param("fornecedor")String fornecedor,
-            @Param("categoria")String categoria,@Param("inicio")LocalDate inicio,@Param("fim")LocalDate fim);
+    java.util.List<AnaliseFornecedor> analisarPrecos(@Param("tipoItem")String tipoItem,@Param("referenciaId")Long referenciaId,
+            @Param("unidade")String unidade,@Param("fornecedor")String fornecedor,@Param("categoria")String categoria,
+            @Param("inicio")LocalDate inicio,@Param("fim")LocalDate fim);
     @Query(value="""
         SELECT c.data_compra data_compra,COALESCE(NULLIF(TRIM(c.fornecedor),''),'Não informado') fornecedor,
                ic.quantidade,ic.valor_total_item valor_pago,ic.custo_unitario preco_unitario
@@ -74,10 +78,46 @@ public interface CompraRepository extends JpaRepository<Compra,Long> {
            AND (:fornecedor='' OR LOWER(COALESCE(c.fornecedor,'')) LIKE LOWER(CONCAT('%',:fornecedor,'%')))
            AND (:inicio IS NULL OR c.data_compra>=:inicio) AND (:fim IS NULL OR c.data_compra<=:fim)
          ORDER BY c.data_compra DESC,ic.id DESC
+        """,countQuery="""
+        SELECT COUNT(*) FROM itens_compra ic JOIN compras c ON c.id=ic.compra_id
+         WHERE c.status='ATIVA' AND COALESCE(ic.insumo_id,ic.produto_id)=:referenciaId
+           AND (CASE WHEN ic.insumo_id IS NOT NULL THEN 'INSUMO' ELSE 'PRODUTO_REVENDA' END)=:categoria
+           AND ic.unidade_historica=:unidade
+           AND (:fornecedor='' OR LOWER(COALESCE(c.fornecedor,'')) LIKE LOWER(CONCAT('%',:fornecedor,'%')))
+           AND (:inicio IS NULL OR c.data_compra>=:inicio) AND (:fim IS NULL OR c.data_compra<=:fim)
         """,nativeQuery=true)
-    java.util.List<HistoricoPreco> buscarHistoricoPrecos(@Param("categoria")String categoria,
+    Page<HistoricoPreco> buscarHistoricoPrecos(@Param("categoria")String categoria,
             @Param("referenciaId")Long referenciaId,@Param("unidade")String unidade,
-            @Param("fornecedor")String fornecedor,@Param("inicio")LocalDate inicio,@Param("fim")LocalDate fim);
+            @Param("fornecedor")String fornecedor,@Param("inicio")LocalDate inicio,@Param("fim")LocalDate fim,Pageable pageable);
+    @Query(value="""
+        SELECT CASE WHEN ic.insumo_id IS NOT NULL THEN 'INSUMO' ELSE 'PRODUTO_REVENDA' END tipo_item,
+               COALESCE(ic.insumo_id,ic.produto_id) referencia_id,MAX(ic.nome_historico) item_nome,ic.unidade_historica unidade
+          FROM itens_compra ic JOIN compras c ON c.id=ic.compra_id
+         WHERE c.status='ATIVA' AND (:termo='' OR LOWER(ic.nome_historico) LIKE LOWER(CONCAT('%',:termo,'%')))
+         GROUP BY CASE WHEN ic.insumo_id IS NOT NULL THEN 'INSUMO' ELSE 'PRODUTO_REVENDA' END,
+                  COALESCE(ic.insumo_id,ic.produto_id),ic.unidade_historica
+         ORDER BY item_nome,tipo_item,unidade
+        """,nativeQuery=true)
+    java.util.List<OpcaoItemAnalise> buscarOpcoesItensAnalise(@Param("termo")String termo,Pageable pageable);
+    @Query(value="""
+        SELECT DISTINCT :tipoItem tipo_item,COALESCE(ic.insumo_id,ic.produto_id) referencia_id,
+               ic.nome_historico item_nome,ic.unidade_historica unidade
+          FROM itens_compra ic JOIN compras c ON c.id=ic.compra_id
+         WHERE c.status='ATIVA' AND COALESCE(ic.insumo_id,ic.produto_id)=:referenciaId
+           AND (CASE WHEN ic.insumo_id IS NOT NULL THEN 'INSUMO' ELSE 'PRODUTO_REVENDA' END)=:tipoItem
+           AND ic.unidade_historica=:unidade
+         ORDER BY item_nome LIMIT 1
+        """,nativeQuery=true)
+    Optional<OpcaoItemAnalise> buscarIdentidadeItemAnalise(@Param("tipoItem")String tipoItem,
+            @Param("referenciaId")Long referenciaId,@Param("unidade")String unidade);
+    @Query("""
+        SELECT DISTINCT TRIM(c.fornecedor) FROM Compra c
+         WHERE c.status=br.com.sergio.gestaopedidos.enums.StatusCompra.ATIVA
+           AND c.fornecedor IS NOT NULL AND TRIM(c.fornecedor)<>''
+           AND (:termo='' OR LOWER(c.fornecedor) LIKE LOWER(CONCAT('%',:termo,'%')))
+         ORDER BY TRIM(c.fornecedor)
+        """)
+    java.util.List<String> buscarFornecedoresAnalise(@Param("termo")String termo,Pageable pageable);
     @EntityGraph(attributePaths={"itens","itens.insumo","itens.produto"}) @Query("SELECT DISTINCT c FROM Compra c WHERE c.id=:id") Optional<Compra> buscarDetalhada(@Param("id")Long id);
     @Query("""
         SELECT COUNT(c) AS quantidade,COALESCE(SUM(c.valorTotal),0) AS valorTotal,

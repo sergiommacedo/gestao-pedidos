@@ -39,21 +39,31 @@ public class CompraService {
                 moeda(r==null?null:r.getTotalMes()),moeda(r==null?null:r.getTotalPeriodo()),inicio!=null||fim!=null);
     }
     @Transactional(readOnly=true)
-    public AnalisePrecosCompraResponse analisarPrecos(String item,String fornecedor,TipoItemEstoque categoria,
-            LocalDate inicio,LocalDate fim,TipoItemEstoque historicoCategoria,Long referenciaId,UnidadeMedida unidade){
-        validarPeriodo(inicio,fim);validarCategoria(categoria);validarCategoria(historicoCategoria);
-        String itemNormalizado=normalizar(item),fornecedorNormalizado=normalizar(fornecedor);
-        List<AnalisePrecosCompraResponse.FornecedorItem> linhas=compraRepository.analisarPrecos(itemNormalizado,
-                fornecedorNormalizado,categoria==null?"":categoria.name(),inicio,fim).stream().map(this::mapearAnalise).toList();
+    public AnalisePrecosCompraResponse analisarPrecos(TipoItemEstoque tipoItem,Long referenciaId,UnidadeMedida unidade,
+            String fornecedor,TipoItemEstoque categoria,LocalDate inicio,LocalDate fim){
+        validarPeriodo(inicio,fim);validarCategoria(categoria);validarSelecaoItem(tipoItem,referenciaId,unidade);
+        String fornecedorNormalizado=normalizar(fornecedor);
+        List<AnalisePrecosCompraResponse.FornecedorItem> linhas=compraRepository.analisarPrecos(tipoItem==null?"":tipoItem.name(),
+                referenciaId,unidade==null?"":unidade.name(),fornecedorNormalizado,categoria==null?"":categoria.name(),inicio,fim)
+                .stream().map(this::mapearAnalise).toList();
         Map<ChaveAnalise,List<AnalisePrecosCompraResponse.FornecedorItem>> grupos=linhas.stream()
                 .collect(Collectors.groupingBy(l->new ChaveAnalise(l.categoria(),l.referenciaId(),l.item(),l.unidade()),LinkedHashMap::new,Collectors.toList()));
         List<AnalisePrecosCompraResponse.ComparativoItem> comparativos=grupos.entrySet().stream()
                 .map(e->comparar(e.getKey(),e.getValue())).toList();
-        List<AnalisePrecosCompraResponse.HistoricoItem> historico=referenciaId==null||historicoCategoria==null||unidade==null
-                ?List.of():compraRepository.buscarHistoricoPrecos(historicoCategoria.name(),referenciaId,unidade.name(),
-                        fornecedorNormalizado,inicio,fim).stream().map(h->new AnalisePrecosCompraResponse.HistoricoItem(
-                        h.getDataCompra(),h.getFornecedor(),h.getQuantidade(),h.getValorPago(),h.getPrecoUnitario())).toList();
-        return new AnalisePrecosCompraResponse(linhas,comparativos,historico);
+        return new AnalisePrecosCompraResponse(linhas,comparativos);
+    }
+    @Transactional(readOnly=true) public List<OpcaoAnalisePrecoResponse> buscarItensAnalise(String termo){return compraRepository.buscarOpcoesItensAnalise(normalizar(termo),PageRequest.of(0,20)).stream().map(this::mapearOpcao).toList();}
+    @Transactional(readOnly=true) public List<String> buscarFornecedoresAnalise(String termo){return compraRepository.buscarFornecedoresAnalise(normalizar(termo),PageRequest.of(0,20));}
+    @Transactional(readOnly=true) public HistoricoPrecoPageResponse buscarHistoricoPrecos(TipoItemEstoque tipoItem,Long referenciaId,
+            UnidadeMedida unidade,String fornecedor,LocalDate inicio,LocalDate fim,int pagina){
+        validarPeriodo(inicio,fim);validarSelecaoItem(tipoItem,referenciaId,unidade);
+        var identidade=compraRepository.buscarIdentidadeItemAnalise(tipoItem.name(),referenciaId,unidade.name())
+                .orElseThrow(()->new ResourceNotFoundException("Histórico de compra não encontrado."));
+        Page<CompraRepository.HistoricoPreco> resultado=compraRepository.buscarHistoricoPrecos(tipoItem.name(),referenciaId,
+                unidade.name(),normalizar(fornecedor),inicio,fim,PageRequest.of(Math.max(0,pagina),10));
+        return new HistoricoPrecoPageResponse(identidade.getItemNome(),tipoItem,unidade,resultado.getContent().stream()
+                .map(h->new AnalisePrecosCompraResponse.HistoricoItem(h.getDataCompra(),h.getFornecedor(),h.getQuantidade(),h.getValorPago(),h.getPrecoUnitario())).toList(),
+                resultado.getNumber(),resultado.getTotalPages(),resultado.getTotalElements(),resultado.isFirst(),resultado.isLast());
     }
     @Transactional(readOnly=true) public CompraResponse buscarPorId(Long id){return mapear(buscarEntidade(id));}
 
@@ -105,6 +115,8 @@ public class CompraService {
     private BigDecimal valor(BigDecimal v){if(v==null||v.signum()<=0)throw new BusinessException("Valor pago deve ser maior que zero.");if(v.stripTrailingZeros().scale()>2)throw new BusinessException("Valor pago deve ter no máximo duas casas decimais.");return v.setScale(2,RoundingMode.UNNECESSARY);}
     private void validarPeriodo(LocalDate i,LocalDate f){if(i!=null&&f!=null&&i.isAfter(f))throw new BusinessException("A data inicial não pode ser posterior à data final.");}
     private void validarCategoria(TipoItemEstoque tipo){if(tipo!=null&&tipo==TipoItemEstoque.PREPARACAO_PRODUZIDA)throw new BusinessException("A análise aceita somente Insumos e Produtos de revenda.");}
+    private void validarSelecaoItem(TipoItemEstoque tipo,Long id,UnidadeMedida unidade){boolean nenhum=tipo==null&&id==null&&unidade==null,todos=tipo!=null&&id!=null&&unidade!=null;if(!nenhum&&!todos)throw new BusinessException("Selecione um item válido.");validarCategoria(tipo);}
+    private OpcaoAnalisePrecoResponse mapearOpcao(CompraRepository.OpcaoItemAnalise r){TipoItemEstoque tipo=TipoItemEstoque.valueOf(r.getTipoItem());UnidadeMedida unidade=UnidadeMedida.valueOf(r.getUnidade());return new OpcaoAnalisePrecoResponse(tipo,r.getReferenciaId(),r.getItemNome(),unidade,tipo.getDescricao(),unidade.getSimbolo());}
     private AnalisePrecosCompraResponse.FornecedorItem mapearAnalise(CompraRepository.AnaliseFornecedor r){
         BigDecimal quantidade=r.getQuantidadeTotal()==null?BigDecimal.ZERO:r.getQuantidadeTotal();
         BigDecimal media=quantidade.signum()==0?BigDecimal.ZERO.setScale(6):r.getValorPago().divide(quantidade,6,RoundingMode.HALF_UP);
@@ -120,7 +132,7 @@ public class CompraService {
         List<AnalisePrecosCompraResponse.PrecoFornecedor> piores=linhas.stream().filter(l->l.maiorPreco().compareTo(maior)==0)
                 .map(l->new AnalisePrecosCompraResponse.PrecoFornecedor(l.fornecedor(),l.maiorPreco())).toList();
         return new AnalisePrecosCompraResponse.ComparativoItem(chave.categoria,chave.referenciaId,chave.item,chave.unidade,
-                melhores,piores,maior.subtract(menor));
+                melhores,piores,maior.subtract(menor),linhas.size());
     }
     private long numero(Long valor){return valor==null?0:valor;}
     private String normalizar(String v){return v==null?"":v.trim();}private String normalizarOpcional(String v){String n=normalizar(v);return n.isEmpty()?null:n;}private BigDecimal moeda(BigDecimal v){return(v==null?BigDecimal.ZERO:v).setScale(2,RoundingMode.HALF_UP);}

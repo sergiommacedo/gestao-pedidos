@@ -48,7 +48,9 @@ class CompraWebControllerTest {
 
     @Test void analiseExibeFiltrosComparativosEmpatesMediaEHistorico()throws Exception{
         String html=Files.readString(Path.of("src/main/resources/templates/compras/analise-precos.html"));
-        assertThat(html).contains("Preços por item e fornecedor","Média ponderada","Melhor preço","Maior preço",
-                "Empate no menor preço","Histórico do item","Preço unitário","dataInicial","dataFinal");
+        assertThat(html).contains("Preços por item e fornecedor","Faixa histórica","Melhor preço","Maior preço",
+                "Empate no menor preço","modalHistoricoPrecos","Limpar filtros",
+                "data-item-analise-tipo","data-item-analise-id","data-item-analise-unidade");
+        assertThat(html).doesNotContain("analise.historico");
     }
 }

@@ -53,7 +53,7 @@ class CompraAnaliseRepositoryTest {
         compra(LocalDate.of(2026,8,7),"Ignorada",StatusCompra.ESTORNADA,item(feijao,"1","100",UnidadeMedida.QUILOGRAMA));
         em.flush();
 
-        List<CompraRepository.AnaliseFornecedor> todas=repository.analisarPrecos("","","",null,null);
+        List<CompraRepository.AnaliseFornecedor> todas=repository.analisarPrecos("",null,"","","",null,null);
         var rio=todas.stream().filter(x->x.getItemNome().equals("Feijão")&&x.getFornecedor().equals("Rio Verde")&&x.getUnidade().equals("QUILOGRAMA")).findFirst().orElseThrow();
         assertThat(rio.getMenorPreco()).isEqualByComparingTo("4.000000");
         assertThat(rio.getMaiorPreco()).isEqualByComparingTo("5.000000");
@@ -63,12 +63,11 @@ class CompraAnaliseRepositoryTest {
         assertThat(rio.getQuantidadeTotal()).isEqualByComparingTo("30.000");
         assertThat(todas).extracting(CompraRepository.AnaliseFornecedor::getUnidade).contains("QUILOGRAMA","GRAMA","UNIDADE");
         assertThat(todas).extracting(CompraRepository.AnaliseFornecedor::getTipoItem).contains("INSUMO","PRODUTO_REVENDA");
-        assertThat(repository.analisarPrecos("Feij","Rio","INSUMO",LocalDate.of(2026,8,1),LocalDate.of(2026,8,5)))
-                .hasSize(2).allMatch(x->x.getFornecedor().equals("Rio Verde")&&x.getTipoItem().equals("INSUMO"));
-        assertThat(repository.analisarPrecos("inexistente","","",null,null)).isEmpty();
+        assertThat(repository.analisarPrecos("INSUMO",feijao.getId(),"QUILOGRAMA","Rio","INSUMO",LocalDate.of(2026,8,1),LocalDate.of(2026,8,5)))
+                .singleElement().satisfies(x->assertThat(x.getFornecedor()).isEqualTo("Rio Verde"));
 
-        var historico=repository.buscarHistoricoPrecos("INSUMO",feijao.getId(),"QUILOGRAMA","",null,null);
-        assertThat(historico).extracting(CompraRepository.HistoricoPreco::getDataCompra)
+        var historico=repository.buscarHistoricoPrecos("INSUMO",feijao.getId(),"QUILOGRAMA","",null,null,org.springframework.data.domain.PageRequest.of(0,10));
+        assertThat(historico.getContent()).extracting(CompraRepository.HistoricoPreco::getDataCompra)
                 .containsExactly(LocalDate.of(2026,8,6),LocalDate.of(2026,8,5),LocalDate.of(2026,8,4),LocalDate.of(2026,8,2),LocalDate.of(2026,8,1));
     }
 
@@ -77,9 +76,30 @@ class CompraAnaliseRepositoryTest {
         compra(LocalDate.of(2026,8,2),"Mista",StatusCompra.ATIVA,item(feijao,"2","12",UnidadeMedida.QUILOGRAMA),item(refrigerante,"3","15",UnidadeMedida.UNIDADE));
         em.flush();em.clear();
         var estatisticas=em.getEntityManagerFactory().unwrap(org.hibernate.SessionFactory.class).getStatistics();estatisticas.clear();
-        var resultado=repository.analisarPrecos("","","",null,null);
+        var resultado=repository.analisarPrecos("",null,"","","",null,null);
         assertThat(resultado).hasSize(3);
         assertThat(estatisticas.getPrepareStatementCount()).isEqualTo(1);
+    }
+
+    @Test void opcoesSaoDistintasValidasEFornecedoresNaoPossuemVazios() {
+        compra(LocalDate.of(2026,8,1),"Rio Verde",StatusCompra.ATIVA,item(feijao,"1","4",UnidadeMedida.QUILOGRAMA));
+        compra(LocalDate.of(2026,8,2),"Rio Verde",StatusCompra.ATIVA,item(feijao,"2","8",UnidadeMedida.QUILOGRAMA));
+        compra(LocalDate.of(2026,8,3),"",StatusCompra.ATIVA,item(refrigerante,"1","5",UnidadeMedida.UNIDADE));
+        compra(LocalDate.of(2026,8,4),"Ignorado",StatusCompra.ESTORNADA,item(feijao,"1","9",UnidadeMedida.GRAMA));em.flush();
+        assertThat(repository.buscarOpcoesItensAnalise("",org.springframework.data.domain.PageRequest.of(0,20)))
+                .hasSize(2).extracting(CompraRepository.OpcaoItemAnalise::getItemNome).containsExactly("Feijão","Refrigerante");
+        assertThat(repository.buscarFornecedoresAnalise("",org.springframework.data.domain.PageRequest.of(0,20))).containsExactly("Rio Verde");
+    }
+
+    @Test void historicoPaginaNoBancoSemMisturarIdsIguaisEntreTipos() {
+        for(int i=1;i<=25;i++)compra(LocalDate.of(2026,8,Math.min(i,25)),"Fornecedor",StatusCompra.ATIVA,item(feijao,"1",String.valueOf(i),UnidadeMedida.QUILOGRAMA));
+        compra(LocalDate.of(2026,8,26),"Revenda",StatusCompra.ATIVA,item(refrigerante,"1","100",UnidadeMedida.UNIDADE));em.flush();
+        var primeira=repository.buscarHistoricoPrecos("INSUMO",feijao.getId(),"QUILOGRAMA","",null,null,org.springframework.data.domain.PageRequest.of(0,10));
+        var intermediaria=repository.buscarHistoricoPrecos("INSUMO",feijao.getId(),"QUILOGRAMA","",null,null,org.springframework.data.domain.PageRequest.of(1,10));
+        var ultima=repository.buscarHistoricoPrecos("INSUMO",feijao.getId(),"QUILOGRAMA","",null,null,org.springframework.data.domain.PageRequest.of(2,10));
+        assertThat(primeira.getContent()).hasSize(10);assertThat(primeira.isFirst()).isTrue();assertThat(primeira.getContent().getFirst().getDataCompra()).isEqualTo(LocalDate.of(2026,8,25));
+        assertThat(intermediaria.getContent()).hasSize(10);assertThat(intermediaria.getNumber()).isEqualTo(1);
+        assertThat(ultima.getContent()).hasSize(5);assertThat(ultima.isLast()).isTrue();assertThat(primeira.getContent()).allMatch(x->x.getFornecedor().equals("Fornecedor"));
     }
 
     private ItemCompra item(Insumo insumo,String quantidade,String valor,UnidadeMedida unidade){return ItemCompra.builder().insumo(insumo).nomeHistorico(insumo.getNome()).unidadeHistorica(unidade).quantidade(new BigDecimal(quantidade)).valorTotalItem(new BigDecimal(valor)).custoUnitario(new BigDecimal(valor).divide(new BigDecimal(quantidade),6,java.math.RoundingMode.HALF_UP)).build();}

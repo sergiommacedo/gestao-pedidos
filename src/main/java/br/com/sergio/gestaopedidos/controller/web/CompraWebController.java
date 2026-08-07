@@ -28,19 +28,26 @@ public class CompraWebController {
         try{var p=compraService.listar(dataInicial,dataFinal,fornecedor,tipoCompra,pageable);model.addAttribute("paginaCompras",p);model.addAttribute("compras",p.getContent());model.addAttribute("resumo",compraService.resumir(dataInicial,dataFinal,LocalDate.now()));}catch(BusinessException e){model.addAttribute("paginaCompras",Page.empty(pageable));model.addAttribute("compras",List.of());model.addAttribute("mensagemErro",e.getMessage());}
         model.addAttribute("dataInicial",dataInicial);model.addAttribute("dataFinal",dataFinal);model.addAttribute("fornecedor",fornecedor);model.addAttribute("tipoCompra",tipoCompra);model.addAttribute("tiposCompra",TipoCompra.values());model.addAttribute("tamanho",limite);model.addAttribute("ordenarPor",campo);model.addAttribute("direcao",sentido.name().toLowerCase());return"compras/listar";
     }
-    @GetMapping("/analise-precos") public String analisePrecos(@RequestParam(defaultValue="")String item,
-            @RequestParam(defaultValue="")String fornecedor,@RequestParam(required=false)TipoItemEstoque categoria,
+    @GetMapping("/analise-precos") public String analisePrecos(@RequestParam(required=false)TipoItemEstoque tipoItem,
+            @RequestParam(required=false)Long referenciaId,@RequestParam(required=false)UnidadeMedida unidade,
+            @RequestParam(defaultValue="")String itemNome,@RequestParam(defaultValue="")String fornecedor,@RequestParam(required=false)TipoItemEstoque categoria,
             @RequestParam(required=false)@DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate dataInicial,
-            @RequestParam(required=false)@DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate dataFinal,
-            @RequestParam(required=false)TipoItemEstoque historicoCategoria,@RequestParam(required=false)Long referenciaId,
-            @RequestParam(required=false)UnidadeMedida unidade,Model model){
-        try{model.addAttribute("analise",compraService.analisarPrecos(item,fornecedor,categoria,dataInicial,dataFinal,
-                historicoCategoria,referenciaId,unidade));}catch(BusinessException e){model.addAttribute("analise",new AnalisePrecosCompraResponse(List.of(),List.of(),List.of()));model.addAttribute("mensagemErro",e.getMessage());}
-        model.addAttribute("item",item);model.addAttribute("fornecedor",fornecedor);model.addAttribute("categoria",categoria);
-        model.addAttribute("dataInicial",dataInicial);model.addAttribute("dataFinal",dataFinal);model.addAttribute("historicoCategoria",historicoCategoria);
-        model.addAttribute("referenciaId",referenciaId);model.addAttribute("unidade",unidade);
+            @RequestParam(required=false)@DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate dataFinal,Model model){
+        try{model.addAttribute("analise",compraService.analisarPrecos(tipoItem,referenciaId,unidade,fornecedor,categoria,dataInicial,dataFinal));}catch(BusinessException e){model.addAttribute("analise",new AnalisePrecosCompraResponse(List.of(),List.of()));model.addAttribute("mensagemErro",e.getMessage());}
+        model.addAttribute("tipoItem",tipoItem);model.addAttribute("referenciaId",referenciaId);model.addAttribute("unidade",unidade);model.addAttribute("itemNome",itemNome);
+        model.addAttribute("fornecedor",fornecedor);model.addAttribute("categoria",categoria);
+        model.addAttribute("dataInicial",dataInicial);model.addAttribute("dataFinal",dataFinal);
         model.addAttribute("categorias",List.of(TipoItemEstoque.INSUMO,TipoItemEstoque.PRODUTO_REVENDA));return"compras/analise-precos";
     }
+    @GetMapping("/analise-precos/itens")@ResponseBody public List<OpcaoAnalisePrecoResponse> buscarItensAnalise(@RequestParam(defaultValue="")String termo){return compraService.buscarItensAnalise(termo);}
+    @GetMapping("/analise-precos/fornecedores")@ResponseBody public List<String> buscarFornecedoresAnalise(@RequestParam(defaultValue="")String termo){return compraService.buscarFornecedoresAnalise(termo);}
+    @GetMapping("/analise-precos/historico")@ResponseBody public HistoricoPrecoPageResponse historicoPrecos(
+            @RequestParam TipoItemEstoque tipoItem,@RequestParam Long referenciaId,@RequestParam UnidadeMedida unidade,
+            @RequestParam(defaultValue="")String fornecedor,
+            @RequestParam(required=false)@DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate dataInicial,
+            @RequestParam(required=false)@DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate dataFinal,
+            @RequestParam(defaultValue="0")int pagina){return compraService.buscarHistoricoPrecos(tipoItem,referenciaId,unidade,
+                    fornecedor,dataInicial,dataFinal,Math.max(0,pagina));}
     @GetMapping("/nova")public String nova(Model model){model.addAttribute("compra",CompraRequest.builder().dataCompra(LocalDate.now()).build());preparar(model,false,null,List.of(),false);return"compras/formulario";}
     @PostMapping public String salvar(@Valid@ModelAttribute("compra")CompraRequest request,BindingResult result,Model model,RedirectAttributes redirect){if(result.hasErrors()){preparar(model,false,null,itensFormulario(request),false);return"compras/formulario";}try{var c=compraService.salvar(request);redirect.addFlashAttribute("mensagemSucesso","Compra cadastrada com sucesso.");return"redirect:/compras/"+c.id();}catch(BusinessException e){result.reject("compra.invalida",e.getMessage());preparar(model,false,null,itensFormulario(request),false);return"compras/formulario";}}
     @GetMapping("/{id}")public String detalhes(@PathVariable Long id,Model model){model.addAttribute("compra",compraService.buscarPorId(id));model.addAttribute("financeiroBloqueado",compraService.compraMovimentada(id));return"compras/detalhes";}
