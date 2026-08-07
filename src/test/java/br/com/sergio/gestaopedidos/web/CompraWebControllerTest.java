@@ -32,4 +32,10 @@ class CompraWebControllerTest {
         assertThat(js).contains("`${item.tipoItem}:${item.referenciaId}`","container.prepend(linha)","evento.submitter?.matches(\"[data-salvar-compra]\")","quantidade.focus()","busca.value = \"\"");
         assertThat(js).doesNotContain("/compras/itens/buscar?tipo=");
     }
+
+    @Test void detalhesFormatamCustoUnitarioComoMoedaComDuasCasas()throws Exception{
+        String html=Files.readString(Path.of("src/main/resources/templates/compras/detalhes.html"));
+        assertThat(html).contains("formatarDecimalBrasileiro(item.custoUnitario,2)");
+        assertThat(html).doesNotContain("formatarDecimalBrasileiro(item.custoUnitario,6)");
+    }
 }
