@@ -52,12 +52,14 @@ class DashboardTemplateTest {
 
     @Test void rankingAbreModalEHistoricoSoEhConsultadoAposClique() throws Exception {
         String html = Files.readString(template);
-        assertThat(html).contains("Ver pedidos", "#modalHistoricoCliente", "data-historico-cliente-url",
-                "/dashboard/clientes/{id}/pedidos", "modal-historico-cliente");
+        assertThat(html).contains("Ver pedidos", "data-cliente-id", "data-cliente-nome",
+                "data-historico-cliente-url", "/dashboard/clientes/{id}/pedidos", "modal-historico-cliente");
         assertThat(html).doesNotContain("historico.pedidos");
         assertThat(Files.readString(modal)).contains("data-conteudo-historico-cliente", "Carregando pedidos");
-        assertThat(Files.readString(javascript)).contains("show.bs.modal", "dataset.historicoClienteUrl",
-                "data-itens-historicos-url", "dataset.historicoPaginaUrl", "fetch(");
+        assertThat(Files.readString(javascript)).contains("[data-historico-cliente-url]", "modal.show(botao)",
+                "dataset.historicoClienteUrl", "data-itens-historicos-url", "dataset.historicoPaginaUrl", "fetch(",
+                "console.error", "Não foi possível carregar os pedidos deste cliente.");
+        assertThat(html).contains("<div th:replace=\"~{dashboard/fragments/modal-historico-cliente :: modal}\"></div>\n</div></body>");
     }
 
     @Test void modalMostraPedidosPaginacaoItensETotaisHistoricos() throws Exception {

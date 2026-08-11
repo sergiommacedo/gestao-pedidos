@@ -910,8 +910,16 @@ function inicializarModalDetalhesPedido() {
 
 function inicializarHistoricoClientesDashboard() {
     const modalElemento = document.querySelector("#modalHistoricoCliente");
-    if (!modalElemento) return;
+    if (!modalElemento) {
+        if (document.querySelector("[data-historico-cliente-url]")) console.error("Modal de histórico de clientes não encontrada no DOM.");
+        return;
+    }
+    if (typeof bootstrap === "undefined") {
+        console.error("Bootstrap não está disponível para abrir o histórico de clientes.");
+        return;
+    }
     const conteudo = modalElemento.querySelector("[data-conteudo-historico-cliente]");
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElemento);
     let controlador;
 
     const carregando = () => {
@@ -927,13 +935,16 @@ function inicializarHistoricoClientesDashboard() {
             conteudo.innerHTML = await resposta.text();
         } catch (erro) {
             if (erro.name === "AbortError") return;
-            conteudo.innerHTML = '<div class="modal-body"><div class="alert alert-danger mb-0">Não foi possível carregar o histórico deste cliente.</div></div>';
+            console.error("Erro ao carregar os pedidos do cliente.", erro);
+            conteudo.innerHTML = '<div class="modal-body"><div class="alert alert-danger mb-0">Não foi possível carregar os pedidos deste cliente.</div></div>';
         }
     };
 
-    modalElemento.addEventListener("show.bs.modal", evento => {
-        const url = evento.relatedTarget?.dataset.historicoClienteUrl;
-        if (url) carregar(url);
+    document.querySelectorAll("[data-historico-cliente-url]").forEach(botao => {
+        botao.addEventListener("click", () => {
+            modal.show(botao);
+            carregar(botao.dataset.historicoClienteUrl);
+        });
     });
     conteudo.addEventListener("click", async evento => {
         const pagina = evento.target.closest("[data-historico-pagina-url]");
@@ -956,7 +967,8 @@ function inicializarHistoricoClientesDashboard() {
             alvo.innerHTML = await resposta.text();
             alvo.dataset.carregado = "true";
             alvo.classList.remove("d-none");
-        } catch {
+        } catch (erro) {
+            console.error("Erro ao carregar os itens históricos do pedido.", erro);
             alvo.innerHTML = '<div class="alert alert-danger py-2 mb-0">Não foi possível carregar os itens.</div>';
             alvo.classList.remove("d-none");
         } finally {
