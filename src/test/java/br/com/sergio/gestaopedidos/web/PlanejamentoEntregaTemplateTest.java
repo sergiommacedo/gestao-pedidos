@@ -34,6 +34,25 @@ class PlanejamentoEntregaTemplateTest {
     }
 
     @Test
+    void planejamentoRetornaAoKanbanPreservandoDataECancelados() throws Exception {
+        String planejamento = Files.readString(PLANEJAMENTO);
+        String kanban = Files.readString(KANBAN);
+        assertThat(planejamento).contains("@{/pedidos/kanban(dataAgendada=${dataAgendada},mostrarCancelados=${mostrarCancelados})}",
+                "Voltar ao Kanban", "name=\"mostrarCancelados\"", "th:value=\"${mostrarCancelados}\"");
+        assertThat(planejamento).doesNotContain("Voltar às entregas",
+                "@{/pedidos(dataAgendada=${dataAgendada}, tipoEntrega='ENTREGA')}");
+        assertThat(kanban).contains("/pedidos/planejamento(dataAgendada=${dataAgendadaIso},mostrarCancelados=${mostrarCancelados})");
+    }
+
+    @Test
+    void confirmarPlanejamentoPermaneceNoPlanejamentoComContexto() throws Exception {
+        String planejamento = Files.readString(PLANEJAMENTO);
+        assertThat(planejamento).contains("@{/pedidos/planejamento/confirmar}",
+                "name=\"dataAgendada\" th:value=\"${dataAgendada}\"",
+                "name=\"mostrarCancelados\" th:value=\"${mostrarCancelados}\"");
+    }
+
+    @Test
     void planejamentoDistingueVazioTodosInvalidosEParcial() throws Exception {
         String html = Files.readString(PLANEJAMENTO);
         assertThat(html).contains("quantidadeEntregasElegiveis == 0",
@@ -49,7 +68,7 @@ class PlanejamentoEntregaTemplateTest {
         String planejamento = Files.readString(PLANEJAMENTO);
         String javaScript = Files.readString(JS);
         assertThat(planejamento).contains("/pedidos/planejamento/confirmar", "Confirmar planejamento",
-                "data-form-confirmar-planejamento");
+                "data-form-confirmar-planejamento", "Planejado", "Não planejado");
         assertThat(javaScript).contains("pedidoIds", "data-pedido-planejado", "data-navegavel='true'");
     }
 

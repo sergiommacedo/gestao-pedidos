@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,9 +37,12 @@ class PedidoOperacionalTest {
         clientes = mock(ClienteRepository.class);
         produtos = mock(ProdutoRepository.class);
         when(clientes.findById(1L)).thenReturn(Optional.of(cliente()));
+        when(clientes.findById(3L)).thenReturn(Optional.of(Cliente.builder().id(3L).nome("Outro cliente")
+                .telefone("41988888888").endereco("Rua Nova").numero("99").bairro("Centro")
+                .cidade("Curitiba").cep("80000-001").build()));
         when(produtos.findById(2L)).thenReturn(Optional.of(Produto.builder().id(2L).nome("Feijoada")
                 .preco(BigDecimal.TEN).ativo(true).vendavel(true).tipoProduto(TipoProduto.PRODUTO_REVENDA)
-                .unidadeVenda(UnidadeVenda.UNIDADE).permiteAcompanhamento(false).build()));
+                .unidadeVenda(UnidadeVenda.QUILOGRAMA).permiteAcompanhamento(false).build()));
         when(pedidos.save(any())).thenAnswer(invocacao -> invocacao.getArgument(0));
         service = new PedidoService(pedidos, clientes, produtos, mock(PedidoMapper.class),
                 mock(EstoqueService.class), mock(MovimentacaoEstoqueRepository.class));
@@ -134,6 +138,55 @@ class PedidoOperacionalTest {
         assertThat(salvo.getEnderecoEntregaHistorico()).isEqualTo("Rua X");
     }
 
+    @Test
+    void alteracaoDeItensPesoPagamentoEObservacaoPreservaPlanejamento() {
+        Pedido pedido = pedidoEditavelPlanejado();
+        when(pedidos.bloquearDetalhado(9L)).thenReturn(Optional.of(pedido));
+
+        PedidoRequest alteracao = PedidoRequest.builder().clienteId(1L).dataAgendada(pedido.getDataAgendada())
+                .formaPagamento(FormaPagamento.DINHEIRO).tipoEntrega(TipoEntrega.ENTREGA)
+                .horarioInicio(pedido.getHorarioInicio()).horarioFim(pedido.getHorarioFim())
+                .taxaEntrega(BigDecimal.ONE).observacao("Observação alterada")
+                .itens(List.of(ItemPedidoRequest.builder().produtoId(2L).quantidade(new BigDecimal("1.290")).build()))
+                .build();
+
+        service.atualizar(9L, alteracao, Arrays.asList((Long) null));
+
+        assertThat(pedido.isPlanejamentoConfirmado()).isTrue();
+        assertThat(pedido.getOrdemPlanejada()).isEqualTo(1);
+    }
+
+    @Test
+    void alteracaoDeHorarioInvalidaPlanejamento() {
+        Pedido pedido = pedidoEditavelPlanejado();
+        when(pedidos.bloquearDetalhado(9L)).thenReturn(Optional.of(pedido));
+        PedidoRequest alteracao = PedidoRequest.builder().clienteId(1L).dataAgendada(pedido.getDataAgendada())
+                .formaPagamento(FormaPagamento.PIX).tipoEntrega(TipoEntrega.ENTREGA)
+                .horarioInicio(LocalTime.of(14, 0)).taxaEntrega(BigDecimal.ZERO)
+                .itens(List.of(ItemPedidoRequest.builder().produtoId(2L).quantidade(BigDecimal.ONE).build()))
+                .build();
+
+        service.atualizar(9L, alteracao, Arrays.asList((Long) null));
+
+        assertThat(pedido.isPlanejamentoConfirmado()).isFalse();
+    }
+
+    @Test
+    void alteracaoDeEnderecoInvalidaPlanejamento() {
+        Pedido pedido = pedidoEditavelPlanejado();
+        when(pedidos.bloquearDetalhado(9L)).thenReturn(Optional.of(pedido));
+        PedidoRequest alteracao = PedidoRequest.builder().clienteId(3L).dataAgendada(pedido.getDataAgendada())
+                .formaPagamento(FormaPagamento.PIX).tipoEntrega(TipoEntrega.ENTREGA)
+                .horarioInicio(pedido.getHorarioInicio()).taxaEntrega(BigDecimal.ZERO)
+                .itens(List.of(ItemPedidoRequest.builder().produtoId(2L).quantidade(BigDecimal.ONE).build()))
+                .build();
+
+        service.atualizar(9L, alteracao, Arrays.asList((Long) null));
+
+        assertThat(pedido.isPlanejamentoConfirmado()).isFalse();
+        assertThat(pedido.getEnderecoEntregaHistorico()).isEqualTo("Rua Nova");
+    }
+
     private Pedido capturarSalvo() {
         var captor = org.mockito.ArgumentCaptor.forClass(Pedido.class);
         verify(pedidos, atLeastOnce()).save(captor.capture());
@@ -154,5 +207,15 @@ class PedidoOperacionalTest {
     private Pedido entregaPronta() {
         return Pedido.builder().id(9L).status(StatusPedido.PRONTO).tipoEntrega(TipoEntrega.ENTREGA)
                 .cliente(cliente()).itens(new ArrayList<>()).build();
+    }
+
+    private Pedido pedidoEditavelPlanejado() {
+        Pedido pedido = Pedido.builder().id(9L).status(StatusPedido.EM_PREPARACAO).tipoEntrega(TipoEntrega.ENTREGA)
+                .dataAgendada(LocalDate.now()).formaPagamento(FormaPagamento.PIX)
+                .horarioInicio(LocalTime.NOON).subtotal(BigDecimal.ZERO).taxaEntrega(BigDecimal.ZERO)
+                .valorTotal(BigDecimal.ZERO).cliente(cliente()).itens(new ArrayList<>()).build();
+        pedido.fotografarEnderecoEntrega(pedido.getCliente());
+        pedido.confirmarPlanejamento(LocalDateTime.now(), 1);
+        return pedido;
     }
 }

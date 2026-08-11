@@ -7,12 +7,13 @@
             <h2 class="mb-0"><i class="bi bi-sign-turn-right"></i> Planejamento de Entregas</h2>
             <small class="text-muted">Ordem preliminar por horário — revise antes de navegar</small>
         </div>
-        <a th:href="@{/pedidos(dataAgendada=${dataAgendada}, tipoEntrega='ENTREGA')}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar às entregas
+        <a th:href="@{/pedidos/kanban(dataAgendada=${dataAgendada},mostrarCancelados=${mostrarCancelados})}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Kanban
         </a>
     </header>
 
     <form th:action="@{/pedidos/planejamento}" method="get" class="card card-body shadow-sm mb-3">
+        <input type="hidden" name="mostrarCancelados" th:value="${mostrarCancelados}">
         <div class="row g-2 align-items-end">
             <div class="col-sm-5 col-lg-3">
                 <label for="dataPlanejamento" class="form-label">Data</label>
@@ -38,6 +39,7 @@
 
     <form th:action="@{/pedidos/planejamento/confirmar}" method="post" data-form-confirmar-planejamento>
     <input type="hidden" name="dataAgendada" th:value="${dataAgendada}">
+    <input type="hidden" name="mostrarCancelados" th:value="${mostrarCancelados}">
     <div class="vstack gap-3" data-lista-entregas>
         <article class="card shadow-sm" th:each="entrega, stat : ${entregasPlanejaveis}"
                  data-entrega-planejada th:data-id="${entrega.id}"
@@ -52,6 +54,9 @@
                                 th:text="${entrega.horarioFim != null ? #temporals.format(entrega.horarioInicio, 'HH:mm') + '–' + #temporals.format(entrega.horarioFim, 'HH:mm') : #temporals.format(entrega.horarioInicio, 'HH:mm')}"></strong>
                         <span th:if="${entrega.horarioInicio == null}" class="text-muted">Sem horário</span>
                         <span class="badge text-bg-secondary" th:text="${entrega.status.descricao}"></span>
+                        <span class="badge"
+                              th:classappend="${entrega.planejamentoConfirmado} ? ' text-bg-info' : ' text-bg-light border text-body-secondary'"
+                              th:text="${entrega.planejamentoConfirmado} ? 'Planejado' : 'Não planejado'"></span>
                     </div>
                     <div class="fw-semibold" th:text="${entrega.clienteNome}"></div>
                     <div class="fw-bold text-uppercase text-primary" th:if="${entrega.bairro != null}" th:text="${entrega.bairro}"></div>

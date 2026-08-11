@@ -225,12 +225,17 @@ public class PedidoService {
         validarHorarios(request);
         Pedido pedido = pedidoRepository.bloquearDetalhado(id).orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
         validarEditavel(pedido);
-        pedido.invalidarPlanejamento();
         boolean estoqueMovimentado = Boolean.TRUE.equals(pedido.getEstoqueMovimentado());
         if (estoqueMovimentado) estoqueService.estornarPedido(pedido);
         Cliente cliente = buscarClientePorId(request.clienteId());
         Long clienteAnteriorId = pedido.getCliente().getId();
         TipoEntrega tipoAnterior = pedido.getTipoEntrega();
+        boolean alteracaoLogistica = !java.util.Objects.equals(pedido.getDataAgendada(), request.dataAgendada())
+                || tipoAnterior != request.tipoEntrega()
+                || !java.util.Objects.equals(clienteAnteriorId, cliente.getId())
+                || !java.util.Objects.equals(pedido.getHorarioInicio(), request.horarioInicio())
+                || !java.util.Objects.equals(pedido.getHorarioFim(), request.horarioFim());
+        if (alteracaoLogistica) pedido.invalidarPlanejamento();
 
         pedido.setCliente(cliente);
         pedido.setDataAgendada(request.dataAgendada());

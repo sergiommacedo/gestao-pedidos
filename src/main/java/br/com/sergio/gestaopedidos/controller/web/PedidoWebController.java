@@ -253,11 +253,13 @@ public class PedidoWebController {
     @GetMapping("/planejamento")
     public String planejamento(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataAgendada,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
             Model model
     ) {
         LocalDate dataSelecionada = dataAgendada == null ? LocalDate.now() : dataAgendada;
         PlanejamentoEntregasResponse planejamento = pedidoService.planejarEntregas(dataSelecionada);
         model.addAttribute("dataAgendada", dataSelecionada);
+        model.addAttribute("mostrarCancelados", mostrarCancelados);
         model.addAttribute("entregasPlanejaveis", planejamento.elegiveis());
         model.addAttribute("entregasEmRota", planejamento.emRota());
         model.addAttribute("quantidadeEntregasElegiveis", planejamento.quantidadeElegiveis());
@@ -272,11 +274,13 @@ public class PedidoWebController {
     public String confirmarPlanejamento(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataAgendada,
             @RequestParam(name = "pedidoIds", required = false) List<Long> pedidoIds,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
             RedirectAttributes redirectAttributes
     ) {
         pedidoService.confirmarPlanejamento(dataAgendada, pedidoIds);
         redirectAttributes.addFlashAttribute("mensagemSucesso", "Planejamento confirmado com sucesso.");
         redirectAttributes.addAttribute("dataAgendada", dataAgendada.toString());
+        if (mostrarCancelados) redirectAttributes.addAttribute("mostrarCancelados", true);
         return "redirect:/pedidos/planejamento";
     }
 

@@ -86,16 +86,37 @@ class PedidoPlanejamentoServiceTest {
         Pedido valido2 = pedido(2, StatusPedido.PRONTO, true);
         Pedido invalido = pedido(3, StatusPedido.PRONTO, false);
         Pedido valido1 = pedido(1, StatusPedido.EM_PREPARACAO, true);
+        Pedido pendente = pedido(4, StatusPedido.PENDENTE, true);
         when(pedidos.buscarParaPlanejamento(eq(data), anyCollection()))
-                .thenReturn(List.of(valido1, valido2, invalido));
+                .thenReturn(List.of(valido1, valido2, invalido, pendente));
 
-        service.confirmarPlanejamento(data, List.of(2L, 3L, 1L));
+        service.confirmarPlanejamento(data, List.of(4L, 2L, 3L, 1L));
 
-        assertThat(valido2.getOrdemPlanejada()).isEqualTo(1);
-        assertThat(valido1.getOrdemPlanejada()).isEqualTo(2);
+        assertThat(pendente.getOrdemPlanejada()).isEqualTo(1);
+        assertThat(valido2.getOrdemPlanejada()).isEqualTo(2);
+        assertThat(valido1.getOrdemPlanejada()).isEqualTo(3);
         assertThat(valido1.getPlanejadoEm()).isNotNull();
         assertThat(invalido.isPlanejamentoConfirmado()).isFalse();
+        assertThat(pendente.getStatus()).isEqualTo(StatusPedido.PENDENTE);
+        assertThat(valido1.getStatus()).isEqualTo(StatusPedido.EM_PREPARACAO);
+        assertThat(valido2.getStatus()).isEqualTo(StatusPedido.PRONTO);
         verify(pedidos).saveAll(anyList());
+    }
+
+    @Test
+    void novoPedidoNaoHerdaPlanejamentoEEntraNoReplanejamento() {
+        LocalDate data = LocalDate.now();
+        Pedido anterior = pedido(1, StatusPedido.PENDENTE, true);
+        anterior.confirmarPlanejamento(LocalDateTime.now().minusHours(2), 1);
+        Pedido novo = pedido(2, StatusPedido.PENDENTE, true);
+        assertThat(novo.isPlanejamentoConfirmado()).isFalse();
+        when(pedidos.buscarParaPlanejamento(eq(data), anyCollection())).thenReturn(List.of(anterior, novo));
+
+        service.confirmarPlanejamento(data, List.of(1L, 2L));
+
+        assertThat(anterior.getOrdemPlanejada()).isEqualTo(1);
+        assertThat(novo.getOrdemPlanejada()).isEqualTo(2);
+        assertThat(novo.isPlanejamentoConfirmado()).isTrue();
     }
 
     @Test
