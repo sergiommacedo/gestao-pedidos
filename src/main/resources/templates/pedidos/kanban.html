@@ -21,7 +21,7 @@
                     <i class="bi bi-kanban"></i> Kanban
                 </a>
             </div>
-            <a th:href="@{/pedidos/novo}" class="btn btn-primary">
+            <a th:href="@{/pedidos/novo(origem='kanban',dataAgendada=${dataAgendadaIso},mostrarCancelados=${mostrarCancelados})}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Novo Pedido
             </a>
             <a th:href="@{/pedidos/planejamento(dataAgendada=${dataAgendadaIso})}" class="btn btn-outline-primary">
@@ -162,6 +162,10 @@
                             <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
                             <input type="hidden" name="visualizacao" value="kanban">
                             <input type="hidden" name="mostrarCancelados" th:value="${mostrarCancelados}">
+                            <div class="d-none" data-item-peso
+                                 th:each="itemPeso : ${pedido.itens.?[unidadeVenda.name() == 'QUILOGRAMA']}"
+                                 th:data-produto="${itemPeso.produtoNome}"
+                                 th:data-quantidade="${@formatacao.formatarQuantidade(itemPeso.quantidade, itemPeso.unidadeVenda)}"></div>
                             <button type="submit" class="btn btn-primary kanban-btn-avancar text-nowrap">
                                 <span th:text="${pedido.status.name() == 'PRONTO' and pedido.tipoEntrega.name() == 'RETIRADA' ? 'Concluir retirada' : (pedido.status.name() == 'PRONTO' ? 'Saiu para entrega' : (pedido.status.name() == 'SAIU_PARA_ENTREGA' ? 'Marcar como entregue' : 'Avançar para ' + proximosStatus[pedido.id].descricao))}"></span>
                                 <i class="bi bi-arrow-right ms-1"></i>
@@ -250,5 +254,7 @@
             Nenhum pedido cancelado nesta data.
         </div>
     </section>
+
+    <div th:replace="~{fragments/modal-confirmacao-peso-pedido :: modalConfirmacaoPesoPedido}"></div>
 </section>
 </html>

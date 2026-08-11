@@ -986,12 +986,47 @@ function inicializarDropdownsStatus() {
 }
 
 function inicializarConfirmacaoQuantidadesFinais() {
+    const modalElemento = document.querySelector("#modalConfirmacaoPesoPedido");
+    if (!modalElemento || typeof bootstrap === "undefined") return;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElemento);
+    const lista = modalElemento.querySelector("[data-lista-pesos-finais]");
+    const confirmar = modalElemento.querySelector("[data-confirmar-pronto]");
+    let formularioPendente;
+
     document.querySelectorAll("form[data-confirmar-quantidades='true']").forEach(formulario => {
         formulario.addEventListener("submit", evento => {
-            if (!window.confirm("Confirme as quantidades finais antes da baixa do estoque.")) {
-                evento.preventDefault();
-            }
+            if (formulario.dataset.quantidadesConfirmadas === "true") return;
+            evento.preventDefault();
+            formularioPendente = formulario;
+            lista.replaceChildren();
+            formulario.querySelectorAll("[data-item-peso]").forEach(item => {
+                const linha = document.createElement("div");
+                linha.className = "list-group-item d-flex flex-column flex-sm-row justify-content-between gap-1";
+                const produto = document.createElement("span");
+                produto.className = "fw-semibold text-break";
+                produto.textContent = item.dataset.produto || "Produto";
+                const quantidade = document.createElement("strong");
+                quantidade.className = "text-nowrap";
+                quantidade.textContent = item.dataset.quantidade || "";
+                linha.append(produto, quantidade);
+                lista.appendChild(linha);
+            });
+            modal.show();
         });
+    });
+
+    confirmar.addEventListener("click", () => {
+        if (!formularioPendente) return;
+        formularioPendente.dataset.quantidadesConfirmadas = "true";
+        const formulario = formularioPendente;
+        formularioPendente = undefined;
+        modal.hide();
+        formulario.requestSubmit();
+    });
+
+    modalElemento.addEventListener("hidden.bs.modal", () => {
+        formularioPendente = undefined;
+        lista.replaceChildren();
     });
 }
 

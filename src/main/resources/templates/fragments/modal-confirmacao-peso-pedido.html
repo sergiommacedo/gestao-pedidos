@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="modalConfirmacaoPesoPedido" class="modal fade"
+     id="modalConfirmacaoPesoPedido" tabindex="-1"
+     aria-labelledby="tituloModalConfirmacaoPesoPedido" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tituloModalConfirmacaoPesoPedido">
+                    <i class="bi bi-scale text-primary me-2"></i>Confirmar quantidades finais
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Confira os pesos antes de marcar o pedido como Pronto. Após confirmar, o estoque será baixado.</p>
+                <div class="list-group overflow-auto" style="max-height: 40vh" data-lista-pesos-finais></div>
+            </div>
+            <div class="modal-footer flex-column-reverse flex-sm-row">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    Voltar e editar
+                </button>
+                <button type="button" class="btn btn-primary" data-confirmar-pronto>
+                    <i class="bi bi-check-circle me-1"></i>Confirmar e marcar como Pronto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</html>

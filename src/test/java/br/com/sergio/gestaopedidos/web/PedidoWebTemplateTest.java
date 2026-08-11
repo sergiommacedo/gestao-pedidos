@@ -45,7 +45,7 @@ class PedidoWebTemplateTest {
     void novoPedidoAbreComDataAtualDefinidaPeloController() {
         ExtendedModelMap model = new ExtendedModelMap();
 
-        String view = controller(mock(PedidoService.class)).novo(model);
+        String view = controller(mock(PedidoService.class)).novo("lista", null, false, model);
 
         assertThat(view).isEqualTo("pedidos/formulario");
         assertThat(((PedidoRequest) model.get("pedido")).dataAgendada()).isEqualTo(LocalDate.now());
@@ -99,6 +99,9 @@ class PedidoWebTemplateTest {
                 new BeanPropertyBindingResult(request, "pedido"),
                 "salvar",
                 List.of(""),
+                "lista",
+                null,
+                false,
                 new ExtendedModelMap(),
                 new RedirectAttributesModelMap()
         );
@@ -106,6 +109,80 @@ class PedidoWebTemplateTest {
         assertThat(view).isEqualTo("redirect:/pedidos");
         verify(pedidoService).salvar(request);
         assertThat(request.dataAgendada()).isEqualTo(escolhida);
+    }
+
+    @Test
+    void novoPedidoPartindoDoKanbanPreservaOrigemEData() {
+        LocalDate dataKanban = LocalDate.of(2026, 8, 11);
+        ExtendedModelMap model = new ExtendedModelMap();
+        String view = controller(mock(PedidoService.class)).novo("kanban", dataKanban, true, model);
+        assertThat(view).isEqualTo("pedidos/formulario");
+        assertThat(((PedidoRequest) model.get("pedido")).dataAgendada()).isEqualTo(dataKanban);
+        assertThat(model.get("origem")).isEqualTo("kanban");
+        assertThat(model.get("dataRetornoKanbanIso")).isEqualTo("2026-08-11");
+    }
+
+    @Test
+    void salvarNovoPedidoDoKanbanRetornaAoKanbanDaMesmaData() {
+        PedidoService pedidoService = mock(PedidoService.class);
+        PedidoRequest request = requestValido(LocalDate.of(2026, 8, 11));
+        when(pedidoService.salvar(request)).thenReturn(PedidoResponse.builder().id(11L).build());
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+        String view = controller(pedidoService).salvar(request,
+                new BeanPropertyBindingResult(request, "pedido"), "salvar", List.of(""),
+                "kanban", LocalDate.of(2026, 8, 11), false, new ExtendedModelMap(), redirect);
+        assertThat(view).isEqualTo("redirect:/pedidos/kanban");
+        assertThat(redirect.get("dataAgendada")).isEqualTo("2026-08-11");
+    }
+
+    @Test
+    void origemExternaNaoProduzOpenRedirectEFluxoPadraoContinuaNaLista() {
+        PedidoService pedidoService = mock(PedidoService.class);
+        PedidoRequest request = requestValido(LocalDate.now());
+        when(pedidoService.salvar(request)).thenReturn(PedidoResponse.builder().id(11L).build());
+        String view = controller(pedidoService).salvar(request,
+                new BeanPropertyBindingResult(request, "pedido"), "salvar", List.of(""),
+                "https://externo.example", null, false, new ExtendedModelMap(), new RedirectAttributesModelMap());
+        assertThat(view).isEqualTo("redirect:/pedidos");
+    }
+
+    @Test
+    void formularioNovoEEdicaoOfereceKanbanELista() throws Exception {
+        assertThat(Files.readString(FORMULARIO)).contains("Voltar ao Kanban", "> Lista</a>",
+                "dataRetornoKanbanIso", "pedido.dataAgendada");
+    }
+
+    @Test
+    void editarPartindoDoKanbanPreservaOrigemEDataNoFormulario() {
+        PedidoService pedidoService = mock(PedidoService.class);
+        when(pedidoService.buscarParaEdicao(7L)).thenReturn(PedidoResponse.builder().id(7L)
+                .dataAgendada(LocalDate.of(2026, 8, 12)).itens(List.of()).build());
+        ExtendedModelMap model = new ExtendedModelMap();
+        controller(pedidoService).editar(7L, "kanban", LocalDate.of(2026, 8, 11), false,
+                model, new RedirectAttributesModelMap());
+        assertThat(model.get("origem")).isEqualTo("kanban");
+        assertThat(model.get("dataRetornoKanbanIso")).isEqualTo("2026-08-11");
+    }
+
+    @Test
+    void salvarEdicaoRespeitaOrigemKanbanELista() {
+        PedidoService pedidoService = mock(PedidoService.class);
+        PedidoRequest request = requestValido(LocalDate.of(2026, 8, 12));
+        PedidoResponse editavel = PedidoResponse.builder().id(7L).itens(List.of()).build();
+        when(pedidoService.buscarParaEdicao(7L)).thenReturn(editavel);
+        when(pedidoService.atualizar(7L, request, List.of(5L))).thenReturn(PedidoResponse.builder().id(7L).build());
+
+        RedirectAttributesModelMap redirectKanban = new RedirectAttributesModelMap();
+        String kanban = controller(pedidoService).atualizar(7L, request,
+                new BeanPropertyBindingResult(request, "pedido"), "salvar", List.of("5"),
+                "kanban", LocalDate.of(2026, 8, 11), false, new ExtendedModelMap(), redirectKanban);
+        assertThat(kanban).isEqualTo("redirect:/pedidos/kanban");
+        assertThat(redirectKanban.get("dataAgendada")).isEqualTo("2026-08-11");
+
+        String lista = controller(pedidoService).atualizar(7L, request,
+                new BeanPropertyBindingResult(request, "pedido"), "salvar", List.of("5"),
+                "lista", null, false, new ExtendedModelMap(), new RedirectAttributesModelMap());
+        assertThat(lista).isEqualTo("redirect:/pedidos");
     }
 
     @Test

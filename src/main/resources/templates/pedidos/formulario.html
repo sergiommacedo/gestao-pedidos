@@ -12,9 +12,13 @@
             <h2 class="mb-0"><i class="bi bi-receipt"></i> <span th:text="${titulo}">Novo Pedido</span></h2>
             <small class="text-muted" th:text="${descricaoFormulario}">Selecione o cliente, organize os itens e confira o total</small>
         </div>
-        <div class="page-header-actions"><a th:href="@{/pedidos}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a></div>
+        <div class="page-header-actions btn-group" role="group" aria-label="Retornar aos pedidos">
+            <a th:href="@{/pedidos/kanban(dataAgendada=${dataRetornoKanbanIso != null and !dataRetornoKanbanIso.isBlank() ? dataRetornoKanbanIso : pedido.dataAgendada},mostrarCancelados=${mostrarCancelados})}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar ao Kanban
+            </a>
+            <a th:href="@{/pedidos}" class="btn btn-outline-secondary"><i class="bi bi-list-ul"></i> Lista</a>
+        </div>
     </header>
 
     <form th:object="${pedido}" th:action="${urlFormulario}" method="post"
@@ -269,7 +273,7 @@
                         </div>
                         <div class="alert alert-secondary py-2" role="status" data-previa-estoque>
                             <div class="fw-semibold" data-previa-estoque-titulo>Aguardando itens</div>
-                            <small data-previa-estoque-mensagem>O estoque será baixado quando o pedido entrar em preparação.</small>
+                            <small data-previa-estoque-mensagem>O estoque será baixado quando o pedido for marcado como pronto.</small>
                             <div class="mt-2 d-none" data-previa-componentes></div>
                         </div>
                         <div class="border rounded p-3 mb-4 d-none" data-previa-financeira

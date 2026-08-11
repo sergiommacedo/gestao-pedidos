@@ -13,6 +13,7 @@ class PlanejamentoEntregaTemplateTest {
     private static final Path KANBAN = Path.of("src/main/resources/templates/pedidos/kanban.html");
     private static final Path FORMULARIO = Path.of("src/main/resources/templates/pedidos/formulario.html");
     private static final Path JS = Path.of("src/main/resources/static/js/app.js");
+    private static final Path MODAL_PESO = Path.of("src/main/resources/templates/fragments/modal-confirmacao-peso-pedido.html");
 
     @Test
     void formularioUsaHorariosNativosEEdicaoTemBinding() throws Exception {
@@ -51,8 +52,25 @@ class PlanejamentoEntregaTemplateTest {
     @Test
     void kanbanConfirmaPesoAoAvancarParaPronto() throws Exception {
         assertThat(Files.readString(KANBAN)).contains("Confirme os pesos antes de finalizar",
-                "data-confirmar-quantidades", "unidadeVenda.name() == 'QUILOGRAMA'");
-        assertThat(Files.readString(JS)).contains("Confirme as quantidades finais antes da baixa do estoque");
+                "data-confirmar-quantidades", "unidadeVenda.name() == 'QUILOGRAMA'",
+                "data-item-peso", "itemPeso.produtoNome", "formatarQuantidade(itemPeso.quantidade");
+        String modal = Files.readString(MODAL_PESO);
+        assertThat(modal).contains("Confirmar quantidades finais", "Voltar e editar",
+                "Confirmar e marcar como Pronto", "data-lista-pesos-finais");
+    }
+
+    @Test
+    void confirmacaoDePesoUsaModalBootstrapSemDialogoNativo() throws Exception {
+        String javaScript = Files.readString(JS);
+        assertThat(javaScript).contains("bootstrap.Modal.getOrCreateInstance", "formulario.requestSubmit()",
+                "dataset.quantidadesConfirmadas", "lista.replaceChildren", "produto.textContent", "quantidade.textContent");
+        assertThat(javaScript).doesNotContain("window.confirm(", "window.alert(", "window.prompt(");
+    }
+
+    @Test
+    void pedidoSemPesoNaoRecebeInterceptacao() throws Exception {
+        String kanban = Files.readString(KANBAN);
+        assertThat(kanban).contains("data-confirmar-quantidades=${pedido.status.name() == 'EM_PREPARACAO' and pedido.itens.?[unidadeVenda.name() == 'QUILOGRAMA'].size() > 0}");
     }
 
     @Test

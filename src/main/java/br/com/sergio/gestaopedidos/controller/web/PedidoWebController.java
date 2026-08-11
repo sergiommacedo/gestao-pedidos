@@ -231,15 +231,21 @@ public class PedidoWebController {
     }
 
     @GetMapping("/novo")
-    public String novo(Model model) {
+    public String novo(
+            @RequestParam(defaultValue = "lista") String origem,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataAgendada,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
+            Model model
+    ) {
         PedidoRequest pedido = PedidoRequest.builder()
-                .dataAgendada(LocalDate.now())
+                .dataAgendada(dataAgendada == null ? LocalDate.now() : dataAgendada)
                 .taxaEntrega(BigDecimal.ZERO)
                 .itens(List.of())
                 .build();
 
         model.addAttribute("pedido", pedido);
         prepararFormulario(model, pedido, null, List.of());
+        adicionarOrigemFormulario(model, origem, dataAgendada, mostrarCancelados);
 
         return "pedidos/formulario";
     }
@@ -268,11 +274,15 @@ public class PedidoWebController {
             BindingResult bindingResult,
             @RequestParam(defaultValue = "salvar") String acao,
             @RequestParam(name = "itemIds", required = false) List<String> itemIds,
+            @RequestParam(defaultValue = "lista") String origem,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataRetornoKanban,
+            @RequestParam(defaultValue = "false") boolean mostrarCancelados,
             Model model,
             RedirectAttributes redirectAttributes
     ) {
         if (bindingResult.hasErrors()) {
             prepararFormulario(model, pedido, null, itemIds);
+            adicionarOrigemFormulario(model, origem, dataRetornoKanban, mostrarCancelados);
             return "pedidos/formulario";
         }
 
@@ -280,6 +290,9 @@ public class PedidoWebController {
             PedidoResponse pedidoSalvo = pedidoService.salvar(pedido);
 
             if ("salvarImprimir".equals(acao)) {
+                redirectAttributes.addAttribute("origem", normalizarOrigem(origem));
+                if (dataRetornoKanban != null) redirectAttributes.addAttribute("dataAgendada", dataRetornoKanban);
+                if (mostrarCancelados) redirectAttributes.addAttribute("mostrarCancelados", true);
                 return "redirect:/pedidos/" + pedidoSalvo.id() + "/comanda";
             }
 
@@ -287,10 +300,11 @@ public class PedidoWebController {
                     "mensagemSucesso",
                     "Pedido cadastrado com sucesso."
             );
-            return "redirect:/pedidos";
+            return redirecionarParaOrigem(origem, dataRetornoKanban, mostrarCancelados, redirectAttributes);
         } catch (BusinessException | ResourceNotFoundException exception) {
             bindingResult.reject("pedido.invalido", exception.getMessage());
             prepararFormulario(model, pedido, null, itemIds);
+            adicionarOrigemFormulario(model, origem, dataRetornoKanban, mostrarCancelados);
             return "pedidos/formulario";
         }
     }
