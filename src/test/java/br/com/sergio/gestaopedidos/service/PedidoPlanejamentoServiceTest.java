@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,6 +78,40 @@ class PedidoPlanejamentoServiceTest {
         assertThat(resultado.quantidadeElegiveis()).isEqualTo(2);
         assertThat(resultado.quantidadeEnderecosNavegaveis()).isEqualTo(2);
         assertThat(resultado.quantidadeEnderecosIncompletos()).isZero();
+    }
+
+    @Test
+    void confirmacaoMarcaSomentePedidosValidosNaOrdemInformada() {
+        LocalDate data = LocalDate.now();
+        Pedido valido2 = pedido(2, StatusPedido.PRONTO, true);
+        Pedido invalido = pedido(3, StatusPedido.PRONTO, false);
+        Pedido valido1 = pedido(1, StatusPedido.EM_PREPARACAO, true);
+        when(pedidos.buscarParaPlanejamento(eq(data), anyCollection()))
+                .thenReturn(List.of(valido1, valido2, invalido));
+
+        service.confirmarPlanejamento(data, List.of(2L, 3L, 1L));
+
+        assertThat(valido2.getOrdemPlanejada()).isEqualTo(1);
+        assertThat(valido1.getOrdemPlanejada()).isEqualTo(2);
+        assertThat(valido1.getPlanejadoEm()).isNotNull();
+        assertThat(invalido.isPlanejamentoConfirmado()).isFalse();
+        verify(pedidos).saveAll(anyList());
+    }
+
+    @Test
+    void replanejamentoDesmarcaPedidoRemovidoEIgnoraPedidoJaEmRota() {
+        LocalDate data = LocalDate.now();
+        Pedido removido = pedido(1, StatusPedido.PRONTO, true);
+        removido.confirmarPlanejamento(LocalDateTime.now().minusHours(1), 1);
+        Pedido emRota = pedido(2, StatusPedido.SAIU_PARA_ENTREGA, true);
+        emRota.confirmarPlanejamento(LocalDateTime.now().minusHours(1), 2);
+        when(pedidos.buscarParaPlanejamento(eq(data), anyCollection())).thenReturn(List.of(removido, emRota));
+
+        service.confirmarPlanejamento(data, List.of(2L, 999L));
+
+        assertThat(removido.isPlanejamentoConfirmado()).isFalse();
+        assertThat(emRota.isPlanejamentoConfirmado()).isTrue();
+        assertThat(emRota.getOrdemPlanejada()).isEqualTo(2);
     }
 
     private Pedido pedido(long id, StatusPedido status, boolean enderecoCompleto) {

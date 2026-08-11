@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarPlanejamentoEntregas();
     inicializarNavegacaoKanban();
     inicializarConfirmacaoQuantidadesFinais();
+    inicializarConfirmacaoSaidaSemPlanejamento();
 
 });
 
@@ -82,6 +83,7 @@ function inicializarPlanejamentoEntregas() {
     const lista = planejamento.querySelector("[data-lista-entregas]");
     const links = planejamento.querySelector("[data-links-google-maps]");
     const erro = planejamento.querySelector("[data-erro-google-maps]");
+    const formularioConfirmacao = planejamento.querySelector("[data-form-confirmar-planejamento]");
 
     const atualizar = () => {
         const cartoes = [...lista.querySelectorAll("[data-entrega-planejada]")];
@@ -115,6 +117,17 @@ function inicializarPlanejamentoEntregas() {
         if (botao.matches("[data-mover-cima]") && cartao.previousElementSibling) lista.insertBefore(cartao, cartao.previousElementSibling);
         if (botao.matches("[data-mover-baixo]") && cartao.nextElementSibling) lista.insertBefore(cartao.nextElementSibling, cartao);
         atualizar();
+    });
+    formularioConfirmacao?.addEventListener("submit", () => {
+        formularioConfirmacao.querySelectorAll("input[data-pedido-planejado]").forEach(input => input.remove());
+        lista.querySelectorAll("[data-entrega-planejada][data-navegavel='true']").forEach(cartao => {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "pedidoIds";
+            input.value = cartao.dataset.id;
+            input.dataset.pedidoPlanejado = "true";
+            formularioConfirmacao.appendChild(input);
+        });
     });
     atualizar();
 }
@@ -1027,6 +1040,46 @@ function inicializarConfirmacaoQuantidadesFinais() {
     modalElemento.addEventListener("hidden.bs.modal", () => {
         formularioPendente = undefined;
         lista.replaceChildren();
+    });
+}
+
+function inicializarConfirmacaoSaidaSemPlanejamento() {
+    const modalElemento = document.querySelector("#modalEntregaNaoPlanejada");
+    if (!modalElemento || typeof bootstrap === "undefined") return;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElemento);
+    const voltar = modalElemento.querySelector("[data-voltar-planejar]");
+    const confirmar = modalElemento.querySelector("[data-confirmar-saida-sem-planejamento]");
+    let formularioPendente;
+
+    document.querySelectorAll("form[data-validar-planejamento='true']").forEach(formulario => {
+        formulario.addEventListener("submit", evento => {
+            if (formulario.dataset.saidaSemPlanejamento === "true") return;
+            evento.preventDefault();
+            formularioPendente = formulario;
+            voltar.href = formulario.dataset.urlPlanejamento || "/pedidos/planejamento";
+            modal.show();
+        });
+    });
+
+    confirmar.addEventListener("click", () => {
+        if (!formularioPendente) return;
+        let campo = formularioPendente.querySelector("input[name='sairSemPlanejamento']");
+        if (!campo) {
+            campo = document.createElement("input");
+            campo.type = "hidden";
+            campo.name = "sairSemPlanejamento";
+            formularioPendente.appendChild(campo);
+        }
+        campo.value = "true";
+        formularioPendente.dataset.saidaSemPlanejamento = "true";
+        const formulario = formularioPendente;
+        formularioPendente = undefined;
+        modal.hide();
+        formulario.requestSubmit();
+    });
+
+    modalElemento.addEventListener("hidden.bs.modal", () => {
+        formularioPendente = undefined;
     });
 }
 

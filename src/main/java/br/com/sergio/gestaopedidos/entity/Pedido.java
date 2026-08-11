@@ -103,6 +103,15 @@ public class Pedido {
     @Column(name = "estoque_movimentado_em")
     private LocalDateTime estoqueMovimentadoEm;
 
+    @Column(name = "planejado_em")
+    private LocalDateTime planejadoEm;
+
+    @Column(name = "ordem_planejada")
+    private Integer ordemPlanejada;
+
+    @Column(name = "saida_sem_planejamento_em")
+    private LocalDateTime saidaSemPlanejamentoEm;
+
     @ManyToOne
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
@@ -173,6 +182,21 @@ public class Pedido {
         cidadeEntregaHistorico = null;
         cepEntregaHistorico = null;
         complementoEntregaHistorico = null;
+    }
+
+    public boolean isPlanejamentoConfirmado() {
+        return planejadoEm != null && ordemPlanejada != null;
+    }
+
+    public void confirmarPlanejamento(LocalDateTime instante, int ordem) {
+        planejadoEm = instante;
+        ordemPlanejada = ordem;
+        saidaSemPlanejamentoEm = null;
+    }
+
+    public void invalidarPlanejamento() {
+        planejadoEm = null;
+        ordemPlanejada = null;
     }
 
     private String normalizar(String valor) {

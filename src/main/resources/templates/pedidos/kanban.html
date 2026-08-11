@@ -142,6 +142,8 @@
 
                         <div class="mb-2">
                             <span class="badge" th:classappend="${situacoesEstoque[pedido.id] == 'Estoque baixado'} ? ' text-bg-success' : (${situacoesEstoque[pedido.id] == 'Estoque estornado'} ? ' text-bg-info' : ' text-bg-secondary')" th:text="${situacoesEstoque[pedido.id]}"></span>
+                            <span class="badge text-bg-info"
+                                  th:if="${pedido.status.name() == 'PRONTO' and pedido.tipoEntrega.name() == 'ENTREGA' and pedido.planejamentoConfirmado()}">Planejado</span>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center border-top kanban-total">
@@ -157,7 +159,9 @@
                         <form th:if="${proximosStatus[pedido.id] != pedido.status}"
                               th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
                               method="post" class="d-grid kanban-acao-principal"
-                              th:attr="data-confirmar-quantidades=${pedido.status.name() == 'EM_PREPARACAO' and pedido.itens.?[unidadeVenda.name() == 'QUILOGRAMA'].size() > 0}">
+                              th:attr="data-confirmar-quantidades=${pedido.status.name() == 'EM_PREPARACAO' and pedido.itens.?[unidadeVenda.name() == 'QUILOGRAMA'].size() > 0},
+                                       data-validar-planejamento=${pedido.status.name() == 'PRONTO' and pedido.tipoEntrega.name() == 'ENTREGA' and !pedido.planejamentoConfirmado()},
+                                       data-url-planejamento=@{/pedidos/planejamento(dataAgendada=${dataAgendadaIso})}">
                             <input type="hidden" name="novoStatus" th:value="${proximosStatus[pedido.id]}">
                             <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
                             <input type="hidden" name="visualizacao" value="kanban">
@@ -256,5 +260,6 @@
     </section>
 
     <div th:replace="~{fragments/modal-confirmacao-peso-pedido :: modalConfirmacaoPesoPedido}"></div>
+    <div th:replace="~{fragments/modal-entrega-nao-planejada :: modalEntregaNaoPlanejada}"></div>
 </section>
 </html>

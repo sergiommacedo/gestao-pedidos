@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -84,6 +85,48 @@ class PedidoOperacionalTest {
     }
 
     @Test
+    void entregaProntaPlanejadaSaiNormalmente() {
+        Pedido entrega = entregaPronta();
+        entrega.confirmarPlanejamento(LocalDateTime.now(), 1);
+        when(pedidos.bloquearDetalhado(9L)).thenReturn(Optional.of(entrega));
+
+        service.alterarStatus(9L, StatusPedido.SAIU_PARA_ENTREGA, null, false);
+
+        assertThat(entrega.getStatus()).isEqualTo(StatusPedido.SAIU_PARA_ENTREGA);
+        assertThat(entrega.getSaidaSemPlanejamentoEm()).isNull();
+    }
+
+    @Test
+    void entregaProntaNaoPlanejadaExigeExcecaoExplicita() {
+        Pedido entrega = entregaPronta();
+        when(pedidos.bloquearDetalhado(9L)).thenReturn(Optional.of(entrega));
+
+        assertThatThrownBy(() -> service.alterarStatus(9L, StatusPedido.SAIU_PARA_ENTREGA, null, false))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("Planejamento de Entregas");
+        assertThat(entrega.getStatus()).isEqualTo(StatusPedido.PRONTO);
+
+        service.alterarStatus(9L, StatusPedido.SAIU_PARA_ENTREGA, null, true);
+        assertThat(entrega.getStatus()).isEqualTo(StatusPedido.SAIU_PARA_ENTREGA);
+        assertThat(entrega.getSaidaSemPlanejamentoEm()).isNotNull();
+    }
+
+    @Test
+    void excecaoNaoPulaOutraValidacaoDeStatusNemAfetaRetirada() {
+        Pedido retirada = Pedido.builder().id(9L).status(StatusPedido.PRONTO).tipoEntrega(TipoEntrega.RETIRADA)
+                .cliente(cliente()).itens(new ArrayList<>()).build();
+        when(pedidos.bloquearDetalhado(9L)).thenReturn(Optional.of(retirada));
+        assertThatThrownBy(() -> service.alterarStatus(9L, StatusPedido.ENTREGUE, null, true))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("só pode");
+
+        Pedido entregue = entregaPronta();
+        entregue.setStatus(StatusPedido.ENTREGUE);
+        when(pedidos.bloquearDetalhado(9L)).thenReturn(Optional.of(entregue));
+        assertThatThrownBy(() -> service.alterarStatus(9L, StatusPedido.SAIU_PARA_ENTREGA, null, true))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("Não é permitido");
+        assertThat(entregue.getStatus()).isEqualTo(StatusPedido.ENTREGUE);
+    }
+
+    @Test
     void snapshotNaoMudaQuandoClienteMuda() {
         service.salvar(request(TipoEntrega.ENTREGA, null, null));
         Pedido salvo = capturarSalvo();
@@ -106,5 +149,10 @@ class PedidoOperacionalTest {
     private Cliente cliente() {
         return Cliente.builder().id(1L).nome("Murilo").telefone("41999999999").endereco("Rua X")
                 .numero("123").bairro("Água Verde").cidade("Curitiba").cep("80000-000").build();
+    }
+
+    private Pedido entregaPronta() {
+        return Pedido.builder().id(9L).status(StatusPedido.PRONTO).tipoEntrega(TipoEntrega.ENTREGA)
+                .cliente(cliente()).itens(new ArrayList<>()).build();
     }
 }

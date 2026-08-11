@@ -225,6 +225,7 @@ public class PedidoService {
         validarHorarios(request);
         Pedido pedido = pedidoRepository.bloquearDetalhado(id).orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
         validarEditavel(pedido);
+        pedido.invalidarPlanejamento();
         boolean estoqueMovimentado = Boolean.TRUE.equals(pedido.getEstoqueMovimentado());
         if (estoqueMovimentado) estoqueService.estornarPedido(pedido);
         Cliente cliente = buscarClientePorId(request.clienteId());
@@ -271,6 +272,15 @@ public class PedidoService {
             StatusPedido novoStatus,
             String motivoCancelamento
     ) {
+        return alterarStatus(id, novoStatus, motivoCancelamento, false);
+    }
+
+    public PedidoResponse alterarStatus(
+            Long id,
+            StatusPedido novoStatus,
+            String motivoCancelamento,
+            boolean sairSemPlanejamento
+    ) {
         Pedido pedido = pedidoRepository.bloquearDetalhado(id).orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
         Set<StatusPedido> permitidos = transicoesPermitidas(
                 pedido.getStatus(),
@@ -289,6 +299,19 @@ public class PedidoService {
             );
         }
 
+        boolean saidaEntrega = pedido.getTipoEntrega() == TipoEntrega.ENTREGA
+                && pedido.getStatus() == StatusPedido.PRONTO
+                && novoStatus == StatusPedido.SAIU_PARA_ENTREGA;
+        if (sairSemPlanejamento && !saidaEntrega) {
+            throw new BusinessException("A saída sem planejamento só pode ser confirmada para uma entrega pronta.");
+        }
+        if (saidaEntrega && !pedido.isPlanejamentoConfirmado()) {
+            if (!sairSemPlanejamento) {
+                throw new BusinessException("Este pedido ainda não foi incluído no Planejamento de Entregas.");
+            }
+            pedido.setSaidaSemPlanejamentoEm(LocalDateTime.now());
+        }
+
         if (novoStatus == StatusPedido.CANCELADO) {
             String motivoTratado = motivoCancelamento == null
                     ? ""
@@ -305,6 +328,7 @@ public class PedidoService {
             }
 
             pedido.setMotivoCancelamento(motivoTratado);
+            pedido.invalidarPlanejamento();
             estoqueService.estornarPedido(pedido);
         } else if (motivoCancelamento != null && !motivoCancelamento.isBlank()) {
             throw new BusinessException(
@@ -361,7 +385,29 @@ public class PedidoService {
                 pedido.getCliente().getTelefone(), pedido.getHorarioInicio(), pedido.getHorarioFim(),
                 pedido.getStatus(), pedidoMapper.enderecoResumido(pedido), pedidoMapper.enderecoCompleto(pedido),
                 pedido.getBairroEntregaHistorico(), pedidoMapper.enderecoNavegavel(pedido),
-                pedido.getStatus() == StatusPedido.SAIU_PARA_ENTREGA);
+                pedido.getStatus() == StatusPedido.SAIU_PARA_ENTREGA,
+                pedido.isPlanejamentoConfirmado(), pedido.getOrdemPlanejada());
+    }
+
+    public void confirmarPlanejamento(LocalDate data, List<Long> pedidoIds) {
+        LocalDate dataSelecionada = data == null ? LocalDate.now() : data;
+        List<Long> idsOrdenados = pedidoIds == null ? List.of() : pedidoIds.stream().distinct().toList();
+        Set<StatusPedido> status = EnumSet.of(StatusPedido.PENDENTE, StatusPedido.EM_PREPARACAO,
+                StatusPedido.PRONTO, StatusPedido.SAIU_PARA_ENTREGA);
+        List<Pedido> pedidos = pedidoRepository.buscarParaPlanejamento(dataSelecionada, status);
+        Map<Long, Pedido> porId = pedidos.stream().collect(java.util.stream.Collectors.toMap(Pedido::getId, pedido -> pedido));
+
+        pedidos.stream().filter(pedido -> pedido.getStatus() != StatusPedido.SAIU_PARA_ENTREGA)
+                .forEach(Pedido::invalidarPlanejamento);
+        LocalDateTime instante = LocalDateTime.now();
+        int ordem = 1;
+        for (Long id : idsOrdenados) {
+            Pedido pedido = porId.get(id);
+            if (pedido == null || pedido.getStatus() == StatusPedido.SAIU_PARA_ENTREGA
+                    || !pedidoMapper.enderecoNavegavel(pedido)) continue;
+            pedido.confirmarPlanejamento(instante, ordem++);
+        }
+        pedidoRepository.saveAll(pedidos);
     }
 
     private void validarHorarios(PedidoRequest request) {

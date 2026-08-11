@@ -14,6 +14,7 @@ class PlanejamentoEntregaTemplateTest {
     private static final Path FORMULARIO = Path.of("src/main/resources/templates/pedidos/formulario.html");
     private static final Path JS = Path.of("src/main/resources/static/js/app.js");
     private static final Path MODAL_PESO = Path.of("src/main/resources/templates/fragments/modal-confirmacao-peso-pedido.html");
+    private static final Path MODAL_NAO_PLANEJADA = Path.of("src/main/resources/templates/fragments/modal-entrega-nao-planejada.html");
 
     @Test
     void formularioUsaHorariosNativosEEdicaoTemBinding() throws Exception {
@@ -41,6 +42,26 @@ class PlanejamentoEntregaTemplateTest {
                 "nenhuma possui endereço completo para navegação",
                 "quantidadeEnderecosNavegaveis > 0 and quantidadeEnderecosIncompletos > 0",
                 "não foram incluídas na navegação por endereço incompleto");
+    }
+
+    @Test
+    void planejamentoPossuiConfirmacaoPersistenteEOrdemEnviadaPeloJavaScript() throws Exception {
+        String planejamento = Files.readString(PLANEJAMENTO);
+        String javaScript = Files.readString(JS);
+        assertThat(planejamento).contains("/pedidos/planejamento/confirmar", "Confirmar planejamento",
+                "data-form-confirmar-planejamento");
+        assertThat(javaScript).contains("pedidoIds", "data-pedido-planejado", "data-navegavel='true'");
+    }
+
+    @Test
+    void kanbanPossuiModalDeEntregaNaoPlanejadaSemRegraDeEstoqueNoJavaScript() throws Exception {
+        String kanban = Files.readString(KANBAN);
+        String modal = Files.readString(MODAL_NAO_PLANEJADA);
+        String javaScript = Files.readString(JS);
+        assertThat(kanban).contains("data-validar-planejamento", "modal-entrega-nao-planejada", "Planejado");
+        assertThat(modal).contains("Entrega não planejada", "Voltar e planejar", "Sair sem planejamento");
+        assertThat(javaScript).contains("sairSemPlanejamento", "data-confirmar-saida-sem-planejamento",
+                "dataset.urlPlanejamento");
     }
 
     @Test

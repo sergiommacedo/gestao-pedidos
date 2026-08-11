@@ -15,6 +15,8 @@ public record PlanejamentoEntregaResponse(
         String enderecoCompleto,
         String bairro,
         boolean enderecoNavegavel,
-        boolean jaEmRota
+        boolean jaEmRota,
+        boolean planejamentoConfirmado,
+        Integer ordemPlanejada
 ) {
 }

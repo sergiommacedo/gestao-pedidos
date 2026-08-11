@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="modalEntregaNaoPlanejada" class="modal fade"
+     id="modalEntregaNaoPlanejada" tabindex="-1"
+     aria-labelledby="tituloModalEntregaNaoPlanejada" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tituloModalEntregaNaoPlanejada">
+                    <i class="bi bi-signpost-split text-warning me-2"></i>Entrega não planejada
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Este pedido ainda não foi incluído no Planejamento de Entregas.</p>
+                <p class="mb-0 text-muted">Você pode voltar para planejar a rota ou confirmar a saída sem planejamento.</p>
+            </div>
+            <div class="modal-footer flex-column-reverse flex-sm-row">
+                <a href="/pedidos/planejamento" class="btn btn-outline-secondary" data-voltar-planejar>
+                    Voltar e planejar
+                </a>
+                <button type="button" class="btn btn-warning" data-confirmar-saida-sem-planejamento>
+                    Sair sem planejamento
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+</html>

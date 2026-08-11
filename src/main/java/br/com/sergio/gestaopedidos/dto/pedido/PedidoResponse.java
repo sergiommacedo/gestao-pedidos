@@ -90,8 +90,17 @@ public record PedidoResponse(
 
         LocalDateTime estoqueMovimentadoEm,
 
+        LocalDateTime planejadoEm,
+
+        Integer ordemPlanejada,
+
+        LocalDateTime saidaSemPlanejamentoEm,
+
         @Schema(description = "Itens do pedido")
         List<ItemPedidoResponse> itens
 
 ) {
+    public boolean planejamentoConfirmado() {
+        return planejadoEm != null && ordemPlanejada != null;
+    }
 }

@@ -36,6 +36,8 @@
          th:text="${quantidadeEnderecosIncompletos + ' entregas não foram incluídas na navegação por endereço incompleto.'}">
     </div>
 
+    <form th:action="@{/pedidos/planejamento/confirmar}" method="post" data-form-confirmar-planejamento>
+    <input type="hidden" name="dataAgendada" th:value="${dataAgendada}">
     <div class="vstack gap-3" data-lista-entregas>
         <article class="card shadow-sm" th:each="entrega, stat : ${entregasPlanejaveis}"
                  data-entrega-planejada th:data-id="${entrega.id}"
@@ -65,6 +67,12 @@
             </div>
         </article>
     </div>
+    <div class="d-flex justify-content-end mt-3" th:if="${quantidadeEnderecosNavegaveis > 0}">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check2-circle me-1"></i>Confirmar planejamento
+        </button>
+    </div>
+    </form>
 
     <div class="alert alert-light border mt-3" th:if="${quantidadeEntregasElegiveis == 0}">Nenhuma entrega disponível para planejamento nesta data.</div>
 

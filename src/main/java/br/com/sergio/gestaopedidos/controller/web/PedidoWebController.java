@@ -268,6 +268,18 @@ public class PedidoWebController {
         return "pedidos/planejamento";
     }
 
+    @PostMapping("/planejamento/confirmar")
+    public String confirmarPlanejamento(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataAgendada,
+            @RequestParam(name = "pedidoIds", required = false) List<Long> pedidoIds,
+            RedirectAttributes redirectAttributes
+    ) {
+        pedidoService.confirmarPlanejamento(dataAgendada, pedidoIds);
+        redirectAttributes.addFlashAttribute("mensagemSucesso", "Planejamento confirmado com sucesso.");
+        redirectAttributes.addAttribute("dataAgendada", dataAgendada.toString());
+        return "redirect:/pedidos/planejamento";
+    }
+
     @PostMapping
     public String salvar(
             @Valid @ModelAttribute("pedido") PedidoRequest pedido,
@@ -479,13 +491,15 @@ public class PedidoWebController {
             @RequestParam(defaultValue = "asc") String direcao,
             @RequestParam(defaultValue = "lista") String visualizacao,
             @RequestParam(defaultValue = "false") boolean mostrarCancelados,
+            @RequestParam(defaultValue = "false") boolean sairSemPlanejamento,
             RedirectAttributes redirectAttributes
     ) {
         try {
             PedidoResponse pedido = pedidoService.alterarStatus(
                     id,
                     novoStatus,
-                    motivoCancelamento
+                    motivoCancelamento,
+                    sairSemPlanejamento
             );
             redirectAttributes.addFlashAttribute(
                     "mensagemSucesso",
