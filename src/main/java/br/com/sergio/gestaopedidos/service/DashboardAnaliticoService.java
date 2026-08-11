@@ -1,6 +1,11 @@
 package br.com.sergio.gestaopedidos.service;
 
 import br.com.sergio.gestaopedidos.dto.dashboard.DashboardAnaliticoResponse;
+import br.com.sergio.gestaopedidos.dto.dashboard.HistoricoClientePedidosResponse;
+import br.com.sergio.gestaopedidos.enums.StatusPedido;
+import br.com.sergio.gestaopedidos.enums.TipoEntrega;
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
+import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -32,9 +37,42 @@ public class DashboardAnaliticoService {
     }
 
     List<DashboardAnaliticoResponse.RankingCliente> buscarRankingClientes(LocalDate inicio, LocalDate fim) {
-        return jdbc.query("SELECT c.nome,COUNT(*) quantidade_pedidos,COALESCE(SUM(p.valor_total),0) valor_total,COALESCE(SUM(p.valor_total)/NULLIF(COUNT(*),0),0) ticket_medio FROM pedidos p JOIN clientes c ON c.id=p.cliente_id WHERE p.data_agendada BETWEEN ? AND ? AND p.status<>'CANCELADO' GROUP BY c.id,c.nome ORDER BY valor_total DESC LIMIT 5",
-                (rs, n) -> new DashboardAnaliticoResponse.RankingCliente(rs.getString(1), rs.getLong(2),
-                        rs.getBigDecimal(3), rs.getBigDecimal(4)), inicio, fim);
+        return jdbc.query("SELECT c.id,c.nome,COUNT(*) quantidade_pedidos,COALESCE(SUM(p.valor_total),0) valor_total,COALESCE(SUM(p.valor_total)/NULLIF(COUNT(*),0),0) ticket_medio FROM pedidos p JOIN clientes c ON c.id=p.cliente_id WHERE p.data_agendada BETWEEN ? AND ? AND p.status<>'CANCELADO' GROUP BY c.id,c.nome ORDER BY valor_total DESC LIMIT 5",
+                (rs, n) -> new DashboardAnaliticoResponse.RankingCliente(rs.getLong(1), rs.getString(2),
+                        rs.getLong(3), rs.getBigDecimal(4), rs.getBigDecimal(5)), inicio, fim);
+    }
+
+    @Transactional(readOnly = true)
+    public HistoricoClientePedidosResponse buscarHistoricoCliente(Long clienteId, int pagina, int tamanho) {
+        int paginaSegura = Math.max(pagina, 0);
+        int tamanhoSeguro = Math.min(Math.max(tamanho, 1), 20);
+        var resumos = jdbc.query("SELECT c.nome,COUNT(p.id),COALESCE(SUM(p.valor_total),0),COALESCE(SUM(p.valor_total)/NULLIF(COUNT(p.id),0),0) FROM clientes c LEFT JOIN pedidos p ON p.cliente_id=c.id AND p.status<>'CANCELADO' WHERE c.id=? GROUP BY c.id,c.nome",
+                (rs, n) -> new Object[]{rs.getString(1), rs.getLong(2), rs.getBigDecimal(3), rs.getBigDecimal(4)}, clienteId);
+        if (resumos.isEmpty()) throw new ResourceNotFoundException("Cliente não encontrado.");
+        Object[] resumo = resumos.getFirst();
+        long quantidade = (Long) resumo[1];
+        int totalPaginas = quantidade == 0 ? 0 : (int) Math.ceil((double) quantidade / tamanhoSeguro);
+        if (totalPaginas > 0) paginaSegura = Math.min(paginaSegura, totalPaginas - 1);
+        List<HistoricoClientePedidosResponse.Pedido> pedidos = jdbc.query("SELECT p.id,p.data_agendada,p.horario_inicio,p.tipo_entrega,p.status,p.subtotal,p.taxa_entrega,p.valor_total FROM pedidos p WHERE p.cliente_id=? AND p.status<>'CANCELADO' ORDER BY p.data_agendada DESC,p.data_pedido DESC,p.id DESC LIMIT ? OFFSET ?",
+                (rs, n) -> new HistoricoClientePedidosResponse.Pedido(rs.getLong(1),
+                        rs.getObject(2, LocalDate.class), rs.getObject(3, java.time.LocalTime.class),
+                        TipoEntrega.valueOf(rs.getString(4)), StatusPedido.valueOf(rs.getString(5)),
+                        rs.getBigDecimal(6), rs.getBigDecimal(7), rs.getBigDecimal(8)),
+                clienteId, tamanhoSeguro, paginaSegura * tamanhoSeguro);
+        return new HistoricoClientePedidosResponse(clienteId, (String) resumo[0], quantidade,
+                (BigDecimal) resumo[2], (BigDecimal) resumo[3], pedidos, paginaSegura, totalPaginas);
+    }
+
+    @Transactional(readOnly = true)
+    public HistoricoClientePedidosResponse.DetalhesItens buscarItensHistoricos(Long clienteId, Long pedidoId) {
+        var totais = jdbc.query("SELECT subtotal,taxa_entrega,valor_total FROM pedidos WHERE id=? AND cliente_id=? AND status<>'CANCELADO'",
+                (rs, n) -> new BigDecimal[]{rs.getBigDecimal(1), rs.getBigDecimal(2), rs.getBigDecimal(3)}, pedidoId, clienteId);
+        if (totais.isEmpty()) throw new ResourceNotFoundException("Pedido não encontrado para este cliente.");
+        List<HistoricoClientePedidosResponse.Item> itens = jdbc.query("SELECT COALESCE(ip.nome_historico,pr.nome),ip.quantidade,COALESCE(ip.unidade_historica,pr.unidade_venda),ip.preco_unitario,ip.subtotal FROM itens_pedido ip JOIN produtos pr ON pr.id=ip.produto_id WHERE ip.pedido_id=? ORDER BY ip.id",
+                (rs, n) -> new HistoricoClientePedidosResponse.Item(rs.getString(1), rs.getBigDecimal(2),
+                        UnidadeVenda.valueOf(rs.getString(3)), rs.getBigDecimal(4), rs.getBigDecimal(5)), pedidoId);
+        BigDecimal[] total = totais.getFirst();
+        return new HistoricoClientePedidosResponse.DetalhesItens(itens, total[0], total[1], total[2]);
     }
 
     private long numero(String sql,Object... args){Long valor=jdbc.queryForObject(sql,Long.class,args);return valor==null?0:valor;}

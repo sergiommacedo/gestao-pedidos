@@ -584,6 +584,8 @@ public class PedidoService {
                 .quantidade(request.quantidade())
                 .precoUnitario(produto.getPreco())
                 .subtotal(subtotalItem)
+                .nomeHistorico(produto.getNome())
+                .unidadeHistorica(produto.getUnidadeVenda())
                 .observacao(Boolean.TRUE.equals(produto.getPermiteAcompanhamento())
                         ? request.observacao()
                         : null)

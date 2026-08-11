@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import br.com.sergio.gestaopedidos.enums.UnidadeVenda;
 
 @Entity
 @Table(name = "itens_pedido")
@@ -29,6 +30,13 @@ public class ItemPedido {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
+
+    @Column(name = "nome_historico", length = 100)
+    private String nomeHistorico;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "unidade_historica", length = 20)
+    private UnidadeVenda unidadeHistorica;
 
     @Column(name = "custo_unitario_historico", precision = 18, scale = 6)
     private BigDecimal custoUnitarioHistorico;

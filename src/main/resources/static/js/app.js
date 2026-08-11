@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarNavegacaoKanban();
     inicializarConfirmacaoQuantidadesFinais();
     inicializarConfirmacaoSaidaSemPlanejamento();
+    inicializarHistoricoClientesDashboard();
 
 });
 
@@ -904,6 +905,68 @@ function inicializarModalDetalhesPedido() {
         controladorRequisicao?.abort();
         controladorRequisicao = undefined;
         mostrarCarregamento();
+    });
+}
+
+function inicializarHistoricoClientesDashboard() {
+    const modalElemento = document.querySelector("#modalHistoricoCliente");
+    if (!modalElemento) return;
+    const conteudo = modalElemento.querySelector("[data-conteudo-historico-cliente]");
+    let controlador;
+
+    const carregando = () => {
+        conteudo.innerHTML = '<div class="modal-body py-5 text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div><p class="text-muted mt-3 mb-0">Carregando pedidos...</p></div>';
+    };
+    const carregar = async url => {
+        controlador?.abort();
+        controlador = new AbortController();
+        carregando();
+        try {
+            const resposta = await fetch(url, {headers: {"X-Requested-With": "XMLHttpRequest"}, signal: controlador.signal});
+            if (!resposta.ok) throw new Error();
+            conteudo.innerHTML = await resposta.text();
+        } catch (erro) {
+            if (erro.name === "AbortError") return;
+            conteudo.innerHTML = '<div class="modal-body"><div class="alert alert-danger mb-0">Não foi possível carregar o histórico deste cliente.</div></div>';
+        }
+    };
+
+    modalElemento.addEventListener("show.bs.modal", evento => {
+        const url = evento.relatedTarget?.dataset.historicoClienteUrl;
+        if (url) carregar(url);
+    });
+    conteudo.addEventListener("click", async evento => {
+        const pagina = evento.target.closest("[data-historico-pagina-url]");
+        if (pagina && !pagina.disabled) {
+            await carregar(pagina.dataset.historicoPaginaUrl);
+            return;
+        }
+        const botaoItens = evento.target.closest("[data-itens-historicos-url]");
+        if (!botaoItens) return;
+        const alvo = conteudo.querySelector(botaoItens.dataset.itensAlvo);
+        if (!alvo) return;
+        if (alvo.dataset.carregado === "true") {
+            alvo.classList.toggle("d-none");
+            return;
+        }
+        botaoItens.disabled = true;
+        try {
+            const resposta = await fetch(botaoItens.dataset.itensHistoricosUrl, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+            if (!resposta.ok) throw new Error();
+            alvo.innerHTML = await resposta.text();
+            alvo.dataset.carregado = "true";
+            alvo.classList.remove("d-none");
+        } catch {
+            alvo.innerHTML = '<div class="alert alert-danger py-2 mb-0">Não foi possível carregar os itens.</div>';
+            alvo.classList.remove("d-none");
+        } finally {
+            botaoItens.disabled = false;
+        }
+    });
+    modalElemento.addEventListener("hidden.bs.modal", () => {
+        controlador?.abort();
+        controlador = undefined;
+        carregando();
     });
 }
 

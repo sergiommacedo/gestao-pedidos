@@ -56,6 +56,8 @@ class PedidoOperacionalTest {
         assertThat(salvo.getHorarioFim()).isEqualTo("13:30");
         assertThat(salvo.getEnderecoEntregaHistorico()).isEqualTo("Rua X");
         assertThat(salvo.getBairroEntregaHistorico()).isEqualTo("Água Verde");
+        assertThat(salvo.getItens().getFirst().getNomeHistorico()).isEqualTo("Feijoada");
+        assertThat(salvo.getItens().getFirst().getUnidadeHistorica()).isEqualTo(UnidadeVenda.QUILOGRAMA);
     }
 
     @Test

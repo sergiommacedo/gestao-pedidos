@@ -9,7 +9,7 @@ public record DashboardAnaliticoResponse(long produtosVendidos, long revendasVen
         List<SerieDia> vendasPorDia, List<SerieDia> producaoPorDia,
         List<RankingCliente> rankingClientes, List<Ranking> consumoInsumos) {
     public record SerieDia(LocalDate data, BigDecimal valor) {}
-    public record RankingCliente(String nome, long quantidadePedidos, BigDecimal valorTotal,
+    public record RankingCliente(Long clienteId, String nome, long quantidadePedidos, BigDecimal valorTotal,
                                  BigDecimal ticketMedio) {}
     public record Ranking(String nome, BigDecimal valor) {}
 }

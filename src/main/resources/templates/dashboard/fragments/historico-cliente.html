@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<th:block th:fragment="conteudo">
+    <div class="modal-header">
+        <h2 class="modal-title fs-5" id="tituloHistoricoCliente" th:text="${'Pedidos de ' + historico.clienteNome}"></h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+    </div>
+    <div class="modal-body">
+        <div class="row g-2 mb-3">
+            <div class="col-4"><div class="border rounded p-2 h-100"><small class="text-body-secondary d-block">Pedidos</small><strong th:text="${historico.quantidadeTotal}"></strong></div></div>
+            <div class="col-4"><div class="border rounded p-2 h-100"><small class="text-body-secondary d-block">Valor total</small><strong th:text="${@formatacao.formatarMoeda(historico.valorTotal)}"></strong></div></div>
+            <div class="col-4"><div class="border rounded p-2 h-100"><small class="text-body-secondary d-block">Ticket médio</small><strong th:text="${@formatacao.formatarMoeda(historico.ticketMedio)}"></strong></div></div>
+        </div>
+        <p class="text-body-secondary" th:if="${historico.pedidos.isEmpty()}">Nenhum pedido válido encontrado.</p>
+        <article class="card mb-2" th:each="pedido : ${historico.pedidos}">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between gap-2">
+                    <div><strong th:text="${'#' + pedido.id}"></strong> <span th:text="${#temporals.format(pedido.data,'dd/MM/yyyy')}"></span><span th:if="${pedido.horario != null}" th:text="${' • ' + #temporals.format(pedido.horario,'HH:mm')}"></span></div>
+                    <div><span class="badge text-bg-light border" th:text="${pedido.tipoEntrega.descricao}"></span> <span class="badge text-bg-secondary" th:text="${pedido.status.descricao}"></span></div>
+                </div>
+                <div class="d-flex flex-wrap gap-3 small mt-2"><span>Produtos: <strong th:text="${@formatacao.formatarMoeda(pedido.subtotal)}"></strong></span><span>Taxa: <strong th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}"></strong></span><span>Total: <strong th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></strong></span></div>
+                <button type="button" class="btn btn-sm btn-link px-0 mt-1" th:data-itens-historicos-url="@{/dashboard/clientes/{clienteId}/pedidos/{pedidoId}/itens(clienteId=${historico.clienteId},pedidoId=${pedido.id})}" th:data-itens-alvo="${'#itens-historicos-' + pedido.id}">Ver itens</button>
+                <div class="d-none" th:id="${'itens-historicos-' + pedido.id}"></div>
+            </div>
+        </article>
+    </div>
+    <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-outline-secondary" th:disabled="${historico.pagina == 0}" th:data-historico-pagina-url="@{/dashboard/clientes/{id}/pedidos(id=${historico.clienteId},pagina=${historico.pagina - 1},tamanho=5)}">Anterior</button>
+        <span th:text="${'Página ' + (historico.totalPaginas == 0 ? 0 : historico.pagina + 1) + ' de ' + historico.totalPaginas}"></span>
+        <button type="button" class="btn btn-outline-secondary" th:disabled="${historico.pagina + 1 >= historico.totalPaginas}" th:data-historico-pagina-url="@{/dashboard/clientes/{id}/pedidos(id=${historico.clienteId},pagina=${historico.pagina + 1},tamanho=5)}">Próxima</button>
+    </div>
+</th:block>
+</html>

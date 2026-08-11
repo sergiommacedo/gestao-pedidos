@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="conteudo" class="border-top pt-2 mt-2">
+    <div class="py-2" th:each="item : ${detalhes.itens}">
+        <div class="fw-semibold text-break" th:text="${item.produtoNome}"></div>
+        <div class="d-flex flex-wrap gap-3 small">
+            <span th:text="${@formatacao.formatarQuantidade(item.quantidade,item.unidade)}"></span>
+            <span th:text="${@formatacao.formatarMoeda(item.precoUnitario) + '/' + item.unidade.simbolo}"></span>
+            <span>Subtotal <strong th:text="${@formatacao.formatarMoeda(item.subtotal)}"></strong></span>
+        </div>
+    </div>
+    <div class="border-top pt-2 small">
+        <div class="d-flex justify-content-between"><span>Subtotal dos produtos</span><strong th:text="${@formatacao.formatarMoeda(detalhes.subtotal)}"></strong></div>
+        <div class="d-flex justify-content-between"><span>Taxa de entrega</span><strong th:text="${@formatacao.formatarMoeda(detalhes.taxaEntrega)}"></strong></div>
+        <div class="d-flex justify-content-between fs-6"><span>Total</span><strong th:text="${@formatacao.formatarMoeda(detalhes.valorTotal)}"></strong></div>
+    </div>
+</div>
+</html>
