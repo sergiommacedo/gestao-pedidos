@@ -43,28 +43,37 @@ class DashboardHistoricoFragmentRenderingTest {
                 pedido(31L, TipoEntrega.ENTREGA, LocalTime.of(12, 30)),
                 pedido(30L, TipoEntrega.RETIRADA, null));
         var historico = new HistoricoClientePedidosResponse(7L, "Hugo Souza", 2,
-                new BigDecimal("121.50"), new BigDecimal("60.75"), pedidos, 0, 2);
-        when(dashboardAnaliticoService.buscarHistoricoCliente(7L, 0, 5)).thenReturn(historico);
+                new BigDecimal("121.50"), new BigDecimal("60.75"), pedidos, 0, 2,
+                HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS,
+                LocalDate.of(2026, 8, 5), LocalDate.of(2026, 8, 11));
+        when(dashboardAnaliticoService.buscarHistoricoCliente(7L, 0, 5,
+                HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS, LocalDate.of(2026, 8, 11))).thenReturn(historico);
 
-        mvc.perform(get("/dashboard/clientes/7/pedidos").param("pagina", "0").param("tamanho", "5"))
+        mvc.perform(get("/dashboard/clientes/7/pedidos").param("pagina", "0").param("tamanho", "5")
+                        .param("dataReferencia", "2026-08-11"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
                 .andExpect(content().string(org.hamcrest.Matchers.allOf(
                         org.hamcrest.Matchers.containsString("Pedidos de Hugo Souza"),
                         org.hamcrest.Matchers.containsString("Entrega"),
                         org.hamcrest.Matchers.containsString("Retirada"),
+                        org.hamcrest.Matchers.containsString("Período: 05/08/2026 a 11/08/2026"),
+                        org.hamcrest.Matchers.containsString("Todo o histórico"),
                         org.hamcrest.Matchers.containsString("12:30"),
                         org.hamcrest.Matchers.containsString("Página 1 de 2"),
-                        org.hamcrest.Matchers.containsString("/dashboard/clientes/7/pedidos?pagina=1&amp;tamanho=5"))));
+                        org.hamcrest.Matchers.containsString("pagina=1"))));
     }
 
     @Test
     void processaEstadoVazioDoFragmentoReal() throws Exception {
         var historico = new HistoricoClientePedidosResponse(8L, "Sem Pedidos", 0,
-                BigDecimal.ZERO, BigDecimal.ZERO, List.of(), 0, 0);
-        when(dashboardAnaliticoService.buscarHistoricoCliente(8L, 0, 5)).thenReturn(historico);
+                BigDecimal.ZERO, BigDecimal.ZERO, List.of(), 0, 0,
+                HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS,
+                LocalDate.of(2026, 8, 5), LocalDate.of(2026, 8, 11));
+        when(dashboardAnaliticoService.buscarHistoricoCliente(8L, 0, 5,
+                HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS, LocalDate.of(2026, 8, 11))).thenReturn(historico);
 
-        mvc.perform(get("/dashboard/clientes/8/pedidos"))
+        mvc.perform(get("/dashboard/clientes/8/pedidos").param("dataReferencia", "2026-08-11"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Nenhum pedido válido encontrado.")));
     }

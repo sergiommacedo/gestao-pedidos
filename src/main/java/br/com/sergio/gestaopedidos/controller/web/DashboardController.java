@@ -2,6 +2,7 @@ package br.com.sergio.gestaopedidos.controller.web;
 
 import br.com.sergio.gestaopedidos.service.DashboardService;
 import br.com.sergio.gestaopedidos.service.DashboardAnaliticoService;
+import br.com.sergio.gestaopedidos.dto.dashboard.HistoricoClientePedidosResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -50,8 +51,11 @@ public class DashboardController {
     public String historicoCliente(@PathVariable Long clienteId,
                                    @RequestParam(defaultValue = "0") int pagina,
                                    @RequestParam(defaultValue = "5") int tamanho,
+                                   @RequestParam(defaultValue = "ULTIMOS_7_DIAS") HistoricoClientePedidosResponse.Periodo periodo,
+                                   @RequestParam(required = false) LocalDate dataReferencia,
                                    Model model) {
-        model.addAttribute("historico", dashboardAnaliticoService.buscarHistoricoCliente(clienteId, pagina, tamanho));
+        model.addAttribute("historico", dashboardAnaliticoService.buscarHistoricoCliente(
+                clienteId, pagina, tamanho, periodo, dataReferencia));
         return "dashboard/fragments/historico-cliente :: conteudo";
     }
 

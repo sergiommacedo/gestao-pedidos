@@ -6,6 +6,13 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
     </div>
     <div class="modal-body">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+            <strong th:text="${historico.periodo.name() == 'ULTIMOS_7_DIAS' ? 'Período: ' + #temporals.format(historico.dataInicial,'dd/MM/yyyy') + ' a ' + #temporals.format(historico.dataFinal,'dd/MM/yyyy') : 'Período: Todo o histórico'}"></strong>
+            <select class="form-select form-select-sm w-auto" data-periodo-historico-cliente aria-label="Período do histórico">
+                <option th:selected="${historico.periodo.name() == 'ULTIMOS_7_DIAS'}" th:data-historico-periodo-url="@{/dashboard/clientes/{id}/pedidos(id=${historico.clienteId},periodo='ULTIMOS_7_DIAS',dataReferencia=${historico.dataFinal},pagina=0,tamanho=5)}">Últimos 7 dias</option>
+                <option th:selected="${historico.periodo.name() == 'TODO_HISTORICO'}" th:data-historico-periodo-url="@{/dashboard/clientes/{id}/pedidos(id=${historico.clienteId},periodo='TODO_HISTORICO',pagina=0,tamanho=5)}">Todo o histórico</option>
+            </select>
+        </div>
         <div class="row g-2 mb-3">
             <div class="col-4"><div class="border rounded p-2 h-100"><small class="text-body-secondary d-block">Pedidos</small><strong th:text="${historico.quantidadeTotal}"></strong></div></div>
             <div class="col-4"><div class="border rounded p-2 h-100"><small class="text-body-secondary d-block">Valor total</small><strong th:text="${@formatacao.formatarMoeda(historico.valorTotal)}"></strong></div></div>
@@ -25,9 +32,9 @@
         </article>
     </div>
     <div class="modal-footer justify-content-between">
-        <button type="button" class="btn btn-outline-secondary" th:disabled="${historico.pagina == 0}" th:data-historico-pagina-url="@{/dashboard/clientes/{id}/pedidos(id=${historico.clienteId},pagina=${historico.pagina - 1},tamanho=5)}">Anterior</button>
+        <button type="button" class="btn btn-outline-secondary" th:disabled="${historico.pagina == 0}" th:data-historico-pagina-url="@{/dashboard/clientes/{id}/pedidos(id=${historico.clienteId},periodo=${historico.periodo},dataReferencia=${historico.dataFinal},pagina=${historico.pagina - 1},tamanho=5)}">Anterior</button>
         <span th:text="${'Página ' + (historico.totalPaginas == 0 ? 0 : historico.pagina + 1) + ' de ' + historico.totalPaginas}"></span>
-        <button type="button" class="btn btn-outline-secondary" th:disabled="${historico.pagina + 1 >= historico.totalPaginas}" th:data-historico-pagina-url="@{/dashboard/clientes/{id}/pedidos(id=${historico.clienteId},pagina=${historico.pagina + 1},tamanho=5)}">Próxima</button>
+        <button type="button" class="btn btn-outline-secondary" th:disabled="${historico.pagina + 1 >= historico.totalPaginas}" th:data-historico-pagina-url="@{/dashboard/clientes/{id}/pedidos(id=${historico.clienteId},periodo=${historico.periodo},dataReferencia=${historico.dataFinal},pagina=${historico.pagina + 1},tamanho=5)}">Próxima</button>
     </div>
 </th:block>
 </html>

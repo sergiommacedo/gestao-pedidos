@@ -43,24 +43,40 @@ public class DashboardAnaliticoService {
     }
 
     @Transactional(readOnly = true)
-    public HistoricoClientePedidosResponse buscarHistoricoCliente(Long clienteId, int pagina, int tamanho) {
+    public HistoricoClientePedidosResponse buscarHistoricoCliente(Long clienteId, int pagina, int tamanho,
+                                                                   HistoricoClientePedidosResponse.Periodo periodo,
+                                                                   LocalDate dataReferencia) {
         int paginaSegura = Math.max(pagina, 0);
         int tamanhoSeguro = Math.min(Math.max(tamanho, 1), 20);
-        var resumos = jdbc.query("SELECT c.nome,COUNT(p.id),COALESCE(SUM(p.valor_total),0),COALESCE(SUM(p.valor_total)/NULLIF(COUNT(p.id),0),0) FROM clientes c LEFT JOIN pedidos p ON p.cliente_id=c.id AND p.status<>'CANCELADO' WHERE c.id=? GROUP BY c.id,c.nome",
-                (rs, n) -> new Object[]{rs.getString(1), rs.getLong(2), rs.getBigDecimal(3), rs.getBigDecimal(4)}, clienteId);
+        var periodoSeguro = periodo == null ? HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS : periodo;
+        LocalDate referenciaSegura = dataReferencia == null ? LocalDate.now() : dataReferencia;
+        LocalDate inicio = periodoSeguro == HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS
+                ? referenciaSegura.minusDays(6) : null;
+        String filtroPeriodo = periodoSeguro == HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS
+                ? " AND p.data_agendada BETWEEN ? AND ?" : "";
+        Object[] argumentosResumo = inicio == null
+                ? new Object[]{clienteId} : new Object[]{inicio, referenciaSegura, clienteId};
+        var resumos = jdbc.query("SELECT c.nome,COUNT(p.id),COALESCE(SUM(p.valor_total),0),COALESCE(SUM(p.valor_total)/NULLIF(COUNT(p.id),0),0) FROM clientes c LEFT JOIN pedidos p ON p.cliente_id=c.id AND p.status<>'CANCELADO'" + filtroPeriodo + " WHERE c.id=? GROUP BY c.id,c.nome",
+                (rs, n) -> new Object[]{rs.getString(1), rs.getLong(2), rs.getBigDecimal(3), rs.getBigDecimal(4)}, argumentosResumo);
         if (resumos.isEmpty()) throw new ResourceNotFoundException("Cliente não encontrado.");
         Object[] resumo = resumos.getFirst();
         long quantidade = (Long) resumo[1];
         int totalPaginas = quantidade == 0 ? 0 : (int) Math.ceil((double) quantidade / tamanhoSeguro);
         if (totalPaginas > 0) paginaSegura = Math.min(paginaSegura, totalPaginas - 1);
-        List<HistoricoClientePedidosResponse.Pedido> pedidos = jdbc.query("SELECT p.id,p.data_agendada,p.horario_inicio,p.tipo_entrega,p.status,p.subtotal,p.taxa_entrega,p.valor_total FROM pedidos p WHERE p.cliente_id=? AND p.status<>'CANCELADO' ORDER BY p.data_agendada DESC,p.data_pedido DESC,p.id DESC LIMIT ? OFFSET ?",
+        String sqlPedidos = "SELECT p.id,p.data_agendada,p.horario_inicio,p.tipo_entrega,p.status,p.subtotal,p.taxa_entrega,p.valor_total FROM pedidos p WHERE p.cliente_id=? AND p.status<>'CANCELADO'" +
+                (inicio == null ? "" : " AND p.data_agendada BETWEEN ? AND ?") +
+                " ORDER BY p.data_agendada DESC,p.data_pedido DESC,p.id DESC LIMIT ? OFFSET ?";
+        Object[] argumentosPedidos = inicio == null
+                ? new Object[]{clienteId, tamanhoSeguro, paginaSegura * tamanhoSeguro}
+                : new Object[]{clienteId, inicio, referenciaSegura, tamanhoSeguro, paginaSegura * tamanhoSeguro};
+        List<HistoricoClientePedidosResponse.Pedido> pedidos = jdbc.query(sqlPedidos,
                 (rs, n) -> new HistoricoClientePedidosResponse.Pedido(rs.getLong(1),
                         rs.getObject(2, LocalDate.class), rs.getObject(3, java.time.LocalTime.class),
                         TipoEntrega.valueOf(rs.getString(4)), StatusPedido.valueOf(rs.getString(5)),
-                        rs.getBigDecimal(6), rs.getBigDecimal(7), rs.getBigDecimal(8)),
-                clienteId, tamanhoSeguro, paginaSegura * tamanhoSeguro);
+                        rs.getBigDecimal(6), rs.getBigDecimal(7), rs.getBigDecimal(8)), argumentosPedidos);
         return new HistoricoClientePedidosResponse(clienteId, (String) resumo[0], quantidade,
-                (BigDecimal) resumo[2], (BigDecimal) resumo[3], pedidos, paginaSegura, totalPaginas);
+                (BigDecimal) resumo[2], (BigDecimal) resumo[3], pedidos, paginaSegura, totalPaginas,
+                periodoSeguro, inicio, referenciaSegura);
     }
 
     @Transactional(readOnly = true)

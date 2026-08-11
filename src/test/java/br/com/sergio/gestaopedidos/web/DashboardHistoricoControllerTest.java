@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -24,23 +25,27 @@ class DashboardHistoricoControllerTest {
     void endpointRespondePaginaDoClienteCorretoInclusiveVazia() throws Exception {
         DashboardAnaliticoService service = mock(DashboardAnaliticoService.class);
         var vazio = new HistoricoClientePedidosResponse(7L, "Hugo Souza", 0, BigDecimal.ZERO,
-                BigDecimal.ZERO, List.of(), 0, 0);
-        when(service.buscarHistoricoCliente(7L, 0, 5)).thenReturn(vazio);
+                BigDecimal.ZERO, List.of(), 0, 0, HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS,
+                LocalDate.of(2026, 8, 5), LocalDate.of(2026, 8, 11));
+        when(service.buscarHistoricoCliente(7L, 0, 5,
+                HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS, LocalDate.of(2026, 8, 11))).thenReturn(vazio);
         MockMvc mvc = mvc(service);
 
-        mvc.perform(get("/dashboard/clientes/7/pedidos").param("pagina", "0").param("tamanho", "5"))
+        mvc.perform(get("/dashboard/clientes/7/pedidos").param("pagina", "0").param("tamanho", "5")
+                        .param("dataReferencia", "2026-08-11"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("dashboard/fragments/historico-cliente :: conteudo"))
                 .andExpect(model().attribute("historico", vazio));
 
-        verify(service).buscarHistoricoCliente(7L, 0, 5);
-        verify(service, never()).buscarHistoricoCliente(eq(8L), anyInt(), anyInt());
+        verify(service).buscarHistoricoCliente(7L, 0, 5,
+                HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS, LocalDate.of(2026, 8, 11));
+        verify(service, never()).buscarHistoricoCliente(eq(8L), anyInt(), anyInt(), any(), any());
     }
 
     @Test
     void endpointRetorna404ParaClienteInexistente() throws Exception {
         DashboardAnaliticoService service = mock(DashboardAnaliticoService.class);
-        when(service.buscarHistoricoCliente(999L, 0, 5)).thenThrow(new ResourceNotFoundException("Cliente não encontrado."));
+        when(service.buscarHistoricoCliente(eq(999L), eq(0), eq(5), any(), isNull())).thenThrow(new ResourceNotFoundException("Cliente não encontrado."));
 
         mvc(service).perform(get("/dashboard/clientes/999/pedidos"))
                 .andExpect(status().isNotFound());
@@ -49,7 +54,7 @@ class DashboardHistoricoControllerTest {
     @Test
     void erroGenericoMantemRespostaApiErrorGravavelMesmoQuandoClienteAceitaHtml() throws Exception {
         DashboardAnaliticoService service = mock(DashboardAnaliticoService.class);
-        when(service.buscarHistoricoCliente(7L, 0, 5)).thenThrow(new IllegalStateException("Falha simulada"));
+        when(service.buscarHistoricoCliente(eq(7L), eq(0), eq(5), any(), isNull())).thenThrow(new IllegalStateException("Falha simulada"));
 
         mvc(service).perform(get("/dashboard/clientes/7/pedidos").accept(MediaType.TEXT_HTML))
                 .andExpect(status().isInternalServerError())

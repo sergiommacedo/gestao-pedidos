@@ -53,12 +53,14 @@ class DashboardTemplateTest {
     @Test void rankingAbreModalEHistoricoSoEhConsultadoAposClique() throws Exception {
         String html = Files.readString(template);
         assertThat(html).contains("Ver pedidos", "data-cliente-id", "data-cliente-nome",
-                "data-historico-cliente-url", "/dashboard/clientes/{id}/pedidos", "modal-historico-cliente");
+                "data-historico-cliente-url", "/dashboard/clientes/{id}/pedidos", "modal-historico-cliente",
+                "periodo='ULTIMOS_7_DIAS'", "dataReferencia=${dataReferenciaIso}");
         assertThat(html).doesNotContain("historico.pedidos");
         assertThat(Files.readString(modal)).contains("data-conteudo-historico-cliente", "Carregando pedidos");
         assertThat(Files.readString(javascript)).contains("[data-historico-cliente-url]", "modal.show(botao)",
                 "dataset.historicoClienteUrl", "data-itens-historicos-url", "dataset.historicoPaginaUrl", "fetch(",
-                "console.error", "Não foi possível carregar os pedidos deste cliente.");
+                "console.error", "Não foi possível carregar os pedidos deste cliente.",
+                "data-periodo-historico-cliente", "dataset.historicoPeriodoUrl");
         assertThat(html).contains("<div th:replace=\"~{dashboard/fragments/modal-historico-cliente :: modal}\"></div>\n</div></body>");
     }
 
@@ -67,7 +69,8 @@ class DashboardTemplateTest {
         String detalhe = Files.readString(itens);
         assertThat(pagina).contains("Pedidos de ", "historico.quantidadeTotal", "historico.valorTotal",
                 "historico.ticketMedio", "pedido.data", "pedido.tipoEntrega.name() == 'ENTREGA' ? 'Entrega' : 'Retirada'", "pedido.status.descricao",
-                "pedido.subtotal", "pedido.taxaEntrega", "pedido.valorTotal", "Anterior", "Próxima", "Ver itens");
+                "pedido.subtotal", "pedido.taxaEntrega", "pedido.valorTotal", "Anterior", "Próxima", "Ver itens",
+                "Período:", "Últimos 7 dias", "Todo o histórico", "pagina=0", "periodo=${historico.periodo}");
         assertThat(detalhe).contains("item.produtoNome", "formatarQuantidade(item.quantidade,item.unidade)",
                 "item.precoUnitario", "item.subtotal", "Subtotal dos produtos", "Taxa de entrega", "detalhes.valorTotal");
         assertThat(pagina).doesNotContain("pedido.tipoEntrega.descricao");

@@ -67,8 +67,12 @@ class DashboardAnaliticoRankingTest {
             jdbc.update("INSERT INTO itens_pedido VALUES (100,20,10,'Frango Assado','UNIDADE',1.000,50.00,50.00),(101,20,11,'Joelho de Porco','QUILOGRAMA',1.300,55.00,71.50)");
             DashboardAnaliticoService service = new DashboardAnaliticoService(jdbc);
 
-            var primeira = service.buscarHistoricoCliente(1L, 0, 1);
-            var segunda = service.buscarHistoricoCliente(1L, 1, 1);
+            var primeira = service.buscarHistoricoCliente(1L, 0, 1,
+                    br.com.sergio.gestaopedidos.dto.dashboard.HistoricoClientePedidosResponse.Periodo.TODO_HISTORICO,
+                    java.time.LocalDate.of(2026, 8, 11));
+            var segunda = service.buscarHistoricoCliente(1L, 1, 1,
+                    br.com.sergio.gestaopedidos.dto.dashboard.HistoricoClientePedidosResponse.Periodo.TODO_HISTORICO,
+                    java.time.LocalDate.of(2026, 8, 11));
 
             assertThat(primeira.clienteNome()).isEqualTo("Hugo Souza");
             assertThat(primeira.quantidadeTotal()).isEqualTo(2);
@@ -95,6 +99,39 @@ class DashboardAnaliticoRankingTest {
             assertThat(detalhes.valorTotal()).isEqualByComparingTo("131.50");
             assertThatThrownBy(() -> service.buscarItensHistoricos(2L, 20L))
                     .isInstanceOf(br.com.sergio.gestaopedidos.exception.ResourceNotFoundException.class);
+        } finally {
+            banco.shutdown();
+        }
+    }
+
+    @Test
+    void rankingModalInicialETodoHistoricoUsamConjuntosConsistentesNoCenarioReal() {
+        var banco = new EmbeddedDatabaseBuilder().setType(EmbeddedDatabaseType.H2).generateUniqueName(true).build();
+        try {
+            JdbcTemplate jdbc = new JdbcTemplate(banco);
+            jdbc.execute("CREATE TABLE clientes (id BIGINT PRIMARY KEY,nome VARCHAR(100))");
+            jdbc.execute("CREATE TABLE pedidos (id BIGINT PRIMARY KEY,cliente_id BIGINT,data_agendada DATE,data_pedido TIMESTAMP,horario_inicio TIME,tipo_entrega VARCHAR(20),status VARCHAR(30),subtotal DECIMAL(10,2),taxa_entrega DECIMAL(10,2),valor_total DECIMAL(10,2))");
+            jdbc.update("INSERT INTO clientes VALUES (1,'Murilo Macedo')");
+            jdbc.update("INSERT INTO pedidos VALUES (2,1,'2026-08-04','2026-08-04 10:00:00','10:00','RETIRADA','ENTREGUE',55.00,0.00,55.00),(8,1,'2026-08-11','2026-08-11 08:00:00','08:00','ENTREGA','ENTREGUE',90.00,10.00,100.00),(12,1,'2026-08-11','2026-08-11 09:00:00','09:00','RETIRADA','ENTREGUE',83.51,0.00,83.51),(14,1,'2026-08-11','2026-08-11 10:00:00','10:00','ENTREGA','PRONTO',90.00,10.00,100.00),(15,1,'2026-08-11','2026-08-11 11:00:00','11:00','ENTREGA','CANCELADO',999.00,0.00,999.00)");
+            var service = new DashboardAnaliticoService(jdbc);
+            var referencia = java.time.LocalDate.of(2026, 8, 11);
+
+            var ranking = service.buscarRankingClientes(referencia.minusDays(6), referencia).getFirst();
+            var modal = service.buscarHistoricoCliente(1L, 0, 5,
+                    br.com.sergio.gestaopedidos.dto.dashboard.HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS,
+                    referencia);
+            var completo = service.buscarHistoricoCliente(1L, 0, 5,
+                    br.com.sergio.gestaopedidos.dto.dashboard.HistoricoClientePedidosResponse.Periodo.TODO_HISTORICO,
+                    referencia);
+
+            assertThat(modal.quantidadeTotal()).isEqualTo(ranking.quantidadePedidos()).isEqualTo(3);
+            assertThat(modal.valorTotal()).isEqualByComparingTo(ranking.valorTotal()).isEqualByComparingTo("283.51");
+            assertThat(modal.ticketMedio()).isEqualByComparingTo(ranking.ticketMedio());
+            assertThat(modal.pedidos()).extracting(p -> p.id()).containsExactly(14L, 12L, 8L).doesNotContain(2L, 15L);
+            assertThat(completo.quantidadeTotal()).isEqualTo(4);
+            assertThat(completo.valorTotal()).isEqualByComparingTo("338.51");
+            assertThat(completo.ticketMedio()).isEqualByComparingTo("84.627500");
+            assertThat(completo.pedidos()).extracting(p -> p.id()).contains(2L).doesNotContain(15L);
         } finally {
             banco.shutdown();
         }

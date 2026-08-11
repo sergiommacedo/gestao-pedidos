@@ -975,6 +975,12 @@ function inicializarHistoricoClientesDashboard() {
             botaoItens.disabled = false;
         }
     });
+    conteudo.addEventListener("change", async evento => {
+        const seletor = evento.target.closest("[data-periodo-historico-cliente]");
+        if (!seletor) return;
+        const opcao = seletor.options[seletor.selectedIndex];
+        if (opcao?.dataset.historicoPeriodoUrl) await carregar(opcao.dataset.historicoPeriodoUrl);
+    });
     modalElemento.addEventListener("hidden.bs.modal", () => {
         controlador?.abort();
         controlador = undefined;
