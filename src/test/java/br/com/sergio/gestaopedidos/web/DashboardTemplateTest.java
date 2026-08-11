@@ -66,10 +66,12 @@ class DashboardTemplateTest {
         String pagina = Files.readString(historico);
         String detalhe = Files.readString(itens);
         assertThat(pagina).contains("Pedidos de ", "historico.quantidadeTotal", "historico.valorTotal",
-                "historico.ticketMedio", "pedido.data", "pedido.tipoEntrega.descricao", "pedido.status.descricao",
+                "historico.ticketMedio", "pedido.data", "pedido.tipoEntrega.name() == 'ENTREGA' ? 'Entrega' : 'Retirada'", "pedido.status.descricao",
                 "pedido.subtotal", "pedido.taxaEntrega", "pedido.valorTotal", "Anterior", "Próxima", "Ver itens");
         assertThat(detalhe).contains("item.produtoNome", "formatarQuantidade(item.quantidade,item.unidade)",
                 "item.precoUnitario", "item.subtotal", "Subtotal dos produtos", "Taxa de entrega", "detalhes.valorTotal");
+        assertThat(pagina).doesNotContain("pedido.tipoEntrega.descricao");
+        assertThat(detalhe).doesNotContain("item.unidade.simbolo");
         assertThat(pagina + detalhe).doesNotContain("custo", "lucro", "margem");
     }
 }

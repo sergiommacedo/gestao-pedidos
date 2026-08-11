@@ -7,6 +7,7 @@ import br.com.sergio.gestaopedidos.exception.ResourceNotFoundException;
 import br.com.sergio.gestaopedidos.service.DashboardAnaliticoService;
 import br.com.sergio.gestaopedidos.service.DashboardService;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -43,6 +44,17 @@ class DashboardHistoricoControllerTest {
 
         mvc(service).perform(get("/dashboard/clientes/999/pedidos"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void erroGenericoMantemRespostaApiErrorGravavelMesmoQuandoClienteAceitaHtml() throws Exception {
+        DashboardAnaliticoService service = mock(DashboardAnaliticoService.class);
+        when(service.buscarHistoricoCliente(7L, 0, 5)).thenThrow(new IllegalStateException("Falha simulada"));
+
+        mvc(service).perform(get("/dashboard/clientes/7/pedidos").accept(MediaType.TEXT_HTML))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.message").value("Erro interno do servidor."));
     }
 
     private MockMvc mvc(DashboardAnaliticoService service) {

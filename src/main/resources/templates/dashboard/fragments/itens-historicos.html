@@ -5,7 +5,7 @@
         <div class="fw-semibold text-break" th:text="${item.produtoNome}"></div>
         <div class="d-flex flex-wrap gap-3 small">
             <span th:text="${@formatacao.formatarQuantidade(item.quantidade,item.unidade)}"></span>
-            <span th:text="${@formatacao.formatarMoeda(item.precoUnitario) + '/' + item.unidade.simbolo}"></span>
+            <span th:text="${@formatacao.formatarMoeda(item.precoUnitario) + '/' + (item.unidade.name() == 'QUILOGRAMA' ? 'kg' : 'un')}"></span>
             <span>Subtotal <strong th:text="${@formatacao.formatarMoeda(item.subtotal)}"></strong></span>
         </div>
     </div>
