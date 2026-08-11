@@ -37,7 +37,8 @@ public class ConfiguracaoEmpresaWebController {
                 atual.nomeEmpresa(),
                 atual.nomeCurto(),
                 atual.tema(),
-                atual.textoBoasVindas()
+                atual.textoBoasVindas(),
+                atual.enderecoSaidaEntregas()
         ));
         prepararPreview(model, atual);
         model.addAttribute("removerLogoSelecionada", false);

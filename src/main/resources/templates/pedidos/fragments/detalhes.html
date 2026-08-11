@@ -49,6 +49,12 @@
                 <div class="col-sm-4">
                     <small class="text-muted d-block">Tipo de entrega</small>
                     <strong th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></strong>
+                    <div th:if="${pedido.horarioInicio != null}"
+                         th:text="${pedido.horarioFim != null ? #temporals.format(pedido.horarioInicio, 'HH:mm') + '–' + #temporals.format(pedido.horarioFim, 'HH:mm') : #temporals.format(pedido.horarioInicio, 'HH:mm')}"></div>
+                    <th:block th:if="${pedido.tipoEntrega.name() == 'ENTREGA'}">
+                        <div th:text="${pedido.enderecoEntregaResumido != null and !pedido.enderecoEntregaResumido.isBlank() ? pedido.enderecoEntregaResumido : 'Endereço incompleto'}"></div>
+                        <div class="text-uppercase" th:if="${pedido.bairroEntrega != null}" th:text="${pedido.bairroEntrega}"></div>
+                    </th:block>
                 </div>
                 <div class="col-sm-4">
                     <small class="text-muted d-block">Forma de pagamento</small>

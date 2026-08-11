@@ -17,6 +17,7 @@ import br.com.sergio.gestaopedidos.service.DashboardService;
 import br.com.sergio.gestaopedidos.service.PedidoService;
 import br.com.sergio.gestaopedidos.service.EstoqueService;
 import br.com.sergio.gestaopedidos.service.ProdutoService;
+import br.com.sergio.gestaopedidos.service.ConfiguracaoEmpresaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -64,6 +65,7 @@ public class PedidoWebController {
     private final DashboardService dashboardService;
     private final ClienteService clienteService;
     private final ProdutoService produtoService;
+    private final ConfiguracaoEmpresaService configuracaoEmpresaService;
 
     @ModelAttribute("statusPedidos")
     public StatusPedido[] statusPedidos() {
@@ -239,6 +241,22 @@ public class PedidoWebController {
         prepararFormulario(model, pedido, null, List.of());
 
         return "pedidos/formulario";
+    }
+
+    @GetMapping("/planejamento")
+    public String planejamento(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataAgendada,
+            Model model
+    ) {
+        LocalDate dataSelecionada = dataAgendada == null ? LocalDate.now() : dataAgendada;
+        var entregas = pedidoService.planejarEntregas(dataSelecionada);
+        model.addAttribute("dataAgendada", dataSelecionada);
+        model.addAttribute("entregasPlanejaveis", entregas.stream().filter(e -> !e.jaEmRota()).toList());
+        model.addAttribute("entregasEmRota", entregas.stream().filter(e -> e.jaEmRota()).toList());
+        model.addAttribute("quantidadeEnderecosIncompletos", entregas.stream()
+                .filter(e -> !e.jaEmRota() && !e.enderecoNavegavel()).count());
+        model.addAttribute("enderecoSaida", configuracaoEmpresaService.getConfiguracaoAtual().enderecoSaidaEntregas());
+        return "pedidos/planejamento";
     }
 
     @PostMapping
@@ -766,6 +784,8 @@ public class PedidoWebController {
                 .dataAgendada(pedido.dataAgendada())
                 .formaPagamento(pedido.formaPagamento())
                 .tipoEntrega(pedido.tipoEntrega())
+                .horarioInicio(pedido.horarioInicio())
+                .horarioFim(pedido.horarioFim())
                 .taxaEntrega(pedido.taxaEntrega())
                 .observacao(pedido.observacao())
                 .itens(itens)

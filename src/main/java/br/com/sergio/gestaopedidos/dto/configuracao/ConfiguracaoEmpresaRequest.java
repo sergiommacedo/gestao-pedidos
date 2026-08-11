@@ -19,6 +19,9 @@ public record ConfiguracaoEmpresaRequest(
         TemaSistema tema,
 
         @Size(max = 255, message = "Texto de boas-vindas deve ter no máximo 255 caracteres.")
-        String textoBoasVindas
+        String textoBoasVindas,
+
+        @Size(max = 300, message = "Endereço de saída deve ter no máximo 300 caracteres.")
+        String enderecoSaidaEntregas
 ) {
 }

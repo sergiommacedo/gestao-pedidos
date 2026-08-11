@@ -54,6 +54,15 @@
                                 <div class="invalid-feedback" th:errors="*{textoBoasVindas}"></div>
                                 <div class="form-text">Até 255 caracteres.</div>
                             </div>
+                            <div class="col-12">
+                                <label for="enderecoSaidaEntregas" class="form-label">Endereço de saída das entregas</label>
+                                <input type="text" id="enderecoSaidaEntregas" class="form-control"
+                                       th:field="*{enderecoSaidaEntregas}" maxlength="300"
+                                       placeholder="Rua, número, bairro, cidade e CEP"
+                                       th:classappend="${#fields.hasErrors('enderecoSaidaEntregas')} ? 'is-invalid'">
+                                <div class="invalid-feedback" th:errors="*{enderecoSaidaEntregas}"></div>
+                                <div class="form-text">Origem opcional usada apenas ao abrir a sequência no Google Maps.</div>
+                            </div>
                         </div>
                     </div>
                 </div>

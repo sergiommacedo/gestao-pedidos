@@ -316,6 +316,10 @@
         </div>
 
         <div class="card-header bg-white border-top py-3">
+            <a th:href="@{/pedidos/planejamento(dataAgendada=${dataAgendadaIso})}"
+               class="btn btn-primary me-2">
+                <i class="bi bi-sign-turn-right"></i> Planejar entregas
+            </a>
             <button type="button" title="Imprimir comandas selecionadas"
                     class="btn btn-outline-primary"
                     data-imprimir-selecionados
@@ -371,7 +375,6 @@
                             </a>
                         </th>
 
-                        <th>Telefone</th>
                         <th>Itens</th>
 
                         <th>
@@ -385,7 +388,7 @@
                             </a>
                         </th>
 
-                        <th>Entrega</th>
+                        <th>Entrega/Retirada</th>
                         <th>Pagamento</th>
                         <th>Estoque</th>
 
@@ -420,8 +423,10 @@
                         </td>
                         <td class="fw-semibold" th:text="${pedido.id}"></td>
                         <td class="text-nowrap" th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></td>
-                        <td th:text="${pedido.clienteNome}"></td>
-                        <td class="text-nowrap" th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></td>
+                        <td>
+                            <div class="fw-semibold" th:text="${pedido.clienteNome}"></div>
+                            <small class="text-muted text-nowrap" th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></small>
+                        </td>
                         <td>
                             <span th:each="item, stat : ${pedido.itens}" th:if="${stat.index < 3}"
                                   th:text="${(stat.index > 0 ? ', ' : '') + @formatacao.formatarQuantidade(item.quantidade, item.unidadeVenda) + ' ' + item.produtoNome}"></span>
@@ -497,8 +502,13 @@
                             </div>
                         </td>
                         <td>
-                            <span class="text-nowrap"
-                                  th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></span>
+                            <div class="fw-semibold" th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></div>
+                            <div th:if="${pedido.horarioInicio != null}" class="text-nowrap"
+                                 th:text="${pedido.horarioFim != null ? #temporals.format(pedido.horarioInicio, 'HH:mm') + '–' + #temporals.format(pedido.horarioFim, 'HH:mm') : #temporals.format(pedido.horarioInicio, 'HH:mm')}"></div>
+                            <th:block th:if="${pedido.tipoEntrega.name() == 'ENTREGA'}">
+                                <small class="d-block" th:text="${pedido.enderecoEntregaResumido != null and !pedido.enderecoEntregaResumido.isBlank() ? pedido.enderecoEntregaResumido : 'Endereço incompleto'}"></small>
+                                <small class="d-block text-uppercase fw-semibold text-muted" th:if="${pedido.bairroEntrega != null}" th:text="${pedido.bairroEntrega}"></small>
+                            </th:block>
                         </td>
                         <td th:text="${pedido.formaPagamento.descricao}"></td>
                         <td><span class="badge" th:classappend="${situacoesEstoque[pedido.id] == 'Estoque baixado'} ? ' text-bg-success' : (${situacoesEstoque[pedido.id] == 'Estoque estornado'} ? ' text-bg-info' : ' text-bg-secondary')" th:text="${situacoesEstoque[pedido.id]}"></span></td>

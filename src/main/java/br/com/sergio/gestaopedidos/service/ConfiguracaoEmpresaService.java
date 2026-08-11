@@ -82,6 +82,7 @@ public class ConfiguracaoEmpresaService {
         configuracao.setNomeCurto(request.nomeCurto().trim());
         configuracao.setTema(request.tema());
         configuracao.setTextoBoasVindas(normalizarTextoOpcional(request.textoBoasVindas()));
+        configuracao.setEnderecoSaidaEntregas(normalizarTextoOpcional(request.enderecoSaidaEntregas()));
 
         String logoAnterior = configuracao.getLogoArquivo();
         String logoNova = null;
@@ -162,7 +163,8 @@ public class ConfiguracaoEmpresaService {
                         .getIdentificadorCss(),
                 valorOuPadrao(configuracao.getTextoBoasVindas(), TEXTO_BOAS_VINDAS_PADRAO),
                 logoArquivo,
-                logoEmpresaStorageService.obterUrlOuPadrao(logoArquivo, LOGO_PADRAO)
+                logoEmpresaStorageService.obterUrlOuPadrao(logoArquivo, LOGO_PADRAO),
+                normalizarTextoOpcional(configuracao.getEnderecoSaidaEntregas())
         );
     }
 

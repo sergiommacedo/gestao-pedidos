@@ -9,6 +9,7 @@ import lombok.Builder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Builder
@@ -38,6 +39,28 @@ public record PedidoResponse(
 
         @Schema(description = "Tipo de entrega", example = "ENTREGA")
         TipoEntrega tipoEntrega,
+
+        LocalTime horarioInicio,
+
+        LocalTime horarioFim,
+
+        String enderecoEntrega,
+
+        String numeroEntrega,
+
+        String bairroEntrega,
+
+        String cidadeEntrega,
+
+        String cepEntrega,
+
+        String complementoEntrega,
+
+        String enderecoEntregaResumido,
+
+        String enderecoEntregaCompleto,
+
+        boolean enderecoEntregaCompletoParaNavegacao,
 
         @Schema(description = "Subtotal dos itens", example = "85.90")
         BigDecimal subtotal,

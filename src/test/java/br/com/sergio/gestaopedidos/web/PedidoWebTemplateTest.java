@@ -16,6 +16,7 @@ import br.com.sergio.gestaopedidos.service.DashboardService;
 import br.com.sergio.gestaopedidos.service.EstoqueService;
 import br.com.sergio.gestaopedidos.service.PedidoService;
 import br.com.sergio.gestaopedidos.service.ProdutoService;
+import br.com.sergio.gestaopedidos.service.ConfiguracaoEmpresaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.ui.ExtendedModelMap;
@@ -26,6 +27,7 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,7 +56,8 @@ class PedidoWebTemplateTest {
         PedidoService pedidoService = mock(PedidoService.class);
         LocalDate dataSalva = LocalDate.of(2026, 9, 18);
         when(pedidoService.buscarParaEdicao(7L)).thenReturn(PedidoResponse.builder()
-                .id(7L).dataAgendada(dataSalva).itens(List.of()).build());
+                .id(7L).dataAgendada(dataSalva).horarioInicio(LocalTime.of(12, 30))
+                .horarioFim(LocalTime.of(13, 30)).itens(List.of()).build());
         ExtendedModelMap model = new ExtendedModelMap();
 
         String view = controller(pedidoService).editar(
@@ -62,6 +65,8 @@ class PedidoWebTemplateTest {
 
         assertThat(view).isEqualTo("pedidos/formulario");
         assertThat(((PedidoRequest) model.get("pedido")).dataAgendada()).isEqualTo(dataSalva);
+        assertThat(((PedidoRequest) model.get("pedido")).horarioInicio()).isEqualTo("12:30");
+        assertThat(((PedidoRequest) model.get("pedido")).horarioFim()).isEqualTo("13:30");
     }
 
     @Test
@@ -213,7 +218,8 @@ class PedidoWebTemplateTest {
                 mock(EstoqueService.class),
                 mock(DashboardService.class),
                 mock(ClienteService.class),
-                mock(ProdutoService.class)
+                mock(ProdutoService.class),
+                mock(ConfiguracaoEmpresaService.class)
         );
     }
 

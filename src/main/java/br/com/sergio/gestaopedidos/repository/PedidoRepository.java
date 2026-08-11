@@ -423,6 +423,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     @EntityGraph(attributePaths = {"cliente", "itens", "itens.produto"})
     List<Pedido> findByDataAgendadaOrderByDataPedidoAsc(LocalDate dataAgendada);
 
+    @EntityGraph(attributePaths = {"cliente"})
     @Query("""
             SELECT p
             FROM Pedido p
@@ -450,6 +451,20 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             @Param("formaPagamento") FormaPagamento formaPagamento,
             @Param("situacaoEstoque") String situacaoEstoque,
             Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"cliente"})
+    @Query("""
+            SELECT p FROM Pedido p
+            WHERE p.dataAgendada = :data
+              AND p.tipoEntrega = br.com.sergio.gestaopedidos.enums.TipoEntrega.ENTREGA
+              AND p.status IN :status
+            ORDER BY CASE WHEN p.horarioInicio IS NULL THEN 1 ELSE 0 END,
+                     p.horarioInicio ASC, p.id ASC
+            """)
+    List<Pedido> buscarParaPlanejamento(
+            @Param("data") LocalDate data,
+            @Param("status") Collection<StatusPedido> status
     );
 
     @Query("""

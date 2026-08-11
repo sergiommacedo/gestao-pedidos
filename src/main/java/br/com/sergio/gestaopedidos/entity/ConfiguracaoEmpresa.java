@@ -53,4 +53,8 @@ public class ConfiguracaoEmpresa {
     @Size(max = 255, message = "Arquivo da logo deve ter no máximo 255 caracteres.")
     @Column(name = "logo_arquivo", length = 255)
     private String logoArquivo;
+
+    @Size(max = 300, message = "Endereço de saída deve ter no máximo 300 caracteres.")
+    @Column(name = "endereco_saida_entregas", length = 300)
+    private String enderecoSaidaEntregas;
 }

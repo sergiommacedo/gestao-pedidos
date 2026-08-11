@@ -14,6 +14,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Builder
@@ -53,6 +54,12 @@ public record PedidoRequest(
         )
         @NotNull(message = "Tipo de entrega é obrigatório.")
         TipoEntrega tipoEntrega,
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
+        LocalTime horarioInicio,
+
+        @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
+        LocalTime horarioFim,
 
         @Schema(
                 description = "Taxa de entrega",

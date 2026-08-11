@@ -5,6 +5,7 @@ import br.com.sergio.gestaopedidos.dto.pedido.DashboardOperacionalResponse;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoRequest;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoResponse;
 import br.com.sergio.gestaopedidos.dto.pedido.PreviaEstoquePedidoResponse;
+import br.com.sergio.gestaopedidos.dto.pedido.PlanejamentoEntregaResponse;
 import br.com.sergio.gestaopedidos.entity.Cliente;
 import br.com.sergio.gestaopedidos.entity.ItemPedido;
 import br.com.sergio.gestaopedidos.entity.Pedido;
@@ -202,6 +203,7 @@ public class PedidoService {
     }
 
     public PedidoResponse salvar(PedidoRequest request) {
+        validarHorarios(request);
         Cliente cliente = buscarClientePorId(request.clienteId());
 
         Pedido pedido = criarPedido(request, cliente);
@@ -218,18 +220,29 @@ public class PedidoService {
             PedidoRequest request,
             List<Long> itemIds
     ) {
+        validarHorarios(request);
         Pedido pedido = pedidoRepository.bloquearDetalhado(id).orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
         validarEditavel(pedido);
         boolean estoqueMovimentado = Boolean.TRUE.equals(pedido.getEstoqueMovimentado());
         if (estoqueMovimentado) estoqueService.estornarPedido(pedido);
         Cliente cliente = buscarClientePorId(request.clienteId());
+        Long clienteAnteriorId = pedido.getCliente().getId();
+        TipoEntrega tipoAnterior = pedido.getTipoEntrega();
 
         pedido.setCliente(cliente);
         pedido.setDataAgendada(request.dataAgendada());
         pedido.setFormaPagamento(request.formaPagamento());
         pedido.setTipoEntrega(request.tipoEntrega());
+        pedido.setHorarioInicio(request.horarioInicio());
+        pedido.setHorarioFim(request.horarioFim());
         pedido.setTaxaEntrega(normalizarTaxaEntrega(request.tipoEntrega(), request.taxaEntrega()));
         pedido.setObservacao(request.observacao());
+        boolean precisaNovoSnapshot = request.tipoEntrega() == TipoEntrega.ENTREGA
+                && (tipoAnterior != TipoEntrega.ENTREGA
+                    || !java.util.Objects.equals(clienteAnteriorId, cliente.getId())
+                    || pedido.getEnderecoEntregaHistorico() == null);
+        if (precisaNovoSnapshot) pedido.fotografarEnderecoEntrega(cliente);
+        else if (request.tipoEntrega() == TipoEntrega.RETIRADA) pedido.limparEnderecoEntrega();
 
         atualizarItensERecalcular(pedido, request, itemIds);
         if (estoqueMovimentado) estoqueService.processarPedido(pedido);
@@ -324,6 +337,34 @@ public class PedidoService {
             case SAIU_PARA_ENTREGA -> EnumSet.of(StatusPedido.ENTREGUE, StatusPedido.CANCELADO);
             case ENTREGUE, CANCELADO -> Set.of();
         };
+    }
+
+    @Transactional(readOnly = true)
+    public List<PlanejamentoEntregaResponse> planejarEntregas(LocalDate data) {
+        LocalDate dataSelecionada = data == null ? LocalDate.now() : data;
+        Set<StatusPedido> status = EnumSet.of(StatusPedido.PENDENTE, StatusPedido.EM_PREPARACAO,
+                StatusPedido.PRONTO, StatusPedido.SAIU_PARA_ENTREGA);
+        return pedidoRepository.buscarParaPlanejamento(dataSelecionada, status).stream()
+                .map(this::toPlanejamento)
+                .toList();
+    }
+
+    private PlanejamentoEntregaResponse toPlanejamento(Pedido pedido) {
+        return new PlanejamentoEntregaResponse(pedido.getId(), pedido.getCliente().getNome(),
+                pedido.getCliente().getTelefone(), pedido.getHorarioInicio(), pedido.getHorarioFim(),
+                pedido.getStatus(), pedidoMapper.enderecoResumido(pedido), pedidoMapper.enderecoCompleto(pedido),
+                pedido.getBairroEntregaHistorico(), pedidoMapper.enderecoNavegavel(pedido),
+                pedido.getStatus() == StatusPedido.SAIU_PARA_ENTREGA);
+    }
+
+    private void validarHorarios(PedidoRequest request) {
+        if (request.horarioFim() != null && request.horarioInicio() == null) {
+            throw new BusinessException("Informe o horário inicial antes do horário final.");
+        }
+        if (request.horarioInicio() != null && request.horarioFim() != null
+                && request.horarioFim().isBefore(request.horarioInicio())) {
+            throw new BusinessException("O horário final não pode ser anterior ao horário inicial.");
+        }
     }
 
     private void atualizarItensERecalcular(
@@ -439,18 +480,22 @@ public class PedidoService {
             PedidoRequest request,
             Cliente cliente
     ) {
-        return Pedido.builder()
+        Pedido pedido = Pedido.builder()
                 .dataPedido(LocalDateTime.now())
                 .dataAgendada(request.dataAgendada())
                 .status(StatusPedido.PENDENTE)
                 .formaPagamento(request.formaPagamento())
                 .tipoEntrega(request.tipoEntrega())
+                .horarioInicio(request.horarioInicio())
+                .horarioFim(request.horarioFim())
                 .subtotal(BigDecimal.ZERO)
                 .taxaEntrega(normalizarTaxaEntrega(request.tipoEntrega(), request.taxaEntrega()))
                 .valorTotal(BigDecimal.ZERO)
                 .observacao(request.observacao())
                 .cliente(cliente)
                 .build();
+        pedido.fotografarEnderecoEntrega(cliente);
+        return pedido;
     }
 
     private BigDecimal normalizarTaxaEntrega(TipoEntrega tipoEntrega, BigDecimal taxaEntrega) {

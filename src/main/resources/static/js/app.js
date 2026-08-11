@@ -25,8 +25,82 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarItensProducao();
     inicializarPreviaRendimentoProducao();
     inicializarComposicaoProduto();
+    inicializarPlanejamentoEntregas();
 
 });
+
+function construirUrlGoogleMaps(origem, enderecos) {
+    if (!enderecos.length) return null;
+    const parametros = new URLSearchParams({api: "1", travelmode: "driving"});
+    if (origem) parametros.set("origin", origem);
+    parametros.set("destination", enderecos[enderecos.length - 1]);
+    if (enderecos.length > 1) parametros.set("waypoints", enderecos.slice(0, -1).join("|"));
+    return `https://www.google.com/maps/dir/?${parametros.toString()}`;
+}
+
+function construirRotasGoogleMaps(origem, enderecos) {
+    const rotas = [];
+    let origemTrecho = origem || "";
+    for (let indice = 0; indice < enderecos.length;) {
+        let quantidade = Math.min(4, enderecos.length - indice);
+        let url;
+        while (quantidade > 0) {
+            const trecho = enderecos.slice(indice, indice + quantidade);
+            url = construirUrlGoogleMaps(origemTrecho, trecho);
+            if (url.length <= 2048) break;
+            quantidade--;
+        }
+        if (!quantidade) return {rotas, erro: `O endereço da entrega ${indice + 1} excede o limite de 2.048 caracteres do Google Maps.`};
+        const trecho = enderecos.slice(indice, indice + quantidade);
+        rotas.push(url);
+        origemTrecho = trecho[trecho.length - 1];
+        indice += quantidade;
+    }
+    return {rotas, erro: null};
+}
+
+function inicializarPlanejamentoEntregas() {
+    const planejamento = document.querySelector("[data-planejamento-entregas]");
+    if (!planejamento) return;
+    const lista = planejamento.querySelector("[data-lista-entregas]");
+    const links = planejamento.querySelector("[data-links-google-maps]");
+    const erro = planejamento.querySelector("[data-erro-google-maps]");
+
+    const atualizar = () => {
+        const cartoes = [...lista.querySelectorAll("[data-entrega-planejada]")];
+        cartoes.forEach((cartao, indice) => {
+            cartao.querySelector("[data-posicao]").textContent = `${indice + 1}.`;
+            cartao.querySelector("[data-mover-cima]").disabled = indice === 0;
+            cartao.querySelector("[data-mover-baixo]").disabled = indice === cartoes.length - 1;
+        });
+        const validos = cartoes.filter(cartao => cartao.dataset.navegavel === "true").map(cartao => cartao.dataset.endereco);
+        const resultado = construirRotasGoogleMaps(planejamento.dataset.origem?.trim(), validos);
+        links.replaceChildren();
+        resultado.rotas.forEach((url, indice) => {
+            const link = document.createElement("a");
+            link.className = "btn btn-primary";
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.href = url;
+            link.textContent = resultado.rotas.length === 1 ? "Abrir no Google Maps" : `Abrir trecho ${indice + 1} no Google Maps`;
+            links.appendChild(link);
+        });
+        if (!validos.length || resultado.erro) {
+            erro.textContent = resultado.erro || "Nenhuma entrega possui endereço completo para navegação.";
+            erro.classList.remove("d-none");
+        } else erro.classList.add("d-none");
+    };
+
+    lista.addEventListener("click", evento => {
+        const botao = evento.target.closest("[data-mover-cima], [data-mover-baixo]");
+        if (!botao) return;
+        const cartao = botao.closest("[data-entrega-planejada]");
+        if (botao.matches("[data-mover-cima]") && cartao.previousElementSibling) lista.insertBefore(cartao, cartao.previousElementSibling);
+        if (botao.matches("[data-mover-baixo]") && cartao.nextElementSibling) lista.insertBefore(cartao.nextElementSibling, cartao);
+        atualizar();
+    });
+    atualizar();
+}
 
 function inicializarComposicaoProduto() {
     const formulario = document.querySelector("[data-form-composicao]");

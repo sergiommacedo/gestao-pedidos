@@ -192,6 +192,18 @@
                             <div class="invalid-feedback" th:errors="*{formaPagamento}"></div>
                         </div>
 
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label for="horarioInicio" class="form-label">Horário previsto</label>
+                                <input type="time" id="horarioInicio" class="form-control" th:field="*{horarioInicio}">
+                            </div>
+                            <div class="col-6">
+                                <label for="horarioFim" class="form-label">Até (opcional)</label>
+                                <input type="time" id="horarioFim" class="form-control" th:field="*{horarioFim}">
+                            </div>
+                            <div class="col-12 form-text">Informe somente o primeiro campo para um horário simples.</div>
+                        </div>
+
                         <div class="mb-3">
                             <label for="tipoEntrega" class="form-label">Tipo de entrega *</label>
                             <select id="tipoEntrega" class="form-select" th:field="*{tipoEntrega}"

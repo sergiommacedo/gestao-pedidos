@@ -5,11 +5,13 @@ import br.com.sergio.gestaopedidos.enums.StatusPedido;
 import br.com.sergio.gestaopedidos.enums.TipoEntrega;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,6 +47,30 @@ public class Pedido {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private TipoEntrega tipoEntrega;
+
+    @Column(name = "horario_inicio")
+    private LocalTime horarioInicio;
+
+    @Column(name = "horario_fim")
+    private LocalTime horarioFim;
+
+    @Column(name = "endereco_entrega_historico", length = 150)
+    private String enderecoEntregaHistorico;
+
+    @Column(name = "numero_entrega_historico", length = 20)
+    private String numeroEntregaHistorico;
+
+    @Column(name = "bairro_entrega_historico", length = 100)
+    private String bairroEntregaHistorico;
+
+    @Column(name = "cidade_entrega_historico", length = 100)
+    private String cidadeEntregaHistorico;
+
+    @Column(name = "cep_entrega_historico", length = 10)
+    private String cepEntregaHistorico;
+
+    @Column(name = "complemento_entrega_historico", length = 150)
+    private String complementoEntregaHistorico;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
@@ -87,6 +113,7 @@ public class Pedido {
             orphanRemoval = true
     )
     @Builder.Default
+    @BatchSize(size = 50)
     private List<ItemPedido> itens = new ArrayList<>();
 
     @PrePersist
@@ -124,6 +151,32 @@ public class Pedido {
                 taxaEntrega != null ? taxaEntrega : BigDecimal.ZERO;
 
         valorTotal = subtotalSeguro.add(taxaEntregaSegura);
+    }
+
+    public void fotografarEnderecoEntrega(Cliente cliente) {
+        if (tipoEntrega != TipoEntrega.ENTREGA || cliente == null) {
+            limparEnderecoEntrega();
+            return;
+        }
+        enderecoEntregaHistorico = normalizar(cliente.getEndereco());
+        numeroEntregaHistorico = normalizar(cliente.getNumero());
+        bairroEntregaHistorico = normalizar(cliente.getBairro());
+        cidadeEntregaHistorico = normalizar(cliente.getCidade());
+        cepEntregaHistorico = normalizar(cliente.getCep());
+        complementoEntregaHistorico = normalizar(cliente.getComplemento());
+    }
+
+    public void limparEnderecoEntrega() {
+        enderecoEntregaHistorico = null;
+        numeroEntregaHistorico = null;
+        bairroEntregaHistorico = null;
+        cidadeEntregaHistorico = null;
+        cepEntregaHistorico = null;
+        complementoEntregaHistorico = null;
+    }
+
+    private String normalizar(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
     }
 
     public void aplicarResultadoHistorico(BigDecimal cmv) {

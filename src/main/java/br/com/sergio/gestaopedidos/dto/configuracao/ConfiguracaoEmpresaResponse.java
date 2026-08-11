@@ -10,6 +10,7 @@ public record ConfiguracaoEmpresaResponse(
         String temaCss,
         String textoBoasVindas,
         String logoArquivo,
-        String logoUrl
+        String logoUrl,
+        String enderecoSaidaEntregas
 ) {
 }
