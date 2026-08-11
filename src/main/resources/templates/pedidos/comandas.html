@@ -116,6 +116,17 @@
             padding: 0.5rem;
         }
 
+        .comanda-operacao {
+            border: 1.5px solid #000000;
+            padding: 0.4rem 0.5rem;
+            line-height: 1.25;
+        }
+
+        .comanda-operacao-tipo {
+            font-size: 1.05rem;
+            letter-spacing: 0.04em;
+        }
+
         .etiqueta-item {
             border-top: 1px solid #000000;
             padding: 0.55rem 0;
@@ -262,12 +273,31 @@
 
         <section class="etiqueta-destaque bloco-sem-quebra mb-2">
             <div class="fw-bold fs-5 quebra-linha" th:text="${pedido.clienteNome}"></div>
-            <div class="d-flex justify-content-between gap-2">
+            <div>
                 <strong th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></strong>
-                <strong th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'ENTREGA' : 'RETIRADA'"></strong>
             </div>
             <div th:text="${@formatacao.formatarTelefone(pedido.clienteTelefone)}"></div>
             <div>Pagamento: <span th:text="${pedido.formaPagamento.descricao}"></span></div>
+        </section>
+
+        <section class="comanda-operacao bloco-sem-quebra mb-2 quebra-linha"
+                 th:attr="aria-label=${pedido.tipoEntrega.name() == 'ENTREGA' ? 'Dados da entrega' : 'Dados da retirada'}">
+            <div class="comanda-operacao-tipo fw-bold"
+                 th:text="${pedido.tipoEntrega.name() == 'ENTREGA' ? 'ENTREGA' : 'RETIRADA'}"></div>
+            <div class="fw-bold" th:if="${pedido.horarioInicio != null}"
+                 th:text="${(pedido.tipoEntrega.name() == 'RETIRADA' ? 'Retirada prevista: ' : 'Horário previsto: ')
+                    + (pedido.horarioFim != null
+                        ? #temporals.format(pedido.horarioInicio, 'HH:mm') + '–' + #temporals.format(pedido.horarioFim, 'HH:mm')
+                        : #temporals.format(pedido.horarioInicio, 'HH:mm'))}"></div>
+            <th:block th:if="${pedido.tipoEntrega.name() == 'ENTREGA'}">
+                <div class="mt-1" th:if="${pedido.enderecoEntrega != null and !pedido.enderecoEntrega.isBlank()}">
+                    <span th:text="${pedido.enderecoEntrega}"></span><span th:if="${pedido.numeroEntrega != null and !pedido.numeroEntrega.isBlank()}" th:text="${', ' + pedido.numeroEntrega}"></span>
+                </div>
+                <div th:if="${pedido.bairroEntrega != null and !pedido.bairroEntrega.isBlank()}" th:text="${pedido.bairroEntrega}"></div>
+                <div th:if="${pedido.cidadeEntrega != null and !pedido.cidadeEntrega.isBlank()}" th:text="${pedido.cidadeEntrega}"></div>
+                <div th:if="${pedido.cepEntrega != null and !pedido.cepEntrega.isBlank()}" th:text="${'CEP ' + pedido.cepEntrega}"></div>
+                <div th:if="${pedido.complementoEntrega != null and !pedido.complementoEntrega.isBlank()}" th:text="${pedido.complementoEntrega}"></div>
+            </th:block>
         </section>
 
         <section class="mb-2" aria-label="Itens do pedido">
@@ -329,9 +359,28 @@
             </div>
             <div class="col-md-5">
                 <div><strong>Data agendada:</strong> <span th:text="${#temporals.format(pedido.dataAgendada, 'dd/MM/yyyy')}"></span></div>
-                <div><strong>Tipo:</strong> <span th:text="${pedido.tipoEntrega.name() == 'ENTREGA'} ? 'Entrega' : 'Retirada'"></span></div>
                 <div><strong>Pagamento:</strong> <span th:text="${pedido.formaPagamento.descricao}"></span></div>
             </div>
+        </section>
+
+        <section class="comanda-operacao bloco-sem-quebra mb-4 quebra-linha"
+                 th:attr="aria-label=${pedido.tipoEntrega.name() == 'ENTREGA' ? 'Dados da entrega' : 'Dados da retirada'}">
+            <div class="comanda-operacao-tipo fw-bold"
+                 th:text="${pedido.tipoEntrega.name() == 'ENTREGA' ? 'ENTREGA' : 'RETIRADA'}"></div>
+            <div class="fw-bold" th:if="${pedido.horarioInicio != null}"
+                 th:text="${(pedido.tipoEntrega.name() == 'RETIRADA' ? 'Retirada prevista: ' : 'Horário previsto: ')
+                    + (pedido.horarioFim != null
+                        ? #temporals.format(pedido.horarioInicio, 'HH:mm') + '–' + #temporals.format(pedido.horarioFim, 'HH:mm')
+                        : #temporals.format(pedido.horarioInicio, 'HH:mm'))}"></div>
+            <th:block th:if="${pedido.tipoEntrega.name() == 'ENTREGA'}">
+                <div class="mt-1" th:if="${pedido.enderecoEntrega != null and !pedido.enderecoEntrega.isBlank()}">
+                    <span th:text="${pedido.enderecoEntrega}"></span><span th:if="${pedido.numeroEntrega != null and !pedido.numeroEntrega.isBlank()}" th:text="${', ' + pedido.numeroEntrega}"></span>
+                </div>
+                <div th:if="${pedido.bairroEntrega != null and !pedido.bairroEntrega.isBlank()}" th:text="${pedido.bairroEntrega}"></div>
+                <div th:if="${pedido.cidadeEntrega != null and !pedido.cidadeEntrega.isBlank()}" th:text="${pedido.cidadeEntrega}"></div>
+                <div th:if="${pedido.cepEntrega != null and !pedido.cepEntrega.isBlank()}" th:text="${'CEP ' + pedido.cepEntrega}"></div>
+                <div th:if="${pedido.complementoEntrega != null and !pedido.complementoEntrega.isBlank()}" th:text="${pedido.complementoEntrega}"></div>
+            </th:block>
         </section>
 
         <section class="mb-4">

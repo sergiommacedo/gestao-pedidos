@@ -26,8 +26,24 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarPreviaRendimentoProducao();
     inicializarComposicaoProduto();
     inicializarPlanejamentoEntregas();
+    inicializarNavegacaoKanban();
 
 });
+
+function inicializarNavegacaoKanban() {
+    const viewport = document.querySelector("[data-kanban-viewport]");
+    if (!viewport) return;
+    const anterior = document.querySelector("[data-kanban-anterior]");
+    const proximo = document.querySelector("[data-kanban-proximo]");
+    const distanciaColuna = () => {
+        const coluna = viewport.querySelector(".kanban-coluna");
+        if (!coluna) return 300;
+        const gap = Number.parseFloat(getComputedStyle(viewport.querySelector(".kanban-pedidos")).columnGap) || 0;
+        return coluna.getBoundingClientRect().width + gap;
+    };
+    anterior?.addEventListener("click", () => viewport.scrollBy({left: -distanciaColuna(), behavior: "smooth"}));
+    proximo?.addEventListener("click", () => viewport.scrollBy({left: distanciaColuna(), behavior: "smooth"}));
+}
 
 function construirUrlGoogleMaps(origem, enderecos) {
     if (!enderecos.length) return null;

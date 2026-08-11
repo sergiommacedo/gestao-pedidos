@@ -66,7 +66,18 @@
         </div>
     </div>
 
-    <div class="kanban-pedidos" aria-label="Fluxo de pedidos">
+    <section class="kanban-area" aria-label="Kanban do dia">
+        <div class="kanban-area-cabecalho">
+            <h3 class="h6 fw-bold mb-0">Kanban do dia</h3>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Navegar pelas colunas do Kanban">
+                <button type="button" class="btn btn-outline-secondary" data-kanban-anterior
+                        title="Coluna anterior" aria-label="Coluna anterior">←</button>
+                <button type="button" class="btn btn-outline-secondary" data-kanban-proximo
+                        title="Próxima coluna" aria-label="Próxima coluna">→</button>
+            </div>
+        </div>
+        <div class="kanban-viewport" data-kanban-viewport tabindex="0">
+        <div class="kanban-pedidos" aria-label="Fluxo de pedidos">
         <section class="kanban-coluna"
                  th:each="statusColuna : ${statusKanban}">
             <th:block th:with="pedidosColuna=${pedidosPorStatus.get(statusColuna)}">
@@ -198,7 +209,9 @@
             </div>
             </th:block>
         </section>
-    </div>
+        </div>
+        </div>
+    </section>
 
     <section class="mt-4" th:if="${mostrarCancelados}">
         <div class="d-flex align-items-center gap-2 mb-3">

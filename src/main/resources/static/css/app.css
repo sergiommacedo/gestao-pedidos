@@ -961,18 +961,41 @@ body {
     z-index: 1080;
 }
 
-.kanban-pedidos {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(276px, 1fr);
-    gap: 0.375rem;
+.kanban-area {
+    min-width: 0;
+}
+
+.kanban-area-cabecalho {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.4rem;
+}
+
+.kanban-viewport {
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
-    padding: 0.1rem 0.1rem 0.65rem;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    scrollbar-gutter: stable;
     scroll-snap-type: x proximity;
 }
 
+.kanban-pedidos {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(300px, 1fr);
+    gap: 0.375rem;
+    width: max-content;
+    min-width: 100%;
+    padding: 0.1rem 0.1rem 0.65rem;
+}
+
 .kanban-coluna {
-    min-width: 0;
+    min-width: 300px;
+    max-width: min(360px, calc(100vw - 2rem));
     overflow: hidden;
     background: var(--color-surface);
     border: 1px solid color-mix(in srgb, var(--app-primary-soft-border) 45%, transparent);
@@ -1026,6 +1049,13 @@ body {
     margin-bottom: 0.1rem;
     font-size: 0.95rem;
     line-height: 1.2;
+}
+
+.kanban-cartao,
+.kanban-cartao .quebra-linha,
+.kanban-cartao .small {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .kanban-metadados {
@@ -1120,7 +1150,11 @@ body {
 
 @media (max-width: 575.98px) {
     .kanban-pedidos {
-        grid-auto-columns: minmax(276px, calc(100vw - 2rem));
+        grid-auto-columns: minmax(300px, calc(100vw - 2rem));
+    }
+
+    .kanban-coluna {
+        min-width: min(300px, calc(100vw - 2rem));
     }
 }
 

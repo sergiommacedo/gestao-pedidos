@@ -212,6 +212,27 @@ class PedidoWebTemplateTest {
                 "lucroBrutoEstimado", "margemBrutaHistorica", "CMV");
     }
 
+    @Test
+    void comandaEntregaUsaSnapshotEImprimeJanelaSemConsultarClienteAtual() throws Exception {
+        String html = Files.readString(COMANDA);
+
+        assertThat(html).contains("pedido.enderecoEntrega", "pedido.numeroEntrega",
+                "pedido.bairroEntrega", "pedido.cidadeEntrega", "pedido.cepEntrega",
+                "pedido.complementoEntrega", "pedido.horarioInicio", "pedido.horarioFim",
+                "Horário previsto:", "CEP ");
+        assertThat(html).doesNotContain("pedido.cliente.endereco", "pedido.cliente.bairro",
+                "pedido.cliente.cidade", "cliente.endereco");
+    }
+
+    @Test
+    void comandaRetiradaMostraHorarioCondicionalENuncaEntraNoBlocoDeEndereco() throws Exception {
+        String html = Files.readString(COMANDA);
+
+        assertThat(html).contains("Retirada prevista:",
+                "th:if=\"${pedido.horarioInicio != null}\"",
+                "th:if=\"${pedido.tipoEntrega.name() == 'ENTREGA'}\"");
+    }
+
     private PedidoWebController controller(PedidoService pedidoService) {
         return new PedidoWebController(
                 pedidoService,
