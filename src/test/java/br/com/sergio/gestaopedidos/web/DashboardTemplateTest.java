@@ -38,4 +38,11 @@ class DashboardTemplateTest {
                 "compra.valorTotal", "compra.classificacao", "Ver Compras", "Nenhuma compra cadastrada.");
         assertThat(html).doesNotContain("Compras do dia", "Nenhuma compra registrada hoje.");
     }
+
+    @Test void rankingClientesMostraQuantidadeTotalETicketMedio() throws Exception {
+        String html = Files.readString(template);
+        assertThat(html).contains("Ranking de clientes", "r.quantidadePedidos", "r.valorTotal",
+                "Ticket médio:", "r.ticketMedio");
+        assertThat(html).doesNotContain("formatarMoeda(r.valor)");
+    }
 }

@@ -7,7 +7,9 @@ import java.util.List;
 public record DashboardAnaliticoResponse(long produtosVendidos, long revendasVendidas,
         long pedidosAtrasados, long pedidosEntregues, BigDecimal lucroBrutoEstimado,
         List<SerieDia> vendasPorDia, List<SerieDia> producaoPorDia,
-        List<Ranking> rankingClientes, List<Ranking> consumoInsumos) {
+        List<RankingCliente> rankingClientes, List<Ranking> consumoInsumos) {
     public record SerieDia(LocalDate data, BigDecimal valor) {}
+    public record RankingCliente(String nome, long quantidadePedidos, BigDecimal valorTotal,
+                                 BigDecimal ticketMedio) {}
     public record Ranking(String nome, BigDecimal valor) {}
 }
