@@ -149,9 +149,15 @@
                             <strong class="fs-5" th:text="${@formatacao.formatarMoeda(pedido.valorTotal)}"></strong>
                         </div>
 
+                        <div class="small text-warning-emphasis mb-2"
+                             th:if="${pedido.status.name() == 'EM_PREPARACAO' and pedido.itens.?[unidadeVenda.name() == 'QUILOGRAMA'].size() > 0}">
+                            <i class="bi bi-scale me-1"></i>Confirme os pesos antes de finalizar.
+                        </div>
+
                         <form th:if="${proximosStatus[pedido.id] != pedido.status}"
                               th:action="@{/pedidos/{id}/status(id=${pedido.id})}"
-                              method="post" class="d-grid kanban-acao-principal">
+                              method="post" class="d-grid kanban-acao-principal"
+                              th:attr="data-confirmar-quantidades=${pedido.status.name() == 'EM_PREPARACAO' and pedido.itens.?[unidadeVenda.name() == 'QUILOGRAMA'].size() > 0}">
                             <input type="hidden" name="novoStatus" th:value="${proximosStatus[pedido.id]}">
                             <input type="hidden" name="dataAgendada" th:value="${dataAgendadaIso}">
                             <input type="hidden" name="visualizacao" value="kanban">

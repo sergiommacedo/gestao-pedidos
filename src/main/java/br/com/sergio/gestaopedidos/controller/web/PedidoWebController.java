@@ -5,6 +5,7 @@ import br.com.sergio.gestaopedidos.dto.cliente.ClienteResponse;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoRequest;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoResponse;
 import br.com.sergio.gestaopedidos.dto.pedido.ItemPedidoRequest;
+import br.com.sergio.gestaopedidos.dto.pedido.PlanejamentoEntregasResponse;
 import br.com.sergio.gestaopedidos.dto.produto.ProdutoResponse;
 import br.com.sergio.gestaopedidos.enums.FormaPagamento;
 import br.com.sergio.gestaopedidos.enums.StatusPedido;
@@ -249,12 +250,14 @@ public class PedidoWebController {
             Model model
     ) {
         LocalDate dataSelecionada = dataAgendada == null ? LocalDate.now() : dataAgendada;
-        var entregas = pedidoService.planejarEntregas(dataSelecionada);
+        PlanejamentoEntregasResponse planejamento = pedidoService.planejarEntregas(dataSelecionada);
         model.addAttribute("dataAgendada", dataSelecionada);
-        model.addAttribute("entregasPlanejaveis", entregas.stream().filter(e -> !e.jaEmRota()).toList());
-        model.addAttribute("entregasEmRota", entregas.stream().filter(e -> e.jaEmRota()).toList());
-        model.addAttribute("quantidadeEnderecosIncompletos", entregas.stream()
-                .filter(e -> !e.jaEmRota() && !e.enderecoNavegavel()).count());
+        model.addAttribute("entregasPlanejaveis", planejamento.elegiveis());
+        model.addAttribute("entregasEmRota", planejamento.emRota());
+        model.addAttribute("quantidadeEntregasElegiveis", planejamento.quantidadeElegiveis());
+        model.addAttribute("quantidadeEnderecosNavegaveis", planejamento.quantidadeEnderecosNavegaveis());
+        model.addAttribute("quantidadeEnderecosIncompletos", planejamento.quantidadeEnderecosIncompletos());
+        model.addAttribute("quantidadeEntregasEmRota", planejamento.quantidadeEmRota());
         model.addAttribute("enderecoSaida", configuracaoEmpresaService.getConfiguracaoAtual().enderecoSaidaEntregas());
         return "pedidos/planejamento";
     }

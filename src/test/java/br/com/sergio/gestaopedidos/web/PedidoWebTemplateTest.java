@@ -117,7 +117,7 @@ class PedidoWebTemplateTest {
                 "item.lucroBrutoEstimado", "item.margemBrutaHistorica",
                 "Custo ainda não confirmado",
                 "Custo histórico ainda não disponível",
-                "Será confirmado ao iniciar a preparação");
+                "Será confirmado ao marcar o pedido como pronto");
         assertThat(html).contains("pedido.custoTotalHistorico == null");
     }
 

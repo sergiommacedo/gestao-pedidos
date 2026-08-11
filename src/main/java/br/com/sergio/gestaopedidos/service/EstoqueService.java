@@ -43,7 +43,7 @@ import br.com.sergio.gestaopedidos.dto.estoque.*;import br.com.sergio.gestaopedi
  public void processarPedido(Pedido pedido){
   if(Boolean.TRUE.equals(pedido.getEstoqueMovimentado()))return;
   PlanoPedido plano=planejarPedido(pedido);Map<Chave,SaldoEstoque> bloqueados=carregarSaldos(plano,true);List<String> faltas=faltas(plano,bloqueados);
-  if(!faltas.isEmpty())throw new BusinessException("Não foi possível iniciar a preparação. "+String.join("; ",faltas)+".");
+  if(!faltas.isEmpty())throw new BusinessException("Não foi possível marcar o pedido como pronto. "+String.join("; ",faltas)+".");
   aplicarCustosHistoricos(pedido,plano,bloqueados);
   String usuario=Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication()).map(a->a.getName()).orElse("sistema");LocalDateTime agora=LocalDateTime.now();
   for(Necessidade n:ordenar(plano.necessidades)){SaldoEstoque saldo=bloqueados.get(new Chave(n.ref.tipo,n.ref.id));BigDecimal antes=saldo.getQuantidadeAtual(),depois=antes.subtract(n.quantidade).setScale(3),cu=saldo.getCustoMedioAtual(),valor=n.quantidade.multiply(cu).setScale(2,RoundingMode.HALF_UP);movimentos.save(MovimentacaoEstoque.builder().tipoItem(n.ref.tipo).insumo(n.ref.insumo).produto(n.ref.produto).nomeHistorico(n.ref.nome).dataMovimentacao(agora).tipo(TipoMovimentacaoEstoque.SAIDA_VENDA).quantidade(n.quantidade).unidadeHistorica(n.ref.unidade).valorTotal(valor).custoUnitario(cu).saldoAnterior(antes).saldoPosterior(depois).usuarioResponsavel(usuario).observacao("Pedido #"+pedido.getId()).pedido(pedido).build());saldo.setQuantidadeAtual(depois);saldo.setValorTotalEstoque(saldo.getValorTotalEstoque().subtract(valor).max(BigDecimal.ZERO).setScale(2));zerarValorSemApagarCusto(saldo);saldos.save(saldo);}

@@ -6,6 +6,7 @@ import br.com.sergio.gestaopedidos.dto.pedido.PedidoRequest;
 import br.com.sergio.gestaopedidos.dto.pedido.PedidoResponse;
 import br.com.sergio.gestaopedidos.dto.pedido.PreviaEstoquePedidoResponse;
 import br.com.sergio.gestaopedidos.dto.pedido.PlanejamentoEntregaResponse;
+import br.com.sergio.gestaopedidos.dto.pedido.PlanejamentoEntregasResponse;
 import br.com.sergio.gestaopedidos.entity.Cliente;
 import br.com.sergio.gestaopedidos.entity.ItemPedido;
 import br.com.sergio.gestaopedidos.entity.Pedido;
@@ -199,6 +200,7 @@ public class PedidoService {
     public String situacaoEstoque(PedidoResponse pedido) {
         if (Boolean.TRUE.equals(pedido.estoqueMovimentado())) return "Estoque baixado";
         if (pedido.status() == StatusPedido.CANCELADO) return movimentacaoEstoqueRepository.existsByPedidoIdAndTipo(pedido.id(), br.com.sergio.gestaopedidos.enums.TipoMovimentacaoEstoque.ESTORNO_SAIDA) ? "Estoque estornado" : "Não se aplica";
+        if (pedido.status() == StatusPedido.EM_PREPARACAO) return "Aguardando confirmação";
         return "Aguardando baixa";
     }
 
@@ -310,7 +312,7 @@ public class PedidoService {
             );
         }
 
-        if (pedido.getStatus() == StatusPedido.PENDENTE && novoStatus == StatusPedido.EM_PREPARACAO) {
+        if (pedido.getStatus() == StatusPedido.EM_PREPARACAO && novoStatus == StatusPedido.PRONTO) {
             estoqueService.processarPedido(pedido);
         }
         pedido.setStatus(novoStatus);
@@ -340,13 +342,18 @@ public class PedidoService {
     }
 
     @Transactional(readOnly = true)
-    public List<PlanejamentoEntregaResponse> planejarEntregas(LocalDate data) {
+    public PlanejamentoEntregasResponse planejarEntregas(LocalDate data) {
         LocalDate dataSelecionada = data == null ? LocalDate.now() : data;
         Set<StatusPedido> status = EnumSet.of(StatusPedido.PENDENTE, StatusPedido.EM_PREPARACAO,
                 StatusPedido.PRONTO, StatusPedido.SAIU_PARA_ENTREGA);
-        return pedidoRepository.buscarParaPlanejamento(dataSelecionada, status).stream()
+        List<PlanejamentoEntregaResponse> entregas = pedidoRepository.buscarParaPlanejamento(dataSelecionada, status).stream()
                 .map(this::toPlanejamento)
                 .toList();
+        List<PlanejamentoEntregaResponse> elegiveis = entregas.stream().filter(e -> !e.jaEmRota()).toList();
+        List<PlanejamentoEntregaResponse> emRota = entregas.stream().filter(PlanejamentoEntregaResponse::jaEmRota).toList();
+        long navegaveis = elegiveis.stream().filter(PlanejamentoEntregaResponse::enderecoNavegavel).count();
+        return new PlanejamentoEntregasResponse(elegiveis, emRota, elegiveis.size(), navegaveis,
+                elegiveis.size() - navegaveis, emRota.size());
     }
 
     private PlanejamentoEntregaResponse toPlanejamento(Pedido pedido) {

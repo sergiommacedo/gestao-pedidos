@@ -32,6 +32,30 @@ class PlanejamentoEntregaTemplateTest {
     }
 
     @Test
+    void planejamentoDistingueVazioTodosInvalidosEParcial() throws Exception {
+        String html = Files.readString(PLANEJAMENTO);
+        assertThat(html).contains("quantidadeEntregasElegiveis == 0",
+                "Nenhuma entrega disponível para planejamento nesta data",
+                "quantidadeEntregasElegiveis > 0 and quantidadeEnderecosNavegaveis == 0",
+                "nenhuma possui endereço completo para navegação",
+                "quantidadeEnderecosNavegaveis > 0 and quantidadeEnderecosIncompletos > 0",
+                "não foram incluídas na navegação por endereço incompleto");
+    }
+
+    @Test
+    void googleMapsSoApareceQuandoHaEnderecoNavegavel() throws Exception {
+        assertThat(Files.readString(PLANEJAMENTO)).contains(
+                "class=\"card card-body shadow-sm mt-4\" th:if=\"${quantidadeEnderecosNavegaveis > 0}\"");
+    }
+
+    @Test
+    void kanbanConfirmaPesoAoAvancarParaPronto() throws Exception {
+        assertThat(Files.readString(KANBAN)).contains("Confirme os pesos antes de finalizar",
+                "data-confirmar-quantidades", "unidadeVenda.name() == 'QUILOGRAMA'");
+        assertThat(Files.readString(JS)).contains("Confirme as quantidades finais antes da baixa do estoque");
+    }
+
+    @Test
     void javascriptReordenaNosDoisSentidosERespeitaOrdemNaUrl() throws Exception {
         assertThat(Files.readString(JS)).contains("cartao.previousElementSibling", "cartao.nextElementSibling",
                 "enderecos.slice(0, -1).join(\"|\")", "Math.min(4", "url.length <= 2048",

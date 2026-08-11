@@ -6,6 +6,8 @@ import jakarta.persistence.EntityManager;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.data.domain.PageRequest;
@@ -51,6 +53,21 @@ class PedidoPlanejamentoRepositoryTest {
         assertThat(resultado).allMatch(p -> p.getTipoEntrega() == TipoEntrega.ENTREGA)
                 .noneMatch(p -> p.getStatus() == StatusPedido.CANCELADO || p.getStatus() == StatusPedido.ENTREGUE);
         assertThat(resultado.getFirst().getBairroEntregaHistorico()).isEqualTo("Centro");
+    }
+
+    @Test
+    void planejamentoComSomenteRetiradaFicaVazio() {
+        salvar(TipoEntrega.RETIRADA, StatusPedido.PENDENTE, LocalTime.NOON);
+        assertThat(pedidos.buscarParaPlanejamento(data, EnumSet.of(StatusPedido.PENDENTE,
+                StatusPedido.EM_PREPARACAO, StatusPedido.PRONTO, StatusPedido.SAIU_PARA_ENTREGA))).isEmpty();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = StatusPedido.class, names = {"CANCELADO", "ENTREGUE"})
+    void planejamentoComSomenteStatusFinalFicaVazio(StatusPedido status) {
+        salvar(TipoEntrega.ENTREGA, status, LocalTime.NOON);
+        assertThat(pedidos.buscarParaPlanejamento(data, EnumSet.of(StatusPedido.PENDENTE,
+                StatusPedido.EM_PREPARACAO, StatusPedido.PRONTO, StatusPedido.SAIU_PARA_ENTREGA))).isEmpty();
     }
 
     @Test

@@ -27,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     inicializarComposicaoProduto();
     inicializarPlanejamentoEntregas();
     inicializarNavegacaoKanban();
+    inicializarConfirmacaoQuantidadesFinais();
 
 });
 
@@ -984,6 +985,16 @@ function inicializarDropdownsStatus() {
     });
 }
 
+function inicializarConfirmacaoQuantidadesFinais() {
+    document.querySelectorAll("form[data-confirmar-quantidades='true']").forEach(formulario => {
+        formulario.addEventListener("submit", evento => {
+            if (!window.confirm("Confirme as quantidades finais antes da baixa do estoque.")) {
+                evento.preventDefault();
+            }
+        });
+    });
+}
+
 
 function inicializarMascaras() {
 
@@ -1421,7 +1432,7 @@ function inicializarFormularioPedido() {
         const previa = await resposta.json();
         previaEstoque.className = `alert py-2 ${previa.estoqueSuficiente ? "alert-success" : "alert-danger"}`;
         previaTitulo.textContent = previa.estoqueSuficiente ? "Estoque suficiente" : "Existem itens em falta";
-        previaMensagem.textContent = "Nenhuma baixa é feita nesta prévia. A baixa ocorre ao iniciar a preparação.";
+        previaMensagem.textContent = "Nenhuma baixa é feita nesta prévia. A baixa ocorre ao marcar o pedido como pronto.";
         previaComponentes.replaceChildren();
         previa.componentes.forEach(componente => {
             const linha = document.createElement("div");

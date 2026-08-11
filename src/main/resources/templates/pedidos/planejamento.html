@@ -23,13 +23,17 @@
         </div>
     </form>
 
-    <div class="alert alert-info" th:if="${enderecoSaida == null or enderecoSaida.isBlank()}">
+    <div class="alert alert-info" th:if="${quantidadeEnderecosNavegaveis > 0 and (enderecoSaida == null or enderecoSaida.isBlank())}">
         A origem não está configurada. O Google Maps usará a localização relevante do dispositivo.
         <a th:href="@{/configuracoes}" class="alert-link">Configurar endereço de saída</a>.
     </div>
 
-    <div class="alert alert-warning" th:if="${quantidadeEnderecosIncompletos > 0}">
-        <strong>Há endereço(s) incompleto(s).</strong> Esses pedidos permanecem visíveis, mas não serão incluídos nos links de navegação.
+    <div class="alert alert-warning" th:if="${quantidadeEntregasElegiveis > 0 and quantidadeEnderecosNavegaveis == 0}"
+         th:text="${'Existem ' + quantidadeEntregasElegiveis + ' entregas para planejamento, mas nenhuma possui endereço completo para navegação.'}">
+    </div>
+
+    <div class="alert alert-warning" th:if="${quantidadeEnderecosNavegaveis > 0 and quantidadeEnderecosIncompletos > 0}"
+         th:text="${quantidadeEnderecosIncompletos + ' entregas não foram incluídas na navegação por endereço incompleto.'}">
     </div>
 
     <div class="vstack gap-3" data-lista-entregas>
@@ -62,7 +66,7 @@
         </article>
     </div>
 
-    <div class="alert alert-light border mt-3" th:if="${entregasPlanejaveis.isEmpty()}">Nenhuma entrega disponível para novo planejamento nesta data.</div>
+    <div class="alert alert-light border mt-3" th:if="${quantidadeEntregasElegiveis == 0}">Nenhuma entrega disponível para planejamento nesta data.</div>
 
     <section class="card shadow-sm mt-4" th:if="${!entregasEmRota.isEmpty()}">
         <div class="card-header"><strong>Já em rota</strong> <span class="text-muted">— não incluídas no novo planejamento</span></div>
@@ -72,7 +76,7 @@
         </ul>
     </section>
 
-    <div class="card card-body shadow-sm mt-4">
+    <div class="card card-body shadow-sm mt-4" th:if="${quantidadeEnderecosNavegaveis > 0}">
         <p class="mb-2"><strong>Abrir no Google Maps</strong></p>
         <p class="small text-muted mb-3">A sequência não é otimizada geograficamente. Links grandes serão divididos para respeitar o limite compatível com navegadores móveis.</p>
         <div class="d-flex flex-wrap gap-2" data-links-google-maps></div>
