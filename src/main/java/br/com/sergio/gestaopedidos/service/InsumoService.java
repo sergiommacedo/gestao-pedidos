@@ -33,7 +33,7 @@ public class InsumoService {
 
     @Transactional(readOnly = true)
     public List<InsumoResponse> buscarAtivosPorNome(String termo) {
-        return insumoRepository.findTop20ByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(normalizarFiltro(termo))
+        return insumoRepository.findByAtivoTrueAndNomeContainingIgnoreCaseOrderByNomeAsc(normalizarFiltro(termo))
                 .stream().map(insumoMapper::toResponse).toList();
     }
 
