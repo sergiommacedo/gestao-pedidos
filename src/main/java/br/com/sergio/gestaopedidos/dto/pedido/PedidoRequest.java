@@ -5,6 +5,8 @@ import br.com.sergio.gestaopedidos.enums.TipoEntrega;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -70,6 +72,11 @@ public record PedidoRequest(
                 message = "Taxa de entrega não pode ser negativa."
         )
         BigDecimal taxaEntrega,
+
+        @DecimalMin(value = "0.00", message = "Desconto geral não pode ser negativo.")
+        @DecimalMax(value = "100.00", message = "Desconto geral não pode ultrapassar 100%.")
+        @Digits(integer = 3, fraction = 4, message = "Desconto geral possui formato inválido.")
+        BigDecimal percentualDescontoGeral,
 
         @Schema(
                 description = "Observações do pedido",

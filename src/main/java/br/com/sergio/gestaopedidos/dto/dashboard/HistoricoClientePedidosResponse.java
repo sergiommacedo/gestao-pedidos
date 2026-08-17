@@ -17,12 +17,15 @@ public record HistoricoClientePedidosResponse(
     public enum Periodo { ULTIMOS_7_DIAS, TODO_HISTORICO }
 
     public record Pedido(Long id, LocalDate data, LocalTime horario, TipoEntrega tipoEntrega,
-                         StatusPedido status, BigDecimal subtotal, BigDecimal taxaEntrega,
+                         StatusPedido status, BigDecimal subtotal, BigDecimal percentualDescontoGeral,
+                         BigDecimal valorDescontoGeral, BigDecimal taxaEntrega,
                          BigDecimal valorTotal) {}
 
     public record Item(String produtoNome, BigDecimal quantidade, UnidadeVenda unidade,
-                       BigDecimal precoUnitario, BigDecimal subtotal) {}
+                       BigDecimal precoUnitarioOriginal, BigDecimal percentualDesconto,
+                       BigDecimal precoUnitario, BigDecimal valorDescontoUnitario, BigDecimal subtotal) {}
 
-    public record DetalhesItens(List<Item> itens, BigDecimal subtotal,
+    public record DetalhesItens(List<Item> itens, BigDecimal subtotal, BigDecimal percentualDescontoGeral,
+                                BigDecimal valorDescontoGeral,
                                 BigDecimal taxaEntrega, BigDecimal valorTotal) {}
 }

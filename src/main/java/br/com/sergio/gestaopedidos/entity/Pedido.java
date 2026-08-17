@@ -75,6 +75,12 @@ public class Pedido {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
+    @Column(name = "percentual_desconto_geral", precision = 7, scale = 4)
+    private BigDecimal percentualDescontoGeral;
+
+    @Column(name = "valor_desconto_geral", precision = 10, scale = 2)
+    private BigDecimal valorDescontoGeral;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal taxaEntrega;
 
@@ -142,6 +148,8 @@ public class Pedido {
         if (taxaEntrega == null) {
             taxaEntrega = BigDecimal.ZERO;
         }
+        if (percentualDescontoGeral == null) percentualDescontoGeral = BigDecimal.ZERO;
+        if (valorDescontoGeral == null) valorDescontoGeral = BigDecimal.ZERO;
         if (estoqueMovimentado == null) estoqueMovimentado = false;
 
         calcularValorTotal();
@@ -159,7 +167,15 @@ public class Pedido {
         BigDecimal taxaEntregaSegura =
                 taxaEntrega != null ? taxaEntrega : BigDecimal.ZERO;
 
-        valorTotal = subtotalSeguro.add(taxaEntregaSegura);
+        BigDecimal descontoSeguro = valorDescontoGeral != null ? valorDescontoGeral : BigDecimal.ZERO;
+        valorTotal = subtotalSeguro.subtract(descontoSeguro).add(taxaEntregaSegura)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal valorProdutosComDesconto() {
+        BigDecimal subtotalSeguro = subtotal != null ? subtotal : BigDecimal.ZERO;
+        BigDecimal descontoSeguro = valorDescontoGeral != null ? valorDescontoGeral : BigDecimal.ZERO;
+        return subtotalSeguro.subtract(descontoSeguro).setScale(2, RoundingMode.HALF_UP);
     }
 
     public void fotografarEnderecoEntrega(Cliente cliente) {
@@ -208,9 +224,11 @@ public class Pedido {
             throw new IllegalArgumentException("Pedido inválido para consolidação do resultado histórico.");
         }
         custoTotalHistorico = cmv.setScale(2, RoundingMode.HALF_UP);
-        lucroBrutoEstimado = subtotal.subtract(custoTotalHistorico).setScale(2, RoundingMode.HALF_UP);
-        margemBrutaEstimada = subtotal.signum() == 0 ? null
+        itens.forEach(item -> item.aplicarDescontoGeralNoResultado(percentualDescontoGeral));
+        BigDecimal receitaProdutos = valorProdutosComDesconto();
+        lucroBrutoEstimado = receitaProdutos.subtract(custoTotalHistorico).setScale(2, RoundingMode.HALF_UP);
+        margemBrutaEstimada = receitaProdutos.signum() == 0 ? null
                 : lucroBrutoEstimado.multiply(BigDecimal.valueOf(100))
-                        .divide(subtotal, 4, RoundingMode.HALF_UP);
+                        .divide(receitaProdutos, 4, RoundingMode.HALF_UP);
     }
 }

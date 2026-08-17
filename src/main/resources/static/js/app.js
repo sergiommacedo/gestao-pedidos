@@ -1323,6 +1323,9 @@ function inicializarFormularioPedido() {
     const tipoEntrega = formulario.querySelector("#tipoEntrega");
     const subtotalPedido = formulario.querySelector("[data-pedido-subtotal]");
     const resumoTaxa = formulario.querySelector("[data-resumo-taxa]");
+    const descontoGeral = formulario.querySelector("[data-desconto-geral]");
+    const resumoDescontoContainer = formulario.querySelector("[data-resumo-desconto-container]");
+    const resumoDesconto = formulario.querySelector("[data-resumo-desconto]");
     const totalPedido = formulario.querySelector("[data-pedido-total]");
     const resumoItens = formulario.querySelector("[data-resumo-itens]");
     const resumoQuantidadeContainer = formulario.querySelector(
@@ -1498,6 +1501,9 @@ function inicializarFormularioPedido() {
         itens.forEach((item, indice) => {
             item.querySelector("[data-item-produto-id]").name = `itens[${indice}].produtoId`;
             item.querySelector("[data-item-quantidade]").name = `itens[${indice}].quantidade`;
+            item.querySelector("[data-item-preco-original]").name = `itens[${indice}].precoOriginal`;
+            item.querySelector("[data-item-desconto-percentual]").name = `itens[${indice}].percentualDesconto`;
+            item.querySelector("[data-item-preco-final]").name = `itens[${indice}].precoFinal`;
             item.querySelector("[data-item-observacao]").name = `itens[${indice}].observacao`;
         });
 
@@ -1513,7 +1519,7 @@ function inicializarFormularioPedido() {
         const itens = Array.from(itensContainer.querySelectorAll(".item-pedido"));
 
         itens.forEach(item => {
-            const preco = Number.parseFloat(item.dataset.produtoPreco) || 0;
+            const preco = Number.parseFloat(item.querySelector("[data-item-preco-final]").value) || 0;
             const quantidade = Number.parseFloat(
                 item.querySelector("[data-item-quantidade]").value
             ) || 0;
@@ -1531,6 +1537,8 @@ function inicializarFormularioPedido() {
         });
 
         const taxa = Number.parseFloat(taxaEntrega.value) || 0;
+        const percentualGeral = Math.min(100, Math.max(0, Number.parseFloat(descontoGeral.value) || 0));
+        const valorDescontoGeral = subtotal * percentualGeral / 100;
         resumoItens.textContent = String(itens.length);
 
         if (itens.length > 0 && !unidadesMisturadas) {
@@ -1549,8 +1557,10 @@ function inicializarFormularioPedido() {
         }
 
         subtotalPedido.textContent = formatarMoeda(subtotal);
+        resumoDescontoContainer.classList.toggle("d-none", valorDescontoGeral <= 0);
+        resumoDesconto.textContent = `-${formatarMoeda(valorDescontoGeral)}`;
         resumoTaxa.textContent = formatarMoeda(taxa);
-        totalPedido.textContent = formatarMoeda(subtotal + taxa);
+        totalPedido.textContent = formatarMoeda(subtotal - valorDescontoGeral + taxa);
         agendarPreviaEstoque();
     }
 
@@ -1564,6 +1574,8 @@ function inicializarFormularioPedido() {
             .map(item => ({
                 produtoId: Number(item.querySelector("[data-item-produto-id]").value),
                 quantidade: Number(item.querySelector("[data-item-quantidade]").value),
+                percentualDesconto: Number(item.querySelector("[data-item-desconto-percentual]").value) || 0,
+                precoFinal: Number(item.querySelector("[data-item-preco-final]").value),
                 observacao: item.querySelector("[data-item-observacao]").value
             }))
             .filter(item => item.produtoId && item.quantidade > 0);
@@ -1586,7 +1598,7 @@ function inicializarFormularioPedido() {
                 "Content-Type": "application/json",
                 ...(csrf ? {"X-CSRF-TOKEN": csrf.value} : {})
             },
-            body: JSON.stringify({itens})
+            body: JSON.stringify({itens, percentualDescontoGeral: Number(descontoGeral.value) || 0})
         });
 
         if (numeroRequisicao !== requisicaoPrevia) return;
@@ -1623,6 +1635,28 @@ function inicializarFormularioPedido() {
         const quantidadeVisual = item.querySelector("[data-item-quantidade-visual]");
         const quantidadeDecimal = item.querySelector("[data-item-quantidade]");
         const quilograma = item.dataset.produtoUnidade === "QUILOGRAMA";
+        const original = Number.parseFloat(item.dataset.produtoPreco) || 0;
+        const percentual = item.querySelector("[data-item-desconto-percentual]");
+        const precoFinal = item.querySelector("[data-item-preco-final]");
+        item.querySelector("[data-item-preco-original]").value = original.toFixed(2);
+        if (percentual.value === "") percentual.value = "0";
+        if (precoFinal.value === "") precoFinal.value = original.toFixed(2);
+
+        percentual.addEventListener("input", () => {
+            const desconto = Math.min(100, Math.max(0, Number.parseFloat(percentual.value) || 0));
+            precoFinal.value = (original * (1 - desconto / 100)).toFixed(2);
+            recalcularPedido();
+        });
+        precoFinal.addEventListener("input", () => {
+            const efetivo = Math.min(original, Math.max(0, Number.parseFloat(precoFinal.value) || 0));
+            percentual.value = original === 0 ? "0.00" : (((original - efetivo) / original) * 100).toFixed(2);
+            recalcularPedido();
+        });
+        precoFinal.addEventListener("blur", () => {
+            const efetivo = Math.min(original, Math.max(0, Number.parseFloat(precoFinal.value) || 0));
+            precoFinal.value = efetivo.toFixed(2);
+            recalcularPedido();
+        });
 
         const sincronizarQuantidade = () => {
             quantidadeDecimal.value = converterNumeroBrasileiroParaDecimal(
@@ -1709,10 +1743,19 @@ function inicializarFormularioPedido() {
             <div class="card-body">
                 <input type="hidden" name="itemIds" value="" data-item-id>
                 <input type="hidden" value="${produto.id}" data-item-produto-id>
+                <input type="hidden" value="${Number(produto.preco).toFixed(2)}" data-item-preco-original>
                 <div class="row align-items-center g-3">
                     <div class="col-md">
                         <div class="fw-semibold"></div>
                         <small class="text-muted">${unidade} · ${formatarMoeda(Number(produto.preco))}</small>
+                    </div>
+                    <div class="col-sm-4 col-md-2">
+                        <label class="form-label small">Desconto</label>
+                        <div class="input-group input-group-sm"><input type="number" min="0" max="100" step="0.01" value="0" class="form-control" data-item-desconto-percentual><span class="input-group-text">%</span></div>
+                    </div>
+                    <div class="col-sm-4 col-md-2">
+                        <label class="form-label small">Preço final</label>
+                        <div class="input-group input-group-sm"><span class="input-group-text">R$</span><input type="number" min="0" max="${Number(produto.preco).toFixed(2)}" step="0.01" value="${Number(produto.preco).toFixed(2)}" class="form-control" data-item-preco-final></div>
                     </div>
                     <div class="col-sm-4 col-md-3">
                         <label class="form-label small">Quantidade *</label>
@@ -1812,6 +1855,7 @@ function inicializarFormularioPedido() {
         }
     });
     taxaEntrega.addEventListener("input", recalcularPedido);
+    descontoGeral.addEventListener("input", recalcularPedido);
     tipoEntrega.addEventListener("change", atualizarTipoEntrega);
     itensContainer.querySelectorAll(".item-pedido").forEach(ativarItem);
     reindexarItens();

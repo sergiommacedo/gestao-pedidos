@@ -308,6 +308,7 @@
                     <strong th:text="${@formatacao.formatarQuantidade(item.quantidade, item.unidadeVenda)}"></strong>
                     <span th:text="${@formatacao.formatarMoeda(item.subtotal)}"></span>
                 </div>
+                <small th:if="${item.percentualDesconto != null and item.percentualDesconto.signum() > 0}" th:text="${@formatacao.formatarMoeda(item.precoUnitarioOriginal)+' → '+@formatacao.formatarMoeda(item.valorUnitario)+' • desconto '+@formatacao.formatarDecimalBrasileiro(item.percentualDesconto,2)+'%'}"></small>
                 <div class="quebra-linha mt-1"
                      th:if="${item.observacao != null and !item.observacao.isBlank()}">
                     <strong>OBS.:</strong> <span th:text="${item.observacao}"></span>
@@ -323,6 +324,8 @@
         </section>
 
         <footer class="pedido-total bloco-sem-quebra pt-2">
+            <div class="d-flex justify-content-between"><span>Produtos:</span><strong th:text="${@formatacao.formatarMoeda(pedido.subtotal)}"></strong></div>
+            <div class="d-flex justify-content-between" th:if="${pedido.valorDescontoGeral != null and pedido.valorDescontoGeral.signum() > 0}"><span th:text="${'Desconto '+@formatacao.formatarDecimalBrasileiro(pedido.percentualDescontoGeral,2)+'%:'}"></span><strong th:text="${'-'+@formatacao.formatarMoeda(pedido.valorDescontoGeral)}"></strong></div>
             <div class="d-flex justify-content-between">
                 <span>Taxa:</span>
                 <strong th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}"></strong>
@@ -397,6 +400,7 @@
                 <tr th:each="item : ${pedido.itens}">
                     <td class="quebra-linha">
                         <div th:text="${item.produtoNome}"></div>
+                        <small th:if="${item.percentualDesconto != null and item.percentualDesconto.signum() > 0}" th:text="${'Preço original '+@formatacao.formatarMoeda(item.precoUnitarioOriginal)+' • desconto '+@formatacao.formatarDecimalBrasileiro(item.percentualDesconto,2)+'%'}"></small>
                         <small th:if="${item.observacao != null and !item.observacao.isBlank()}">
                             Obs.: <span th:text="${item.observacao}"></span>
                         </small>
@@ -426,6 +430,7 @@
                 <span>Subtotal:</span>
                 <strong th:text="${@formatacao.formatarMoeda(pedido.subtotal)}"></strong>
             </div>
+            <div class="d-flex justify-content-between" th:if="${pedido.valorDescontoGeral != null and pedido.valorDescontoGeral.signum() > 0}"><span th:text="${'Desconto geral ('+@formatacao.formatarDecimalBrasileiro(pedido.percentualDescontoGeral,2)+'%):'}"></span><strong th:text="${'-'+@formatacao.formatarMoeda(pedido.valorDescontoGeral)}"></strong></div>
             <div class="d-flex justify-content-between">
                 <span>Taxa de entrega:</span>
                 <strong th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}"></strong>

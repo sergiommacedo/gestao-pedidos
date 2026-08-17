@@ -244,6 +244,7 @@ public class PedidoService {
         pedido.setHorarioInicio(request.horarioInicio());
         pedido.setHorarioFim(request.horarioFim());
         pedido.setTaxaEntrega(normalizarTaxaEntrega(request.tipoEntrega(), request.taxaEntrega()));
+        pedido.setPercentualDescontoGeral(normalizarPercentual(request.percentualDescontoGeral(), "Desconto geral"));
         pedido.setObservacao(request.observacao());
         boolean precisaNovoSnapshot = request.tipoEntrega() == TipoEntrega.ENTREGA
                 && (tipoAnterior != TipoEntrega.ENTREGA
@@ -479,8 +480,7 @@ public class PedidoService {
         pedido.getItens().removeIf(item ->
                 item.getId() != null && !idsMantidos.contains(item.getId())
         );
-        pedido.setSubtotal(subtotalPedido);
-        pedido.calcularValorTotal();
+        finalizarTotais(pedido, subtotalPedido, request.percentualDescontoGeral());
     }
 
     private void atualizarItemExistente(
@@ -491,14 +491,11 @@ public class PedidoService {
         validarQuantidade(produto, request.quantidade());
 
         itemPedido.setQuantidade(request.quantidade());
+        aplicarDescontoItem(itemPedido, request);
         itemPedido.setObservacao(Boolean.TRUE.equals(produto.getPermiteAcompanhamento())
                 ? request.observacao()
                 : null);
-        itemPedido.setSubtotal(
-                itemPedido.getPrecoUnitario()
-                        .multiply(request.quantidade())
-                        .setScale(2, RoundingMode.HALF_UP)
-        );
+        itemPedido.calcularSubtotal();
     }
 
     private void substituirItensERecalcular(
@@ -530,8 +527,7 @@ public class PedidoService {
             );
         }
 
-        pedido.setSubtotal(subtotalPedido);
-        pedido.calcularValorTotal();
+        finalizarTotais(pedido, subtotalPedido, request.percentualDescontoGeral());
     }
 
     private Pedido criarPedido(
@@ -547,6 +543,8 @@ public class PedidoService {
                 .horarioInicio(request.horarioInicio())
                 .horarioFim(request.horarioFim())
                 .subtotal(BigDecimal.ZERO)
+                .percentualDescontoGeral(normalizarPercentual(request.percentualDescontoGeral(), "Desconto geral"))
+                .valorDescontoGeral(BigDecimal.ZERO.setScale(2))
                 .taxaEntrega(normalizarTaxaEntrega(request.tipoEntrega(), request.taxaEntrega()))
                 .valorTotal(BigDecimal.ZERO)
                 .observacao(request.observacao())
@@ -576,13 +574,16 @@ public class PedidoService {
             Produto produto,
             ItemPedidoRequest request
     ) {
-        BigDecimal subtotalItem = produto.getPreco().multiply(
-                request.quantidade()
-        ).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal original = produto.getPreco().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal precoEfetivo = resolverPrecoEfetivo(original, request);
+        BigDecimal percentual = calcularPercentual(original, precoEfetivo);
+        BigDecimal subtotalItem = precoEfetivo.multiply(request.quantidade()).setScale(2, RoundingMode.HALF_UP);
 
         return ItemPedido.builder()
                 .quantidade(request.quantidade())
-                .precoUnitario(produto.getPreco())
+                .precoUnitario(precoEfetivo)
+                .precoUnitarioOriginal(original)
+                .percentualDesconto(percentual)
                 .subtotal(subtotalItem)
                 .nomeHistorico(produto.getNome())
                 .unidadeHistorica(produto.getUnidadeVenda())
@@ -592,6 +593,54 @@ public class PedidoService {
                 .pedido(pedido)
                 .produto(produto)
                 .build();
+    }
+
+    private void aplicarDescontoItem(ItemPedido item, ItemPedidoRequest request) {
+        BigDecimal original = item.getPrecoUnitarioOriginal() != null
+                ? item.getPrecoUnitarioOriginal() : item.getPrecoUnitario();
+        BigDecimal efetivo = resolverPrecoEfetivo(original, request);
+        item.setPrecoUnitarioOriginal(original.setScale(2, RoundingMode.HALF_UP));
+        item.setPrecoUnitario(efetivo);
+        item.setPercentualDesconto(calcularPercentual(original, efetivo));
+    }
+
+    private BigDecimal resolverPrecoEfetivo(BigDecimal original, ItemPedidoRequest request) {
+        if (original == null || original.signum() < 0) throw new BusinessException("Preço original do item é inválido.");
+        BigDecimal percentual = normalizarPercentual(request.percentualDesconto(), "Desconto do item");
+        BigDecimal informado = request.precoFinal();
+        if (informado != null) {
+            if (informado.signum() < 0) throw new BusinessException("Preço final não pode ser negativo.");
+            BigDecimal finalNormalizado = informado.setScale(2, RoundingMode.HALF_UP);
+            if (finalNormalizado.compareTo(original) > 0) {
+                throw new BusinessException("Preço final não pode ser maior que o preço original.");
+            }
+            return finalNormalizado;
+        }
+        return original.multiply(BigDecimal.ONE.subtract(percentual.movePointLeft(2)))
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calcularPercentual(BigDecimal original, BigDecimal efetivo) {
+        if (original.signum() == 0) return BigDecimal.ZERO.setScale(4);
+        return original.subtract(efetivo).multiply(BigDecimal.valueOf(100))
+                .divide(original, 4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal normalizarPercentual(BigDecimal valor, String campo) {
+        BigDecimal percentual = valor == null ? BigDecimal.ZERO : valor;
+        if (percentual.signum() < 0 || percentual.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new BusinessException(campo + " deve estar entre 0% e 100%.");
+        }
+        return percentual.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private void finalizarTotais(Pedido pedido, BigDecimal subtotal, BigDecimal percentualInformado) {
+        BigDecimal percentual = normalizarPercentual(percentualInformado, "Desconto geral");
+        pedido.setSubtotal(subtotal.setScale(2, RoundingMode.HALF_UP));
+        pedido.setPercentualDescontoGeral(percentual);
+        pedido.setValorDescontoGeral(pedido.getSubtotal().multiply(percentual.movePointLeft(2))
+                .setScale(2, RoundingMode.HALF_UP));
+        pedido.calcularValorTotal();
     }
 
     private Pedido buscarEntidadePorId(Long id) {

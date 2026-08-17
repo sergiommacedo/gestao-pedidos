@@ -78,6 +78,18 @@ class PedidoWebTemplateTest {
     }
 
     @Test
+    void formularioSincronizaDescontosEExcluiTaxaDaBase() throws Exception {
+        String html = Files.readString(FORMULARIO);
+        String js = Files.readString(Path.of("src/main/resources/static/js/app.js"));
+        assertThat(html).contains("data-item-desconto-percentual", "data-item-preco-final",
+                "data-desconto-geral", "data-resumo-desconto", "Taxa de entrega");
+        assertThat(js).contains("original * (1 - desconto / 100)",
+                "((original - efetivo) / original) * 100", "subtotal * percentualGeral / 100",
+                "subtotal - valorDescontoGeral + taxa");
+        assertThat(js).doesNotContain("(subtotal + taxa) * percentualGeral");
+    }
+
+    @Test
     void dataAgendadaDeclaraFormatoIsoExigidoPeloInputDate() throws Exception {
         DateTimeFormat formato = PedidoRequest.class.getDeclaredMethod("dataAgendada")
                 .getAnnotation(DateTimeFormat.class);

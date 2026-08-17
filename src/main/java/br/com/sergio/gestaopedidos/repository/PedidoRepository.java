@@ -59,7 +59,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     @Query("""
             SELECT p.dataAgendada AS dataProducao,
                    COUNT(p) AS pedidosValidos,
-                   COALESCE(SUM(p.subtotal), 0) AS faturamentoProdutos,
+                   COALESCE(SUM(p.subtotal - COALESCE(p.valorDescontoGeral, 0)), 0) AS faturamentoProdutos,
                    COALESCE(SUM(p.taxaEntrega), 0) AS taxasEntrega,
                    COALESCE(SUM(p.valorTotal), 0) AS faturamentoTotal
             FROM Pedido p
@@ -74,7 +74,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     @Query("""
             SELECT p.dataAgendada AS dataProducao,
                    COUNT(p) AS pedidosValidos,
-                   COALESCE(SUM(p.subtotal), 0) AS faturamentoProdutos,
+                   COALESCE(SUM(p.subtotal - COALESCE(p.valorDescontoGeral, 0)), 0) AS faturamentoProdutos,
                    COALESCE(SUM(p.taxaEntrega), 0) AS taxasEntrega,
                    COALESCE(SUM(p.valorTotal), 0) AS faturamentoTotal
             FROM Pedido p
@@ -150,7 +150,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
                 COUNT(pedido) AS pedidosTotais,
                 COALESCE(SUM(CASE WHEN pedido.status <> :statusCancelado THEN 1 ELSE 0 END), 0) AS pedidosValidos,
                 COALESCE(SUM(CASE WHEN pedido.status = :statusCancelado THEN 1 ELSE 0 END), 0) AS cancelados,
-                COALESCE(SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.subtotal ELSE 0 END), 0) AS faturamentoProdutos,
+                COALESCE(SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.subtotal - COALESCE(pedido.valorDescontoGeral, 0) ELSE 0 END), 0) AS faturamentoProdutos,
                 COALESCE(SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.taxaEntrega ELSE 0 END), 0) AS taxasEntrega,
                 COALESCE(SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.valorTotal ELSE 0 END), 0) AS faturamentoBruto,
                 COALESCE(SUM(CASE WHEN pedido.status = :statusCancelado THEN pedido.valorTotal ELSE 0 END), 0) AS valorCancelado
@@ -172,7 +172,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
                 pedido.dataAgendada,
                 SUM(CASE WHEN pedido.status <> :statusCancelado THEN 1 ELSE 0 END),
                 SUM(CASE WHEN pedido.status = :statusCancelado THEN 1 ELSE 0 END),
-                SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.subtotal ELSE 0 END),
+                SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.subtotal - COALESCE(pedido.valorDescontoGeral, 0) ELSE 0 END),
                 SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.taxaEntrega ELSE 0 END),
                 SUM(CASE WHEN pedido.status <> :statusCancelado THEN pedido.valorTotal ELSE 0 END),
                 CASE WHEN SUM(CASE WHEN pedido.status <> :statusCancelado THEN 1 ELSE 0 END) = 0 THEN 0
@@ -245,7 +245,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
             SELECT new br.com.sergio.gestaopedidos.dto.relatorio.RelatorioFinanceiroEntregaResponse(
                 pedido.tipoEntrega,
                 COUNT(pedido),
-                SUM(pedido.subtotal),
+                SUM(pedido.subtotal - COALESCE(pedido.valorDescontoGeral, 0)),
                 SUM(pedido.taxaEntrega),
                 SUM(pedido.valorTotal),
                 CASE WHEN SUM(SUM(pedido.valorTotal)) OVER () = 0 THEN 0
@@ -606,7 +606,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
                    SUM(CASE WHEN p.status = :cancelado THEN 1 ELSE 0 END) AS cancelados,
                    SUM(CASE WHEN p.status = :preparacao THEN 1 ELSE 0 END) AS emPreparacao,
                    SUM(CASE WHEN p.status = :saiuEntrega THEN 1 ELSE 0 END) AS saiuParaEntrega,
-                   COALESCE(SUM(CASE WHEN p.status <> :cancelado THEN p.subtotal ELSE 0 END), 0) AS produtos,
+                   COALESCE(SUM(CASE WHEN p.status <> :cancelado THEN p.subtotal - COALESCE(p.valorDescontoGeral, 0) ELSE 0 END), 0) AS produtos,
                    COALESCE(SUM(CASE WHEN p.status <> :cancelado THEN p.taxaEntrega ELSE 0 END), 0) AS taxas,
                    COALESCE(SUM(CASE WHEN p.status <> :cancelado THEN p.valorTotal ELSE 0 END), 0) AS faturamento
             FROM Pedido p WHERE p.dataAgendada = :data
@@ -619,7 +619,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     @Query("""
             SELECT COUNT(p) AS pedidosValidos,
                    COALESCE(SUM(CASE WHEN p.custoTotalHistorico IS NOT NULL THEN 1 ELSE 0 END), 0) AS pedidosComCusto,
-                   COALESCE(SUM(CASE WHEN p.custoTotalHistorico IS NOT NULL THEN p.subtotal ELSE 0 END), 0) AS receitaProdutos,
+                   COALESCE(SUM(CASE WHEN p.custoTotalHistorico IS NOT NULL THEN p.subtotal - COALESCE(p.valorDescontoGeral, 0) ELSE 0 END), 0) AS receitaProdutos,
                    COALESCE(SUM(p.custoTotalHistorico), 0) AS cmv,
                    COALESCE(SUM(p.lucroBrutoEstimado), 0) AS lucroBruto
             FROM Pedido p

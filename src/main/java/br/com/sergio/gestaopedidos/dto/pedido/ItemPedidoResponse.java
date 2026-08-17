@@ -28,6 +28,12 @@ public record ItemPedidoResponse(
         @Schema(description = "Valor unitário do produto", example = "49.90")
         BigDecimal valorUnitario,
 
+        BigDecimal precoUnitarioOriginal,
+
+        BigDecimal percentualDesconto,
+
+        BigDecimal valorDescontoUnitario,
+
         @Schema(description = "Subtotal do item", example = "99.80")
         BigDecimal subtotal,
 

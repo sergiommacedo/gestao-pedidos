@@ -51,7 +51,7 @@ public class DashboardController {
     public String historicoCliente(@PathVariable Long clienteId,
                                    @RequestParam(defaultValue = "0") int pagina,
                                    @RequestParam(defaultValue = "5") int tamanho,
-                                   @RequestParam(defaultValue = "ULTIMOS_7_DIAS") HistoricoClientePedidosResponse.Periodo periodo,
+                                   @RequestParam(defaultValue = "TODO_HISTORICO") HistoricoClientePedidosResponse.Periodo periodo,
                                    @RequestParam(required = false) LocalDate dataReferencia,
                                    Model model) {
         model.addAttribute("historico", dashboardAnaliticoService.buscarHistoricoCliente(

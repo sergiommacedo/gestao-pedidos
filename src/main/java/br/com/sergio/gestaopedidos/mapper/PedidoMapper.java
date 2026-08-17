@@ -27,6 +27,7 @@ public interface PedidoMapper {
     @Mapping(target = "enderecoEntregaResumido", source = ".", qualifiedByName = "enderecoResumido")
     @Mapping(target = "enderecoEntregaCompleto", source = ".", qualifiedByName = "enderecoCompleto")
     @Mapping(target = "enderecoEntregaCompletoParaNavegacao", source = ".", qualifiedByName = "enderecoNavegavel")
+    @Mapping(target = "valorProdutosComDesconto", expression = "java(pedido.valorProdutosComDesconto())")
     PedidoResponse toResponse(Pedido pedido);
 
     @Named("enderecoNavegavel")
@@ -69,6 +70,7 @@ public interface PedidoMapper {
     @Mapping(target = "unidadeVenda", source = "produto.unidadeVenda")
     @Mapping(target = "valorUnitario", source = "precoUnitario")
     @Mapping(target = "lucroBrutoEstimado", expression = "java(itemPedido.lucroBrutoEstimado())")
+    @Mapping(target = "valorDescontoUnitario", expression = "java(itemPedido.valorDescontoUnitario())")
     ItemPedidoResponse toItemResponse(ItemPedido itemPedido);
 
     List<PedidoResponse> toResponseList(List<Pedido> pedidos);

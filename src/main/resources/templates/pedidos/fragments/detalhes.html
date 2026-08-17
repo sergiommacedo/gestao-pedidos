@@ -91,6 +91,7 @@
                             <small class="text-muted d-block">Preço unitário</small>
                             <span th:text="${@formatacao.formatarMoeda(item.valorUnitario)
                                 + (item.unidadeVenda.name() == 'QUILOGRAMA' ? '/kg' : '/un')}"></span>
+                            <small class="text-success d-block" th:if="${item.percentualDesconto != null and item.percentualDesconto.signum() > 0}" th:text="${@formatacao.formatarMoeda(item.precoUnitarioOriginal)+' → '+@formatacao.formatarMoeda(item.valorUnitario)+' • '+@formatacao.formatarDecimalBrasileiro(item.percentualDesconto,2)+'% desc.'}"></small>
                         </div>
                         <div class="col-12 col-sm-auto text-sm-end">
                             <small class="text-muted d-block">Subtotal</small>
@@ -160,6 +161,7 @@
                 <span class="text-muted">Subtotal</span>
                 <strong th:text="${@formatacao.formatarMoeda(pedido.subtotal)}"></strong>
             </div>
+            <div class="d-flex justify-content-between gap-3 mb-2 text-success" th:if="${pedido.valorDescontoGeral != null and pedido.valorDescontoGeral.signum() > 0}"><span th:text="${'Desconto geral ('+@formatacao.formatarDecimalBrasileiro(pedido.percentualDescontoGeral,2)+'%)'}"></span><strong th:text="${'-'+@formatacao.formatarMoeda(pedido.valorDescontoGeral)}"></strong></div>
             <div class="d-flex justify-content-between gap-3 mb-2">
                 <span class="text-muted">Taxa de entrega</span>
                 <strong th:text="${@formatacao.formatarMoeda(pedido.taxaEntrega)}"></strong>

@@ -28,6 +28,12 @@ public class ItemPedido {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal precoUnitario;
 
+    @Column(name = "preco_unitario_original", precision = 10, scale = 2)
+    private BigDecimal precoUnitarioOriginal;
+
+    @Column(name = "percentual_desconto", precision = 7, scale = 4)
+    private BigDecimal percentualDesconto;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
@@ -70,6 +76,12 @@ public class ItemPedido {
         }
     }
 
+    public BigDecimal valorDescontoUnitario() {
+        BigDecimal original = precoUnitarioOriginal != null ? precoUnitarioOriginal : precoUnitario;
+        return original == null || precoUnitario == null ? BigDecimal.ZERO.setScale(2)
+                : original.subtract(precoUnitario).setScale(2, RoundingMode.HALF_UP);
+    }
+
     public BigDecimal lucroBrutoEstimado() {
         return lucroBrutoHistorico;
     }
@@ -84,5 +96,16 @@ public class ItemPedido {
         margemBrutaHistorica = subtotal.signum() == 0 ? null
                 : lucroBrutoHistorico.multiply(BigDecimal.valueOf(100))
                         .divide(subtotal, 4, RoundingMode.HALF_UP);
+    }
+
+    public void aplicarDescontoGeralNoResultado(BigDecimal percentualDescontoGeral) {
+        if (custoTotalHistorico == null || subtotal == null) return;
+        BigDecimal percentual = percentualDescontoGeral == null ? BigDecimal.ZERO : percentualDescontoGeral;
+        BigDecimal receitaEfetiva = subtotal.multiply(BigDecimal.ONE.subtract(percentual.movePointLeft(2)))
+                .setScale(2, RoundingMode.HALF_UP);
+        lucroBrutoHistorico = receitaEfetiva.subtract(custoTotalHistorico).setScale(2, RoundingMode.HALF_UP);
+        margemBrutaHistorica = receitaEfetiva.signum() == 0 ? null
+                : lucroBrutoHistorico.multiply(BigDecimal.valueOf(100))
+                        .divide(receitaEfetiva, 4, RoundingMode.HALF_UP);
     }
 }

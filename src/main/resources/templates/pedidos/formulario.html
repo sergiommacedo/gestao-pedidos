@@ -93,7 +93,7 @@
                                  th:each="item, iteracao : *{itens}"
                                  th:data-produto-id="${item.produtoId}"
                                  th:data-produto-nome="${produtosSelecionados[item.produtoId].nome}"
-                                 th:data-produto-preco="${produtosSelecionados[item.produtoId].preco}"
+                                 th:data-produto-preco="${item.precoOriginal != null ? item.precoOriginal : produtosSelecionados[item.produtoId].preco}"
                                  th:data-produto-unidade="${produtosSelecionados[item.produtoId].unidadeVenda}"
                                  th:data-produto-tipo="${produtosSelecionados[item.produtoId].tipoProduto}"
                                  th:data-permite-acompanhamento="${produtosSelecionados[item.produtoId].permiteAcompanhamento}">
@@ -110,7 +110,7 @@
                                             <div class="fw-semibold" th:text="${produtosSelecionados[item.produtoId].nome}"></div>
                                             <small class="text-muted">
                                                 <span th:text="${produtosSelecionados[item.produtoId].unidadeVenda.descricao}"></span>
-                                                · <span th:text="${@formatacao.formatarMoeda(produtosSelecionados[item.produtoId].preco)}"></span>
+                                                · <span>Preço original: </span><span th:text="${@formatacao.formatarMoeda(item.precoOriginal != null ? item.precoOriginal : produtosSelecionados[item.produtoId].preco)}"></span>
                                             </small>
                                         </div>
                                         <div class="col-sm-4 col-md-3">
@@ -137,6 +137,15 @@
                                                    data-item-quantidade>
                                             <div class="invalid-feedback d-block"
                                                  th:errors="*{itens[__${iteracao.index}__].quantidade}"></div>
+                                        </div>
+                                        <input type="hidden" th:field="*{itens[__${iteracao.index}__].precoOriginal}" data-item-preco-original>
+                                        <div class="col-sm-4 col-md-2">
+                                            <label class="form-label small">Desconto</label>
+                                            <div class="input-group input-group-sm"><input type="number" min="0" max="100" step="0.01" class="form-control" th:field="*{itens[__${iteracao.index}__].percentualDesconto}" data-item-desconto-percentual><span class="input-group-text">%</span></div>
+                                        </div>
+                                        <div class="col-sm-4 col-md-2">
+                                            <label class="form-label small">Preço final</label>
+                                            <div class="input-group input-group-sm"><span class="input-group-text">R$</span><input type="number" min="0" step="0.01" class="form-control" th:field="*{itens[__${iteracao.index}__].precoFinal}" data-item-preco-final></div>
                                         </div>
                                         <div class="col-sm-5 col-md-3 text-md-end">
                                             <small class="text-muted d-block">Subtotal</small>
@@ -234,6 +243,12 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="percentualDescontoGeral" class="form-label">Desconto geral (%)</label>
+                            <div class="input-group"><input type="number" id="percentualDescontoGeral" min="0" max="100" step="0.01" class="form-control" th:field="*{percentualDescontoGeral}" data-desconto-geral><span class="input-group-text">%</span></div>
+                            <div class="invalid-feedback d-block" th:errors="*{percentualDescontoGeral}"></div>
+                        </div>
+
                         <div>
                             <label for="observacao" class="form-label">Observação geral</label>
                             <textarea id="observacao" class="form-control" rows="4" maxlength="500"
@@ -261,6 +276,10 @@
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Subtotal</span>
                             <strong data-pedido-subtotal>R$ 0,00</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 d-none" data-resumo-desconto-container>
+                            <span class="text-muted">Desconto geral</span>
+                            <strong class="text-success" data-resumo-desconto>-R$ 0,00</strong>
                         </div>
                         <div class="d-flex justify-content-between mb-3">
                             <span class="text-muted">Taxa de entrega</span>

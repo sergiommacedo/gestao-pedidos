@@ -810,6 +810,9 @@ public class PedidoWebController {
                     .map(item -> ItemPedidoRequest.builder()
                             .produtoId(item.produtoId())
                             .quantidade(item.quantidade())
+                            .precoOriginal(item.precoUnitarioOriginal())
+                            .percentualDesconto(item.percentualDesconto())
+                            .precoFinal(item.valorUnitario())
                             .observacao(item.observacao())
                             .build())
                     .toList();
@@ -822,6 +825,7 @@ public class PedidoWebController {
                 .horarioInicio(pedido.horarioInicio())
                 .horarioFim(pedido.horarioFim())
                 .taxaEntrega(pedido.taxaEntrega())
+                .percentualDescontoGeral(pedido.percentualDescontoGeral())
                 .observacao(pedido.observacao())
                 .itens(itens)
                 .build();

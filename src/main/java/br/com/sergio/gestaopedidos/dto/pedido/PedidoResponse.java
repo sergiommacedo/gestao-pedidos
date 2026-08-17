@@ -65,6 +65,12 @@ public record PedidoResponse(
         @Schema(description = "Subtotal dos itens", example = "85.90")
         BigDecimal subtotal,
 
+        BigDecimal percentualDescontoGeral,
+
+        BigDecimal valorDescontoGeral,
+
+        BigDecimal valorProdutosComDesconto,
+
         @Schema(description = "Taxa de entrega", example = "8.00")
         BigDecimal taxaEntrega,
 

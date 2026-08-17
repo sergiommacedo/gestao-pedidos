@@ -2,6 +2,7 @@ package br.com.sergio.gestaopedidos.dto.pedido;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -34,6 +35,17 @@ public record ItemPedidoRequest(
                 message = "Quantidade deve possuir no máximo 3 casas decimais."
         )
         BigDecimal quantidade,
+
+        BigDecimal precoOriginal,
+
+        @DecimalMin(value = "0.00", message = "Desconto do item não pode ser negativo.")
+        @DecimalMax(value = "100.00", message = "Desconto do item não pode ultrapassar 100%.")
+        @Digits(integer = 3, fraction = 4, message = "Desconto do item possui formato inválido.")
+        BigDecimal percentualDesconto,
+
+        @DecimalMin(value = "0.00", message = "Preço final não pode ser negativo.")
+        @Digits(integer = 8, fraction = 2, message = "Preço final deve possuir no máximo 2 casas decimais.")
+        BigDecimal precoFinal,
 
         @Schema(description = "Observação do item", example = "Sem farofa")
         @Size(max = 255, message = "Observação do item deve possuir no máximo 255 caracteres.")

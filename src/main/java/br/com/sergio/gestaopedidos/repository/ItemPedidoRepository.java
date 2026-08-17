@@ -37,7 +37,7 @@ public interface ItemPedidoRepository extends JpaRepository<ItemPedido, Long> {
                 produto.nome,
                 produto.unidadeVenda,
                 SUM(item.quantidade),
-                SUM(item.subtotal)
+                SUM(item.subtotal * (1 - COALESCE(pedido.percentualDescontoGeral, 0) / 100))
             )
             FROM ItemPedido item
             JOIN item.pedido pedido
@@ -54,11 +54,11 @@ public interface ItemPedidoRepository extends JpaRepository<ItemPedido, Long> {
 
     @Query("""
             SELECT new br.com.sergio.gestaopedidos.dto.resumo.ResumoProdutoVendidoResponse(
-                produto.id, produto.nome, produto.unidadeVenda, SUM(item.quantidade), SUM(item.subtotal))
+                produto.id, produto.nome, produto.unidadeVenda, SUM(item.quantidade), SUM(item.subtotal * (1 - COALESCE(pedido.percentualDescontoGeral, 0) / 100)))
             FROM ItemPedido item JOIN item.pedido pedido JOIN item.produto produto
             WHERE pedido.dataAgendada = :dataAgendada AND pedido.status <> :statusExcluido
             GROUP BY produto.id, produto.nome, produto.unidadeVenda
-            ORDER BY SUM(item.subtotal) DESC, produto.nome ASC
+            ORDER BY SUM(item.subtotal * (1 - COALESCE(pedido.percentualDescontoGeral, 0) / 100)) DESC, produto.nome ASC
             """)
     List<ResumoProdutoVendidoResponse> resumirProdutosMaisVendidosDashboard(
             @Param("dataAgendada") LocalDate dataAgendada,

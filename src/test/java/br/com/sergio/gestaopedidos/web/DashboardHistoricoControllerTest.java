@@ -25,10 +25,10 @@ class DashboardHistoricoControllerTest {
     void endpointRespondePaginaDoClienteCorretoInclusiveVazia() throws Exception {
         DashboardAnaliticoService service = mock(DashboardAnaliticoService.class);
         var vazio = new HistoricoClientePedidosResponse(7L, "Hugo Souza", 0, BigDecimal.ZERO,
-                BigDecimal.ZERO, List.of(), 0, 0, HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS,
-                LocalDate.of(2026, 8, 5), LocalDate.of(2026, 8, 11));
+                BigDecimal.ZERO, List.of(), 0, 0, HistoricoClientePedidosResponse.Periodo.TODO_HISTORICO,
+                null, LocalDate.of(2026, 8, 11));
         when(service.buscarHistoricoCliente(7L, 0, 5,
-                HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS, LocalDate.of(2026, 8, 11))).thenReturn(vazio);
+                HistoricoClientePedidosResponse.Periodo.TODO_HISTORICO, LocalDate.of(2026, 8, 11))).thenReturn(vazio);
         MockMvc mvc = mvc(service);
 
         mvc.perform(get("/dashboard/clientes/7/pedidos").param("pagina", "0").param("tamanho", "5")
@@ -38,7 +38,7 @@ class DashboardHistoricoControllerTest {
                 .andExpect(model().attribute("historico", vazio));
 
         verify(service).buscarHistoricoCliente(7L, 0, 5,
-                HistoricoClientePedidosResponse.Periodo.ULTIMOS_7_DIAS, LocalDate.of(2026, 8, 11));
+                HistoricoClientePedidosResponse.Periodo.TODO_HISTORICO, LocalDate.of(2026, 8, 11));
         verify(service, never()).buscarHistoricoCliente(eq(8L), anyInt(), anyInt(), any(), any());
     }
 

@@ -45,7 +45,7 @@ class DashboardTemplateTest {
 
     @Test void rankingClientesMostraQuantidadeTotalETicketMedio() throws Exception {
         String html = Files.readString(template);
-        assertThat(html).contains("Ranking de clientes", "r.quantidadePedidos", "r.valorTotal",
+        assertThat(html).contains("Melhores clientes", "r.quantidadePedidos", "r.valorTotal",
                 "Ticket médio:", "r.ticketMedio");
         assertThat(html).doesNotContain("formatarMoeda(r.valor)");
     }
@@ -54,7 +54,7 @@ class DashboardTemplateTest {
         String html = Files.readString(template);
         assertThat(html).contains("Ver pedidos", "data-cliente-id", "data-cliente-nome",
                 "data-historico-cliente-url", "/dashboard/clientes/{id}/pedidos", "modal-historico-cliente",
-                "periodo='ULTIMOS_7_DIAS'", "dataReferencia=${dataReferenciaIso}");
+                "periodo='TODO_HISTORICO'");
         assertThat(html).doesNotContain("historico.pedidos");
         assertThat(Files.readString(modal)).contains("data-conteudo-historico-cliente", "Carregando pedidos");
         assertThat(Files.readString(javascript)).contains("[data-historico-cliente-url]", "modal.show(botao)",
