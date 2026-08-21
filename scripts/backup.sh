@@ -133,7 +133,7 @@ fi
 # Validar SQL
 # ------------------------------------------------
 
-if ! gzip -dc "${ARQUIVO_TEMP}" | grep -q "CREATE TABLE"; then
+if ! gzip -dc "${ARQUIVO_TEMP}" | grep -F "CREATE TABLE" >/dev/null; then
     rm -f "${ARQUIVO_TEMP}"
 
     echo "Erro: o backup não contém estruturas de tabelas."
